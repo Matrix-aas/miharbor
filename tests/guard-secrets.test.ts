@@ -104,6 +104,18 @@ test('guard-secrets blocks bare sk-ant- token in plain text (C4)', async () => {
   expect(proc.exitCode).not.toBe(0)
 })
 
+test('guard-secrets skips files under tests/fixtures/ (Task 5)', async () => {
+  // Placeholder-keyed fixtures live under tests/fixtures/ and are additionally
+  // verified by scripts/verify-anon.sh. guard-secrets hook lets them through.
+  const f = '/tmp/mh-test-fixture/tests/fixtures/config-golden.yaml'
+  await $`mkdir -p ${f.replace(/\/[^/]+$/, '')}`.nothrow()
+  writeFileSync(f, `${PK_KEY}: AAAAAAAAAAAAAAAAAAAAAAAAA=\nsecret: "${HEX32}"\n`)
+  const proc = await $`./scripts/guard-secrets.sh ${f}`.nothrow()
+  unlinkSync(f)
+  await $`rmdir ${f.replace(/\/[^/]+$/, '')} ${f.replace(/\/[^/]+\/[^/]+$/, '')} ${f.replace(/\/[^/]+\/[^/]+\/[^/]+$/, '')}`.nothrow()
+  expect(proc.exitCode).toBe(0)
+})
+
 test('guard-secrets allows clean mihomo config fragment (C4)', async () => {
   const f = '/tmp/mh-test-clean-mihomo.yaml'
   writeFileSync(

@@ -1,0 +1,46 @@
+# =============================================================================
+#  Minimal mihomo config — used by Miharbor onboarding / "start from scratch".
+#  This is deliberately the smallest config that satisfies universal invariants
+#  (Task 7 linter) and passes mihomo -t. Everything else is left for the user
+#  to fill in through the UI.
+# =============================================================================
+
+mode: rule
+log-level: info
+ipv6: false
+
+# explicit (not auto-detect) is a universal invariant.
+interface-name: eth0
+
+# LAN-only external controller; Bearer token is empty in the fixture — real
+# deployments get a generated value at first-run.
+external-controller: 127.0.0.1:9090
+secret: ''
+
+tun:
+  enable: true
+  stack: system
+  device: mihomo-tun
+  dns-hijack: [] # DISABLED for first rollout
+  auto-route: true
+  auto-redirect: false
+  auto-detect-interface: false
+
+dns:
+  enable: true
+  listen: 127.0.0.1:1053 # MUST NOT be :53 or 0.0.0.0
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  default-nameserver:
+    - 1.1.1.1
+    - 8.8.8.8
+  nameserver:
+    - https://cloudflare-dns.com/dns-query
+
+proxies: []
+
+proxy-groups: []
+
+rules:
+  - MATCH,DIRECT
