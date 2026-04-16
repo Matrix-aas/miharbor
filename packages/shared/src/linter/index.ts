@@ -5,3 +5,4 @@
 export * from './unreachable.ts'
 export * from './invariants-universal.ts'
 export * from './duplicates.ts'
+export * from './aggregator.ts'
