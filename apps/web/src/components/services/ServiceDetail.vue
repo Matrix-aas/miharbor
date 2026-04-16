@@ -67,6 +67,11 @@ function startEdit(index: number): void {
   editorOpenIndex.value = index
 }
 
+function openAdder(): void {
+  adderOpen.value = true
+  editorOpenIndex.value = null
+}
+
 function cancelEdit(): void {
   editorOpenIndex.value = null
   adderOpen.value = false
@@ -198,10 +203,7 @@ function ruleKey(pair: { index: number; rule: Rule }): string {
         size="sm"
         class="w-full"
         data-testid="add-rule-btn"
-        @click="
-          adderOpen = true
-          editorOpenIndex = null
-        "
+        @click="openAdder"
       >
         <Plus class="h-4 w-4" />
         {{ t('services.add_rule') }}
