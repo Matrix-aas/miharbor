@@ -1,39 +1,198 @@
 {
   "planPath": "docs/superpowers/plans/2026-04-16-miharbor-stage-1-core.md",
   "tasks": [
-    { "id": 1,  "subject": "Task 1: Init monorepo skeleton + tooling",              "status": "pending" },
-    { "id": 2,  "subject": "Task 2: Logger + audit-log",                             "status": "pending", "blockedBy": [1] },
-    { "id": 3,  "subject": "Task 3: ENV schema + config bootstrap",                  "status": "pending", "blockedBy": [2] },
-    { "id": 4,  "subject": "Task 4: Shared types (Issue, Service, Rule, ProxyNode)", "status": "pending", "blockedBy": [1] },
-    { "id": 5,  "subject": "Task 5: YAML loader + canonicalize + rule-parser + views", "status": "pending", "blockedBy": [4] },
-    { "id": 6,  "subject": "Task 6: Linter 1 — unreachable rules",                   "status": "pending", "blockedBy": [5] },
-    { "id": 7,  "subject": "Task 7: Linter 2 — universal invariants",                "status": "pending", "blockedBy": [5] },
-    { "id": 8,  "subject": "Task 8: Linter 3 — duplicates & dangling refs",          "status": "pending", "blockedBy": [5] },
-    { "id": 9,  "subject": "Task 9: Linter aggregator + /api/lint endpoint",         "status": "pending", "blockedBy": [6, 7, 8] },
-    { "id": 10, "subject": "Task 10: Transport interface + InMemoryTransport",       "status": "pending", "blockedBy": [4] },
-    { "id": 11, "subject": "Task 11: LocalFsTransport + flock",                      "status": "pending", "blockedBy": [10, 3] },
-    { "id": 12, "subject": "Task 12: Sentinel vault (AES-256-GCM)",                  "status": "pending", "blockedBy": [3, 4] },
-    { "id": 13, "subject": "Task 13: Snapshot manager + retention",                  "status": "pending", "blockedBy": [10, 12] },
-    { "id": 14, "subject": "Task 14: Mihomo API client",                             "status": "pending", "blockedBy": [3] },
-    { "id": 15, "subject": "Task 15: Deploy pipeline steps 1-5",                     "status": "pending", "blockedBy": [9, 11, 12, 13, 14] },
-    { "id": 16, "subject": "Task 16: Healthcheck 4-phase + auto-rollback + monitor", "status": "pending", "blockedBy": [14, 15] },
-    { "id": 17, "subject": "Task 17: Basic Auth middleware + brute-force rate-limit","status": "pending", "blockedBy": [3] },
-    { "id": 18, "subject": "Task 18: Server bootstrap + all routes + canon-snapshot","status": "pending", "blockedBy": [15, 16, 17, 5] },
-    { "id": 19, "subject": "Task 19: Vue app skeleton + Tailwind + shadcn-vue + i18n","status": "pending", "blockedBy": [1] },
-    { "id": 20, "subject": "Task 20: Layout — AppShell / Sidebar / Header / DeployStepper skeleton", "status": "pending", "blockedBy": [19] },
-    { "id": 21, "subject": "Task 21: Services master-detail screen",                 "status": "pending", "blockedBy": [20, 18] },
-    { "id": 22, "subject": "Task 22: Proxies screen (view + WireGuard add/edit)",    "status": "pending", "blockedBy": [20, 18] },
-    { "id": 23, "subject": "Task 23: Raw YAML read-only Monaco",                     "status": "pending", "blockedBy": [20, 18] },
-    { "id": 24, "subject": "Task 24: History screen with search/filter/rollback",    "status": "pending", "blockedBy": [20, 18] },
-    { "id": 25, "subject": "Task 25: Settings page (password + ENV readonly)",       "status": "pending", "blockedBy": [20, 17] },
-    { "id": 26, "subject": "Task 26: DeployStepper SSE integration",                 "status": "pending", "blockedBy": [20, 18] },
-    { "id": 27, "subject": "Task 27: Onboarding for empty/missing config",           "status": "pending", "blockedBy": [18, 20] },
-    { "id": 28, "subject": "Task 28: Dockerfile multi-stage + compose example",      "status": "pending", "blockedBy": [18, 21, 22, 23, 24, 25, 26, 27] },
-    { "id": 29, "subject": "Task 29: README + SECURITY + BACKUP docs",               "status": "pending", "blockedBy": [28] },
-    { "id": 30, "subject": "Task 30: GitHub Actions CI",                             "status": "pending", "blockedBy": [28] },
-    { "id": 31, "subject": "Task 31: GitHub Actions Release (multi-arch GHCR)",      "status": "pending", "blockedBy": [30] },
-    { "id": 32, "subject": "Task 32: E2E smoke test (Playwright)",                   "status": "pending", "blockedBy": [28] },
-    { "id": 33, "subject": "Task 33: Release v0.1.0",                                "status": "pending", "blockedBy": [29, 31, 32] }
+    {
+      "id": 1,
+      "subject": "Task 1: Init monorepo skeleton + tooling",
+      "status": "completed",
+      "commits": ["0d54863", "fe0f3b0"]
+    },
+    {
+      "id": 2,
+      "subject": "Task 2: Logger + audit-log",
+      "status": "completed",
+      "commits": ["1aa1aba", "fe0f3b0"],
+      "blockedBy": [1]
+    },
+    {
+      "id": 3,
+      "subject": "Task 3: ENV schema + config bootstrap",
+      "status": "completed",
+      "commits": ["fabb349", "fe0f3b0"],
+      "blockedBy": [2]
+    },
+    {
+      "id": 4,
+      "subject": "Task 4: Shared types (Issue, Service, Rule, ProxyNode)",
+      "status": "completed",
+      "commits": ["6338f55", "fe0f3b0"],
+      "blockedBy": [1]
+    },
+    {
+      "id": 5,
+      "subject": "Task 5: YAML loader + canonicalize + rule-parser + views",
+      "status": "completed",
+      "commits": ["3219c6f", "ee303c8"],
+      "blockedBy": [4]
+    },
+    {
+      "id": 6,
+      "subject": "Task 6: Linter 1 — unreachable rules",
+      "status": "pending",
+      "blockedBy": [5]
+    },
+    {
+      "id": 7,
+      "subject": "Task 7: Linter 2 — universal invariants",
+      "status": "pending",
+      "blockedBy": [5]
+    },
+    {
+      "id": 8,
+      "subject": "Task 8: Linter 3 — duplicates & dangling refs",
+      "status": "pending",
+      "blockedBy": [5]
+    },
+    {
+      "id": 9,
+      "subject": "Task 9: Linter aggregator + /api/lint endpoint",
+      "status": "pending",
+      "blockedBy": [6, 7, 8]
+    },
+    {
+      "id": 10,
+      "subject": "Task 10: Transport interface + InMemoryTransport",
+      "status": "pending",
+      "blockedBy": [4]
+    },
+    {
+      "id": 11,
+      "subject": "Task 11: LocalFsTransport + flock",
+      "status": "pending",
+      "blockedBy": [10, 3]
+    },
+    {
+      "id": 12,
+      "subject": "Task 12: Sentinel vault (AES-256-GCM)",
+      "status": "pending",
+      "blockedBy": [3, 4]
+    },
+    {
+      "id": 13,
+      "subject": "Task 13: Snapshot manager + retention",
+      "status": "pending",
+      "blockedBy": [10, 12]
+    },
+    { "id": 14, "subject": "Task 14: Mihomo API client", "status": "pending", "blockedBy": [3] },
+    {
+      "id": 15,
+      "subject": "Task 15: Deploy pipeline steps 1-5",
+      "status": "pending",
+      "blockedBy": [9, 11, 12, 13, 14]
+    },
+    {
+      "id": 16,
+      "subject": "Task 16: Healthcheck 4-phase + auto-rollback + monitor",
+      "status": "pending",
+      "blockedBy": [14, 15]
+    },
+    {
+      "id": 17,
+      "subject": "Task 17: Basic Auth middleware + brute-force rate-limit",
+      "status": "pending",
+      "blockedBy": [3]
+    },
+    {
+      "id": 18,
+      "subject": "Task 18: Server bootstrap + all routes + canon-snapshot",
+      "status": "pending",
+      "blockedBy": [15, 16, 17, 5]
+    },
+    {
+      "id": 19,
+      "subject": "Task 19: Vue app skeleton + Tailwind + shadcn-vue + i18n",
+      "status": "pending",
+      "blockedBy": [1]
+    },
+    {
+      "id": 20,
+      "subject": "Task 20: Layout — AppShell / Sidebar / Header / DeployStepper skeleton",
+      "status": "pending",
+      "blockedBy": [19]
+    },
+    {
+      "id": 21,
+      "subject": "Task 21: Services master-detail screen",
+      "status": "pending",
+      "blockedBy": [20, 18]
+    },
+    {
+      "id": 22,
+      "subject": "Task 22: Proxies screen (view + WireGuard add/edit)",
+      "status": "pending",
+      "blockedBy": [20, 18]
+    },
+    {
+      "id": 23,
+      "subject": "Task 23: Raw YAML read-only Monaco",
+      "status": "pending",
+      "blockedBy": [20, 18]
+    },
+    {
+      "id": 24,
+      "subject": "Task 24: History screen with search/filter/rollback",
+      "status": "pending",
+      "blockedBy": [20, 18]
+    },
+    {
+      "id": 25,
+      "subject": "Task 25: Settings page (password + ENV readonly)",
+      "status": "pending",
+      "blockedBy": [20, 17]
+    },
+    {
+      "id": 26,
+      "subject": "Task 26: DeployStepper SSE integration",
+      "status": "pending",
+      "blockedBy": [20, 18]
+    },
+    {
+      "id": 27,
+      "subject": "Task 27: Onboarding for empty/missing config",
+      "status": "pending",
+      "blockedBy": [18, 20]
+    },
+    {
+      "id": 28,
+      "subject": "Task 28: Dockerfile multi-stage + compose example",
+      "status": "pending",
+      "blockedBy": [18, 21, 22, 23, 24, 25, 26, 27]
+    },
+    {
+      "id": 29,
+      "subject": "Task 29: README + SECURITY + BACKUP docs",
+      "status": "pending",
+      "blockedBy": [28]
+    },
+    { "id": 30, "subject": "Task 30: GitHub Actions CI", "status": "pending", "blockedBy": [28] },
+    {
+      "id": 31,
+      "subject": "Task 31: GitHub Actions Release (multi-arch GHCR)",
+      "status": "pending",
+      "blockedBy": [30]
+    },
+    {
+      "id": 32,
+      "subject": "Task 32: E2E smoke test (Playwright)",
+      "status": "pending",
+      "blockedBy": [28]
+    },
+    {
+      "id": 33,
+      "subject": "Task 33: Release v0.1.0",
+      "status": "pending",
+      "blockedBy": [29, 31, 32]
+    }
   ],
-  "lastUpdated": "2026-04-16T22:10:00Z"
+  "lastUpdated": "2026-04-16T23:55:00Z"
 }

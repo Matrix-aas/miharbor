@@ -174,42 +174,42 @@ proxies:
 
 # ----- Proxy groups (policies)
 proxy-groups:
-  - { name: 'Gemini', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Speedtest', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: '18+', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Apple', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Fastly', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Discord', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Grok', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Spotify', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Viber', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Roblox', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Linkedin', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Akamai', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Netflix', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: '2IP.IO', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Twitter', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Instagram', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Google', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Google Play', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Whatsapp', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Microsoft', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'GitHub', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Amazon', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Notion', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Tidal', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Telegram', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'TikTok', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Cloudflare', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Twitch', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Claude', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'YouTube', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Facebook', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'OpenAI', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'Steam', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'other', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'intel', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
-  - { name: 'RU трафик', type: select, proxies: [DIRECT, '🇳🇱 Нидерланды'] }
+  - {name: 'Gemini', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Speedtest', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: '18+', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Apple', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Fastly', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Discord', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Grok', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Spotify', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Viber', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Roblox', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Linkedin', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Akamai', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Netflix', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: '2IP.IO', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Twitter', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Instagram', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Google', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Google Play', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Whatsapp', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Microsoft', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'GitHub', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Amazon', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Notion', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Tidal', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Telegram', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'TikTok', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Cloudflare', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Twitch', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Claude', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'YouTube', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Facebook', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'OpenAI', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'Steam', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'other', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'intel', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT]}
+  - {name: 'RU трафик', type: select, proxies: [DIRECT, '🇳🇱 Нидерланды']}
   - name: 'Остальной трафик'
     type: select
     proxies: ['🇳🇱 Нидерланды', DIRECT]
