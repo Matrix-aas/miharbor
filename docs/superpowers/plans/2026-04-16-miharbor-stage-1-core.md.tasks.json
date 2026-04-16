@@ -38,25 +38,29 @@
     {
       "id": 6,
       "subject": "Task 6: Linter 1 — unreachable rules",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["a4f4e39"],
       "blockedBy": [5]
     },
     {
       "id": 7,
       "subject": "Task 7: Linter 2 — universal invariants",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["9dcabb6"],
       "blockedBy": [5]
     },
     {
       "id": 8,
       "subject": "Task 8: Linter 3 — duplicates & dangling refs",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["ac8891f"],
       "blockedBy": [5]
     },
     {
       "id": 9,
       "subject": "Task 9: Linter aggregator + /api/lint endpoint",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["03e2530"],
       "blockedBy": [6, 7, 8]
     },
     {
@@ -194,5 +198,5 @@
       "blockedBy": [29, 31, 32]
     }
   ],
-  "lastUpdated": "2026-04-16T23:55:00Z"
+  "lastUpdated": "2026-04-17T00:00:00Z"
 }
