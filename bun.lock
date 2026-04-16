@@ -34,6 +34,9 @@
     },
     "packages/shared": {
       "name": "miharbor-shared",
+      "dependencies": {
+        "@sinclair/typebox": "~0.34.14",
+      },
     },
   },
   "packages": {
