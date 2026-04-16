@@ -1,5 +1,8 @@
 import { Elysia } from 'elysia'
+import { logger } from './observability/logger.ts'
 
-new Elysia().get('/health', () => ({ status: 'ok' })).listen(Number(Bun.env.PORT) || 3000)
+const port = Number(Bun.env.PORT) || 3000
 
-console.log('miharbor-server listening')
+new Elysia().get('/health', () => ({ status: 'ok' })).listen(port)
+
+logger.info({ msg: 'miharbor-server listening', port })

@@ -1,19 +1,37 @@
-// Flat config (ESLint 9). Minimal config — just enough to satisfy `--max-warnings 0`
-// in each workspace. Each workspace invokes eslint on its own `src/` directory.
-export default [
+// Flat config (ESLint 9). Uses typescript-eslint parser so TS-specific syntax
+// (type annotations, interfaces, etc.) is understood. Each workspace invokes
+// `eslint src --max-warnings 0` against its own tree.
+import tseslint from 'typescript-eslint'
+
+export default tseslint.config(
   {
     ignores: ['**/node_modules/**', '**/dist/**', '**/.bun/**', '**/*.d.ts', '**/*.vue'],
   },
   {
-    files: ['**/*.{js,cjs,mjs,ts}'],
+    files: ['**/*.{ts,mts,cts}'],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      'no-unused-vars': 'off',
+      'no-undef': 'off',
+      'no-empty': ['warn', { allowEmptyCatch: true }],
+    },
+  },
+  {
+    files: ['**/*.{js,cjs,mjs}'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
     },
     rules: {
-      'no-unused-vars': 'off', // TS compiler handles this via noUnusedLocals/Parameters
-      'no-undef': 'off', // TS handles undefined symbols
+      'no-unused-vars': 'off',
+      'no-undef': 'off',
       'no-empty': ['warn', { allowEmptyCatch: true }],
     },
   },
-]
+)

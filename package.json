@@ -15,11 +15,12 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "typescript": "~5.9.3",
     "@types/bun": "~1.3.12",
     "eslint": "~9.19.0",
-    "prettier": "~3.4.2",
     "husky": "~9.1.7",
-    "lint-staged": "~15.4.3"
+    "lint-staged": "~15.4.3",
+    "prettier": "~3.4.2",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "~8.24.1"
   }
 }
