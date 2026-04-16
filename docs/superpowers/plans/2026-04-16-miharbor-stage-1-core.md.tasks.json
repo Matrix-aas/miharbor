@@ -143,13 +143,15 @@
     {
       "id": 21,
       "subject": "Task 21: Services master-detail screen",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["0cd531e"],
       "blockedBy": [20, 18]
     },
     {
       "id": 22,
       "subject": "Task 22: Proxies screen (view + WireGuard add/edit)",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["e229bb4"],
       "blockedBy": [20, 18]
     },
     {
