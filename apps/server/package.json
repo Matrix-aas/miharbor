@@ -1,0 +1,13 @@
+{
+  "name": "miharbor-server",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --max-warnings 0",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "elysia": "~1.2.10"
+  }
+}

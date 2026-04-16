@@ -1,0 +1,5 @@
+{
+  "*.{ts,vue,js,cjs,mjs}": ["eslint --fix", "prettier --write"],
+  "*.{md,json,yaml,yml}": ["prettier --write"],
+  "*": "./scripts/guard-secrets.sh"
+}
