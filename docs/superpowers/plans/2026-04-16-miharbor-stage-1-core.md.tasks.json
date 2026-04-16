@@ -101,25 +101,29 @@
     {
       "id": 15,
       "subject": "Task 15: Deploy pipeline steps 1-5",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["7bf273a"],
       "blockedBy": [9, 11, 12, 13, 14]
     },
     {
       "id": 16,
       "subject": "Task 16: Healthcheck 4-phase + auto-rollback + monitor",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["c944b37"],
       "blockedBy": [14, 15]
     },
     {
       "id": 17,
       "subject": "Task 17: Basic Auth middleware + brute-force rate-limit",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["83745a2"],
       "blockedBy": [3]
     },
     {
       "id": 18,
       "subject": "Task 18: Server bootstrap + all routes + canon-snapshot",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["575a762"],
       "blockedBy": [15, 16, 17, 5]
     },
     {
@@ -208,5 +212,5 @@
       "blockedBy": [29, 31, 32]
     }
   ],
-  "lastUpdated": "2026-04-17T00:30:00Z"
+  "lastUpdated": "2026-04-16T21:30:00Z"
 }
