@@ -157,31 +157,36 @@
     {
       "id": 23,
       "subject": "Task 23: Raw YAML read-only Monaco",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["88084ee", "f5f8151"],
       "blockedBy": [20, 18]
     },
     {
       "id": 24,
       "subject": "Task 24: History screen with search/filter/rollback",
-      "status": "pending",
-      "blockedBy": [20, 18]
+      "status": "completed",
+      "commits": ["28efbe0"],
+      "blockedBy": [20, 18, 26]
     },
     {
       "id": 25,
       "subject": "Task 25: Settings page (password + ENV readonly)",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["1ecb92b"],
       "blockedBy": [20, 17]
     },
     {
       "id": 26,
       "subject": "Task 26: DeployStepper SSE integration",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["b3ebaba"],
       "blockedBy": [20, 18]
     },
     {
       "id": 27,
       "subject": "Task 27: Onboarding for empty/missing config",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["45c214b"],
       "blockedBy": [18, 20]
     },
     {
