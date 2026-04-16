@@ -70,3 +70,55 @@ test('logger redacts deeply nested arrays', () => {
   expect(parsed.peers[0]['private-key']).toBe('***REDACTED***')
   expect(parsed.peers[0].name).toBe('a')
 })
+
+test('logger redacts circular references without throwing (C2)', () => {
+  const sink: string[] = []
+  const log = createLogger({ level: 'info', sink: (line) => sink.push(line) })
+  const obj: Record<string, unknown> = { name: 'a' }
+  obj.self = obj
+  expect(() => log.info({ obj, msg: 'cycle' })).not.toThrow()
+  const parsed = JSON.parse(sink[0]!)
+  expect(parsed.obj.name).toBe('a')
+  expect(parsed.obj.self).toBe('[Circular]')
+  expect(parsed.msg).toBe('cycle')
+})
+
+test('logger redacts indirect circular reference through array (C2)', () => {
+  const sink: string[] = []
+  const log = createLogger({ level: 'info', sink: (line) => sink.push(line) })
+  const a: Record<string, unknown> = { name: 'a' }
+  const b: Record<string, unknown> = { name: 'b', next: a }
+  a.next = b
+  expect(() => log.info({ a, msg: 'mutual' })).not.toThrow()
+})
+
+test('logger serializes Error with name, message, stack (C2)', () => {
+  const sink: string[] = []
+  const log = createLogger({ level: 'info', sink: (line) => sink.push(line) })
+  log.info({ err: new Error('boom'), msg: 'failed' })
+  const parsed = JSON.parse(sink[0]!)
+  expect(parsed.err.name).toBe('Error')
+  expect(parsed.err.message).toBe('boom')
+  expect(typeof parsed.err.stack).toBe('string')
+  expect(parsed.err.stack.length).toBeGreaterThan(0)
+})
+
+test('logger stringifies BigInt (C2)', () => {
+  const sink: string[] = []
+  const log = createLogger({ level: 'info', sink: (line) => sink.push(line) })
+  expect(() => log.info({ n: 9007199254740993n, msg: 'big' })).not.toThrow()
+  const parsed = JSON.parse(sink[0]!)
+  expect(parsed.n).toBe('9007199254740993')
+})
+
+test('logger swallows sink errors — broken pipe does not kill caller (C3)', () => {
+  const log = createLogger({
+    level: 'info',
+    sink: () => {
+      throw new Error('broken pipe')
+    },
+  })
+  expect(() => log.info({ msg: 'x' })).not.toThrow()
+  expect(() => log.error({ msg: 'y' })).not.toThrow()
+  expect(() => log.warn({ msg: 'z' })).not.toThrow()
+})

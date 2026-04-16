@@ -3,6 +3,7 @@
 
 import { appendFile, mkdir, chmod, stat } from 'node:fs/promises'
 import { join } from 'node:path'
+import type { Logger } from './logger.ts'
 
 export type AuditAction =
   | 'deploy'
@@ -26,7 +27,14 @@ export interface AuditLog {
   record: (rec: AuditRecord) => Promise<void>
 }
 
-export function createAuditLog(opts: { dir: string }): AuditLog {
+export interface AuditLogOptions {
+  dir: string
+  // I9: optional logger so chmod / stat failures are surfaced instead of
+  // silently swallowed. When omitted, failures are still non-fatal.
+  logger?: Logger
+}
+
+export function createAuditLog(opts: AuditLogOptions): AuditLog {
   const path = join(opts.dir, 'audit.log')
   return {
     async record(rec: AuditRecord): Promise<void> {
@@ -40,8 +48,13 @@ export function createAuditLog(opts: { dir: string }): AuditLog {
         if ((s.mode & 0o777) !== 0o600) {
           await chmod(path, 0o600)
         }
-      } catch {
-        // ignore stat failures — best-effort hardening
+      } catch (e) {
+        // Best-effort hardening — but surface via logger if available (I9).
+        opts.logger?.warn({
+          msg: 'audit-log chmod/stat failed',
+          path,
+          error: String(e),
+        })
       }
     },
   }

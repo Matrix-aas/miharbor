@@ -57,3 +57,37 @@ test('loadEnv fails on invalid validation mode', () => {
     /MIHOMO_API_VALIDATION_MODE/,
   )
 })
+
+test('loadEnv does NOT coerce digit-only strings for string-typed fields (C1)', () => {
+  // Regression: previous coerce() applied /^-?\d+$/ globally and broke API keys
+  // like "1234567890" by converting them to Number before schema validation.
+  expect(() => loadEnv({ ANTHROPIC_API_KEY: '1234567890' })).not.toThrow()
+  const env = loadEnv({ ANTHROPIC_API_KEY: '1234567890' })
+  expect(env.ANTHROPIC_API_KEY).toBe('1234567890')
+  expect(typeof env.ANTHROPIC_API_KEY).toBe('string')
+})
+
+test('loadEnv does NOT coerce digit-only OPENAI_API_KEY (C1)', () => {
+  const env = loadEnv({ OPENAI_API_KEY: '9876543210' })
+  expect(env.OPENAI_API_KEY).toBe('9876543210')
+  expect(typeof env.OPENAI_API_KEY).toBe('string')
+})
+
+test('loadEnv still coerces numbers for number-typed fields (C1)', () => {
+  const env = loadEnv({ MIHARBOR_PORT: '5000' })
+  expect(env.MIHARBOR_PORT).toBe(5000)
+  expect(typeof env.MIHARBOR_PORT).toBe('number')
+})
+
+test('loadEnv still coerces booleans for boolean-typed fields (C1)', () => {
+  const env = loadEnv({ MIHARBOR_LLM_DISABLED: 'true' })
+  expect(env.MIHARBOR_LLM_DISABLED).toBe(true)
+  expect(typeof env.MIHARBOR_LLM_DISABLED).toBe('boolean')
+})
+
+test('loadEnv does NOT coerce "true"/"false" strings for string-typed fields (C1)', () => {
+  // Edge case: if an API key literally equals "true", we must keep it as string.
+  const env = loadEnv({ MIHARBOR_AUTH_USER: 'true' })
+  expect(env.MIHARBOR_AUTH_USER).toBe('true')
+  expect(typeof env.MIHARBOR_AUTH_USER).toBe('string')
+})

@@ -54,16 +54,44 @@ export type Env = Static<typeof EnvSchema>
 
 const SCHEMA_KEYS = new Set(Object.keys(EnvSchema.properties))
 
+// TypeBox schema property — may be an Object with `type` field or a Union.
+// We coerce per-field by looking at the declared type; string-typed fields
+// are passed through unchanged so digit-only API keys aren't silently
+// converted to numbers (C1).
+interface TypeBoxProp {
+  type?: string
+  anyOf?: Array<{ const?: unknown; type?: string }>
+}
+
+function schemaTypeOf(key: string): 'string' | 'number' | 'integer' | 'boolean' | 'union' | null {
+  const prop = (EnvSchema.properties as Record<string, TypeBoxProp>)[key]
+  if (!prop) return null
+  if (prop.type === 'boolean') return 'boolean'
+  if (prop.type === 'number') return 'number'
+  if (prop.type === 'integer') return 'integer'
+  if (prop.type === 'string') return 'string'
+  // Union (e.g. transport/log-level) — literal string constants; no numeric coercion.
+  if (Array.isArray(prop.anyOf)) return 'union'
+  return null
+}
+
 function coerce(raw: Record<string, string | undefined>): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(raw)) {
     if (v === undefined) continue
     // Only coerce keys relevant to our schema — avoid stuffing the whole host env.
     if (!SCHEMA_KEYS.has(k)) continue
-    if (v === 'true') out[k] = true
-    else if (v === 'false') out[k] = false
-    else if (/^-?\d+$/.test(v)) out[k] = Number(v)
-    else out[k] = v
+    const t = schemaTypeOf(k)
+    if (t === 'boolean') {
+      out[k] = v === 'true' ? true : v === 'false' ? false : v
+    } else if (t === 'number' || t === 'integer') {
+      out[k] = /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v
+    } else {
+      // string or union-of-string-literals — pass through verbatim.
+      // Critical: digit-only strings (e.g. ANTHROPIC_API_KEY=1234567890) must
+      // NOT be coerced to numbers — schema type is string (C1).
+      out[k] = v
+    }
   }
   return out
 }

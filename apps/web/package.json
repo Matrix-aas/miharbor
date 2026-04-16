@@ -5,8 +5,7 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "typecheck": "vue-tsc --noEmit",
-    "lint": "eslint src --max-warnings 0",
-    "test": "bun test"
+    "lint": "eslint src --max-warnings 0"
   },
   "dependencies": {
     "vue": "~3.5.13"
