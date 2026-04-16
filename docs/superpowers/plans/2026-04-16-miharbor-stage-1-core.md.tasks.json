@@ -66,28 +66,38 @@
     {
       "id": 10,
       "subject": "Task 10: Transport interface + InMemoryTransport",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["c15bbb3"],
       "blockedBy": [4]
     },
     {
       "id": 11,
       "subject": "Task 11: LocalFsTransport + flock",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["6f62810"],
       "blockedBy": [10, 3]
     },
     {
       "id": 12,
       "subject": "Task 12: Sentinel vault (AES-256-GCM)",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["95625b3"],
       "blockedBy": [3, 4]
     },
     {
       "id": 13,
       "subject": "Task 13: Snapshot manager + retention",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["1fd524f"],
       "blockedBy": [10, 12]
     },
-    { "id": 14, "subject": "Task 14: Mihomo API client", "status": "pending", "blockedBy": [3] },
+    {
+      "id": 14,
+      "subject": "Task 14: Mihomo API client",
+      "status": "completed",
+      "commits": ["5e2ca43"],
+      "blockedBy": [3]
+    },
     {
       "id": 15,
       "subject": "Task 15: Deploy pipeline steps 1-5",
@@ -198,5 +208,5 @@
       "blockedBy": [29, 31, 32]
     }
   ],
-  "lastUpdated": "2026-04-17T00:00:00Z"
+  "lastUpdated": "2026-04-17T00:30:00Z"
 }
