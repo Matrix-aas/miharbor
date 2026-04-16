@@ -126,9 +126,9 @@ function requestRollback(): void {
       <DialogHeader>
         <DialogTitle>{{ t('history.diff_title') }}</DialogTitle>
         <DialogDescription v-if="meta">
-          <Badge variant="outline" class="mr-2">{{
-            t('history.applied_by', { by: meta.applied_by })
-          }}</Badge>
+          <Badge variant="outline" class="mr-2">
+            {{ t('history.applied_by', { by: meta.applied_by }) }}
+          </Badge>
           <span class="text-xs font-mono">{{ meta.id }}</span>
         </DialogDescription>
       </DialogHeader>

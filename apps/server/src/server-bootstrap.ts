@@ -37,6 +37,7 @@ import { healthRoutes } from './routes/health.ts'
 import { authRoutes } from './routes/auth.ts'
 import { lintRoutes } from './routes/lint.ts'
 import { mihomoRoutes } from './routes/mihomo.ts'
+import { settingsRoutes } from './routes/settings.ts'
 import { join } from 'node:path'
 import type { AuditLog } from './observability/audit-log.ts'
 import type { Logger } from './observability/logger.ts'
@@ -163,6 +164,7 @@ export async function wireApp(
     .use(healthRoutes({ monitor }))
     .use(authRoutes({ authStore, audit }))
     .use(mihomoRoutes({ mihomoApi }))
+    .use(settingsRoutes({ env, rawEnv }))
 
   return {
     ...app0,
