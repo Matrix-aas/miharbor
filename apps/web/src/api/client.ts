@@ -98,9 +98,16 @@ export interface ConfigMeta {
 
 export interface SnapshotMeta {
   id: string
-  createdAt: string
-  user?: string
-  reason?: string
+  /** ISO-8601 UTC timestamp of snapshot creation. */
+  timestamp: string
+  sha256_original: string
+  sha256_masked: string
+  applied_by: 'user' | 'rollback' | 'auto-rollback' | 'canonicalization'
+  user_ip?: string
+  user_agent?: string
+  diff_summary?: { added: number; removed: number }
+  mihomo_api_version?: string
+  transport: 'local' | 'ssh'
   [k: string]: unknown
 }
 
@@ -113,6 +120,9 @@ export interface DraftResponse {
 export interface SnapshotDetail {
   meta: SnapshotMeta
   configMasked: string
+  /** Unified diff.patch against the previous snapshot's masked content.
+   *  Empty string for the first snapshot. */
+  diffPatch: string
 }
 
 export interface EnvEntry {

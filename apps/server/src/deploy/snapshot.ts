@@ -58,9 +58,11 @@ export interface SnapshotManager {
   createSnapshot(rawConfig: string, meta: CreateSnapshotMeta): Promise<SnapshotMeta | null>
   /** Newest-first list. */
   listSnapshots(): Promise<SnapshotMeta[]>
-  /** Read a snapshot — returns masked config + meta. Caller runs
-   *  `vault.unmaskDoc` to get the rollback-ready bytes. */
-  getSnapshot(id: string): Promise<{ configMasked: string; meta: SnapshotMeta }>
+  /** Read a snapshot — returns masked config + meta + unified diff.patch.
+   *  Caller runs `vault.unmaskDoc` to get the rollback-ready bytes. The
+   *  `diffPatch` is the unified patch against the previous snapshot's masked
+   *  content; empty string for the first snapshot. */
+  getSnapshot(id: string): Promise<{ configMasked: string; meta: SnapshotMeta; diffPatch: string }>
   /** Apply retention sweep + vault GC. Returns ids actually removed. */
   applyRetention(): Promise<{ removed: string[] }>
 }
@@ -218,7 +220,11 @@ export function createSnapshotManager(opts: SnapshotManagerOptions): SnapshotMan
 
     async getSnapshot(id) {
       const bundle = await opts.transport.readSnapshot(id)
-      return { configMasked: bundle['config.yaml'], meta: bundle.meta }
+      return {
+        configMasked: bundle['config.yaml'],
+        meta: bundle.meta,
+        diffPatch: bundle['diff.patch'],
+      }
     },
 
     async applyRetention() {

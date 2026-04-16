@@ -27,8 +27,8 @@ export function snapshotRoutes(deps: SnapshotRoutesDeps) {
     .get(
       '/:id',
       async ({ params }) => {
-        const { configMasked, meta } = await deps.snapshots.getSnapshot(params.id)
-        return { meta, configMasked }
+        const { configMasked, meta, diffPatch } = await deps.snapshots.getSnapshot(params.id)
+        return { meta, configMasked, diffPatch }
       },
       { params: t.Object({ id: t.String() }) },
     )
