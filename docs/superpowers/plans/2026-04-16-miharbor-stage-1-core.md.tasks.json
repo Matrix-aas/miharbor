@@ -129,13 +129,15 @@
     {
       "id": 19,
       "subject": "Task 19: Vue app skeleton + Tailwind + shadcn-vue + i18n",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["fb1b300"],
       "blockedBy": [1]
     },
     {
       "id": 20,
       "subject": "Task 20: Layout — AppShell / Sidebar / Header / DeployStepper skeleton",
-      "status": "pending",
+      "status": "completed",
+      "commits": ["055af7e"],
       "blockedBy": [19]
     },
     {
@@ -212,5 +214,5 @@
       "blockedBy": [29, 31, 32]
     }
   ],
-  "lastUpdated": "2026-04-16T21:30:00Z"
+  "lastUpdated": "2026-04-16T22:00:00Z"
 }
