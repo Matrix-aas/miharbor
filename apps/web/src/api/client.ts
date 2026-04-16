@@ -137,4 +137,18 @@ export const endpoints = {
     get: (id: string) => api<{ meta: SnapshotMeta; configMasked: string }>(`/api/snapshots/${id}`),
   },
   lint: (yaml: string) => api<{ issues: Issue[] }>('/api/lint', { method: 'POST', body: { yaml } }),
+  mihomo: {
+    version: () => api<{ version: string; premium: boolean }>('/api/mihomo/version'),
+    proxies: () => api<Record<string, unknown>>('/api/mihomo/proxies'),
+    proxyDelay: (name: string, opts: { url?: string; timeout?: number } = {}) => {
+      const params = new URLSearchParams()
+      if (opts.url) params.set('url', opts.url)
+      if (opts.timeout !== undefined) params.set('timeout', String(opts.timeout))
+      const qs = params.toString()
+      const suffix = qs.length > 0 ? `?${qs}` : ''
+      return api<{ delay: number }>(
+        `/api/mihomo/proxies/${encodeURIComponent(name)}/delay${suffix}`,
+      )
+    },
+  },
 }

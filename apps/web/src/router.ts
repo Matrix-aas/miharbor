@@ -5,17 +5,14 @@
 
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import Services from '@/pages/Services.vue'
+import Proxies from '@/pages/Proxies.vue'
 import Placeholder from '@/pages/Placeholder.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/services' },
   { path: '/services', name: 'services', component: Services },
-  {
-    path: '/proxies',
-    name: 'proxies',
-    component: Placeholder,
-    props: { pageKey: 'pages.proxies' },
-  },
+  { path: '/services/:name', name: 'service-detail', component: Services, props: true },
+  { path: '/proxies', name: 'proxies', component: Proxies },
   {
     path: '/providers',
     name: 'providers',
