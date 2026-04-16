@@ -12,6 +12,7 @@
     "typecheck": "bun run --filter='*' typecheck",
     "lint": "bun run --filter='*' lint",
     "test": "bun test",
+    "e2e": "bun --filter miharbor-web e2e",
     "prepare": "husky"
   },
   "devDependencies": {

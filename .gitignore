@@ -16,3 +16,7 @@ dist/
 .miharbor.test.yaml
 .DS_Store
 *.tsbuildinfo
+# Playwright e2e
+apps/web/playwright-report/
+apps/web/test-results/
+.playwright-data/

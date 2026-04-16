@@ -19,6 +19,11 @@ tests/
 **/tests/
 **/*.test.ts
 **/*.spec.ts
+e2e/
+**/e2e/
+**/playwright-report/
+**/test-results/
+.playwright-data/
 *.md
 !README.md
 
