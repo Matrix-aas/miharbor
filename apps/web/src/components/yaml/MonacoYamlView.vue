@@ -62,11 +62,13 @@ async function init(): Promise<void> {
     // all languages when imported, including YAML.
     const contribPromise = import('monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution')
     const [monaco] = await Promise.all([monacoPromise, contribPromise])
-    if (!container.value)
-      return // Disable web workers — we don't need them for read-only syntax highlight
-      // and configuring them requires Vite `?worker` imports that we can skip
-      // for the MVP read-only view. Setting the MonacoEnvironment makes the
-      // editor fall back to the main thread.
+    if (!container.value) {
+      return
+    }
+    // Disable web workers — we don't need them for read-only syntax highlight
+    // and configuring them requires Vite `?worker` imports that we can skip
+    // for the MVP read-only view. Setting the MonacoEnvironment makes the
+    // editor fall back to the main thread.
     ;(globalThis as unknown as { MonacoEnvironment?: unknown }).MonacoEnvironment = {
       getWorker: () => {
         // Return a no-op worker stub. Read-only view + builtin tokenizer
