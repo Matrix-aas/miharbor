@@ -50,7 +50,12 @@ test('RULE_TYPES is a frozen/const list covering all rule types (I8)', () => {
   expect(RULE_TYPES).toContain('AND')
   expect(RULE_TYPES).toContain('OR')
   expect(RULE_TYPES).toContain('NOT')
-  expect(RULE_TYPES.length).toBe(19)
+  // Mihomo 1.19+ types — kept in sync with rule.ts.
+  expect(RULE_TYPES).toContain('IN-PORT')
+  expect(RULE_TYPES).toContain('PROCESS-PATH')
+  expect(RULE_TYPES).toContain('SUB-RULE')
+  expect(RULE_TYPES).toContain('DSCP')
+  expect(RULE_TYPES.length).toBe(29)
 })
 
 test('SIMPLE_RULE_TYPES excludes logical ops and MATCH (I8)', () => {

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { parseDocument } from 'yaml'
-import { canonicalize } from '../../src/config/canonicalize.ts'
+import { canonicalize, YamlLoadError } from '../../src/config/canonicalize.ts'
 
 const GOLDEN_PATH = 'apps/server/tests/fixtures/config-golden.yaml'
 const SNAPSHOT_PATH = 'apps/server/tests/fixtures/config-golden.canonical.yaml'
@@ -43,6 +43,22 @@ test('canonicalize preserves snapshot against committed golden', () => {
   }
   const expected = readFileSync(SNAPSHOT_PATH, 'utf8')
   expect(actual).toBe(expected)
+})
+
+test('canonicalize throws structured YamlLoadError on malformed input', () => {
+  let caught: unknown
+  try {
+    canonicalize('foo: : bar')
+  } catch (e) {
+    caught = e
+  }
+  expect(caught).toBeInstanceOf(YamlLoadError)
+  const err = caught as YamlLoadError
+  expect(Array.isArray(err.errors)).toBe(true)
+  expect(err.errors.length).toBeGreaterThan(0)
+  // First error should carry a human-readable message from the yaml parser.
+  expect(typeof err.errors[0]!.message).toBe('string')
+  expect(err.errors[0]!.message.length).toBeGreaterThan(0)
 })
 
 test('canonicalize() returns a fresh Document that re-serializes identically', () => {

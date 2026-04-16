@@ -79,6 +79,34 @@ test('tun section missing → interface-name not required', () => {
   )
 })
 
+// --- TUN_DNS_HIJACK_TYPE --------------------------------------------------
+
+test('flags tun.dns-hijack when set to a scalar string', () => {
+  // Mihomo rejects this — dns-hijack must be a list of targets, not a flag.
+  const doc = parseDocument('tun:\n  dns-hijack: "auto"\n')
+  const issues = checkUniversalInvariants(doc)
+  const iss = issues.find((i) => idOf(i) === 'TUN_DNS_HIJACK_TYPE')
+  expect(iss).toBeDefined()
+  expect(iss!.level).toBe('error')
+  expect(iss!.code).toBe('INVARIANT_TUN_DNS_HIJACK_MUST_BE_ARRAY')
+  expect(iss!.path).toEqual(['tun', 'dns-hijack'])
+})
+
+test('empty tun.dns-hijack array is accepted (runbook: disabled for first rollout)', () => {
+  const doc = parseDocument('tun:\n  dns-hijack: []\n')
+  expect(checkUniversalInvariants(doc).some((i) => idOf(i) === 'TUN_DNS_HIJACK_TYPE')).toBe(false)
+})
+
+test('populated tun.dns-hijack list is accepted', () => {
+  const doc = parseDocument('tun:\n  dns-hijack:\n    - tcp://any:53\n    - udp://any:53\n')
+  expect(checkUniversalInvariants(doc).some((i) => idOf(i) === 'TUN_DNS_HIJACK_TYPE')).toBe(false)
+})
+
+test('missing tun.dns-hijack key → not flagged', () => {
+  const doc = parseDocument('tun:\n  enable: true\n')
+  expect(checkUniversalInvariants(doc).some((i) => idOf(i) === 'TUN_DNS_HIJACK_TYPE')).toBe(false)
+})
+
 // --- aggregate happy path -------------------------------------------------
 
 test('no issues for a healthy config', () => {

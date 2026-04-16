@@ -22,10 +22,9 @@
 
 import type { Document } from 'yaml'
 import type { Rule, SimpleRule, LogicalOp, SimpleRuleType } from '../types/rule.ts'
-import { LOGICAL_OPS, SIMPLE_RULE_TYPES } from '../types/rule.ts'
+import { LOGICAL_OPS } from '../types/rule.ts'
 
 const LOGICAL_OP_SET: ReadonlySet<string> = new Set<string>(LOGICAL_OPS)
-const SIMPLE_TYPE_SET: ReadonlySet<string> = new Set<string>(SIMPLE_RULE_TYPES)
 
 // Split a comma-separated list at top level (depth-0), ignoring commas inside
 // any (...) groups. Empty input yields [].
@@ -99,13 +98,17 @@ function parseRuleExpr(expr: string): Rule {
   const parts = splitTopLevel(inner)
   if (parts.length < 2) throw new Error(`rule-parser: simple child needs TYPE,VALUE: ${expr}`)
   const [type, value, ...modifiers] = parts
-  if (!SIMPLE_TYPE_SET.has(type ?? '')) {
-    throw new Error(`rule-parser: unknown simple rule type in child: ${type}`)
+  if (!value || value.length === 0) {
+    throw new Error(`rule-parser: invalid child rule: value is empty: ${expr}`)
   }
+  // Unknown types are allowed (parent top-level rule applies the same
+  // pass-through policy); children never carry a TARGET so we can't range-check
+  // on that. `type` is guaranteed non-null here because splitTopLevel returns
+  // >= 2 parts.
   const simple: SimpleRule = {
     kind: 'simple',
     type: type as SimpleRuleType,
-    value: value ?? '',
+    value,
     target: '',
     modifiers,
   }
@@ -119,7 +122,9 @@ export function parseRule(raw: string): Rule {
 
   // MATCH rule — always exactly "MATCH,TARGET".
   if (trimmed.startsWith('MATCH,')) {
-    return { kind: 'match', target: trimmed.slice('MATCH,'.length).trim() }
+    const target = trimmed.slice('MATCH,'.length).trim()
+    if (target.length === 0) throw new Error(`rule-parser: invalid MATCH rule: target is empty`)
+    return { kind: 'match', target }
   }
 
   const firstComma = trimmed.indexOf(',')
@@ -165,17 +170,31 @@ export function parseRule(raw: string): Rule {
   const parts = splitTopLevel(trimmed)
   if (parts.length < 3) throw new Error(`rule-parser: simple rule needs TYPE,VALUE,TARGET: ${raw}`)
   const [type, value, target, ...modifiers] = parts
-  if (!SIMPLE_TYPE_SET.has(type ?? '')) {
-    throw new Error(`rule-parser: unknown simple rule type: ${type}`)
+  // I3: a rule with empty value or target is always wrong (mihomo silently
+  // drops them; we'd rather the user see the error). Catches typos like
+  // "DOMAIN-SUFFIX,,PROXY" and "DOMAIN-SUFFIX,example.com,".
+  if (!value || value.length === 0) {
+    throw new Error(`rule-parser: invalid rule: value is empty: ${raw}`)
   }
+  if (!target || target.length === 0) {
+    throw new Error(`rule-parser: invalid rule: target is empty: ${raw}`)
+  }
+  // I8: unknown rule types (IN-PORT, DSCP, PROCESS-PATH, …) pass through
+  // instead of throwing. The shadow-check in unreachable.ts only compares
+  // known types and the duplicate-check keys on `${type}:${value}`, so an
+  // unknown type is benign for the rest of the linter — it just isn't
+  // reasoned about for subset shadowing. This lets configs using bleeding-
+  // edge mihomo features (1.19+ process matching etc.) still load.
   const result: SimpleRule = {
     kind: 'simple',
     type: type as SimpleRuleType,
-    value: value ?? '',
-    target: target ?? '',
+    value,
+    target,
     modifiers,
   }
   if (!result.modifiers?.length) delete result.modifiers
+  // `SIMPLE_TYPE_SET.has(type)` is advisory only; downstream consumers can
+  // detect pass-through by checking `SIMPLE_RULE_TYPES.includes(rule.type)`.
   return result
 }
 

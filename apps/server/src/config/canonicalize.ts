@@ -34,9 +34,51 @@ export interface CanonicalizeResult {
   text: string
 }
 
-/** Parse raw YAML and emit a canonical string + re-parsed Document. */
+/**
+ * Structured YAML parse failure. Thrown by `canonicalize` when the raw input
+ * has syntactic errors (yaml@2's `doc.errors` non-empty). Contains every
+ * collected error with line/column when available, so API callers can surface
+ * a useful payload instead of a generic "Document with errors cannot be
+ * stringified" exception.
+ */
+export class YamlLoadError extends Error {
+  public readonly errors: Array<{ message: string; line?: number; col?: number }>
+  constructor(
+    errors: Array<{ message: string; line?: number; col?: number }>,
+    message = 'YAML parse failed',
+  ) {
+    super(message)
+    this.name = 'YamlLoadError'
+    this.errors = errors
+  }
+}
+
+type YamlParseError = {
+  message: string
+  linePos?: Array<{ line: number; col: number }>
+  pos?: [number, number]
+}
+
+function mapYamlError(err: YamlParseError): { message: string; line?: number; col?: number } {
+  // yaml@2 populates `linePos` on most parse errors (prettyErrors is the
+  // expensive path; we want positions even without it — hence the pos fallback
+  // is intentionally absent, the tuple `pos` is an offset, not a coordinate).
+  const first = err.linePos?.[0]
+  return {
+    message: err.message,
+    line: first?.line,
+    col: first?.col,
+  }
+}
+
+/** Parse raw YAML and emit a canonical string + re-parsed Document. Throws
+ *  `YamlLoadError` with structured diagnostics when the parser collects any
+ *  errors (so callers never have to `try { doc.toString() } catch`). */
 export function canonicalize(rawYaml: string): CanonicalizeResult {
-  const doc = parseDocument(rawYaml)
+  const doc = parseDocument(rawYaml, { prettyErrors: true })
+  if (doc.errors.length > 0) {
+    throw new YamlLoadError(doc.errors.map((e) => mapYamlError(e as unknown as YamlParseError)))
+  }
   const text = doc.toString(DUMP_OPTS)
   // Re-parse the canonical text so downstream mutations serialize identically.
   return { doc: parseDocument(text), text }

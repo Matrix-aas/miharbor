@@ -23,6 +23,13 @@
         "when": ["tun", "enable"],
         "then_required": ["interface-name"]
       }
+    },
+    {
+      "id": "TUN_DNS_HIJACK_TYPE",
+      "level": "error",
+      "message_key": "INVARIANT_TUN_DNS_HIJACK_MUST_BE_ARRAY",
+      "path": ["tun", "dns-hijack"],
+      "check": { "type": "is_array_if_present" }
     }
   ]
 }

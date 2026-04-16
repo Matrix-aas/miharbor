@@ -20,14 +20,28 @@ export function setScalar(ctx: MutatorCtx, path: (string | number)[], value: unk
   ctx.doc.setIn(path, value)
 }
 
-/** Delete the node at `path`. No-op if missing. */
+/** Delete the node at `path`. True no-op if any intermediate path segment is
+ *  missing or is not a collection — matches the JSDoc contract above yaml@2's
+ *  stricter `deleteIn`, which throws on non-collection intermediate nodes. */
 export function deleteAt(ctx: MutatorCtx, path: (string | number)[]): void {
-  ctx.doc.deleteIn(path)
+  try {
+    ctx.doc.deleteIn(path)
+  } catch {
+    // yaml@2 throws "Expected YAML collection at …" when an intermediate path
+    // segment resolves to a scalar (or is missing in certain shapes). The
+    // contract here is "delete if present; no-op otherwise", so we swallow.
+  }
 }
 
 /** Insert a rule into the top-level `rules:` array at `atIndex`. If the list
- *  doesn't exist yet it is created. `atIndex === -1` means "append". */
+ *  doesn't exist yet it is created. `atIndex === -1` means "append"; any other
+ *  negative value is rejected. */
 export function insertRule(ctx: MutatorCtx, rule: Rule, atIndex = -1): void {
+  // Guard against the foot-gun where `-2` silently appends — only the
+  // documented sentinel `-1` is allowed for "end of list".
+  if (atIndex !== -1 && atIndex < 0) {
+    throw new Error(`insertRule: negative index ${atIndex} not allowed (use -1 for append)`)
+  }
   const raw = serializeRule(rule)
   const rules = ctx.doc.getIn(['rules']) as unknown
   if (!rules || !isCollection(rules as Node)) {
@@ -37,33 +51,37 @@ export function insertRule(ctx: MutatorCtx, rule: Rule, atIndex = -1): void {
     return
   }
   const coll = rules as { items: unknown[] }
-  if (atIndex < 0 || atIndex >= coll.items.length) {
+  if (atIndex === -1 || atIndex >= coll.items.length) {
     coll.items.push(ctx.doc.createNode(raw) as unknown)
   } else {
     coll.items.splice(atIndex, 0, ctx.doc.createNode(raw) as unknown)
   }
 }
 
-/** Replace the rule at `index`. Throws if out of range. */
+/** Replace the rule at `index`. Throws if `rules:` is missing or out of range. */
 export function replaceRule(ctx: MutatorCtx, index: number, rule: Rule): void {
   const rules = ctx.doc.getIn(['rules']) as unknown
   if (!rules || !isCollection(rules as Node)) {
-    throw new Error('mutator: rules array missing')
+    throw new Error('mutator: rules array missing or not a sequence')
   }
   const coll = rules as { items: unknown[] }
   if (index < 0 || index >= coll.items.length) {
-    throw new Error(`mutator: rule index ${index} out of range (len=${coll.items.length})`)
+    throw new Error(`mutator: rule index ${index} out of bounds (length=${coll.items.length})`)
   }
   coll.items[index] = ctx.doc.createNode(serializeRule(rule)) as unknown
 }
 
-/** Remove the rule at `index`. Throws if out of range. */
+/** Remove the rule at `index`. Throws if `rules:` is missing or out of range.
+ *  (Symmetric with replaceRule — the previous silent-no-op on missing `rules:`
+ *  was a footgun because it hid typos in call sites.) */
 export function removeRule(ctx: MutatorCtx, index: number): void {
   const rules = ctx.doc.getIn(['rules']) as unknown
-  if (!rules || !isCollection(rules as Node)) return
+  if (!rules || !isCollection(rules as Node)) {
+    throw new Error('mutator: rules array missing or not a sequence')
+  }
   const coll = rules as { items: unknown[] }
   if (index < 0 || index >= coll.items.length) {
-    throw new Error(`mutator: rule index ${index} out of range (len=${coll.items.length})`)
+    throw new Error(`mutator: rule index ${index} out of bounds (length=${coll.items.length})`)
   }
   coll.items.splice(index, 1)
 }

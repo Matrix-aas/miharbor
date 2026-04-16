@@ -11,7 +11,7 @@
 import { readFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import type { Document } from 'yaml'
-import { canonicalize, serialize, DUMP_OPTS } from './canonicalize.ts'
+import { canonicalize } from './canonicalize.ts'
 
 export interface LoadedConfig {
   /** Parsed Document, already re-parsed from canonical text. */
@@ -38,4 +38,4 @@ export async function loadConfig(path: string): Promise<LoadedConfig> {
   }
 }
 
-export { serialize, DUMP_OPTS }
+export { serialize, DUMP_OPTS, YamlLoadError } from './canonicalize.ts'

@@ -86,19 +86,21 @@ test('POST /api/lint returns 400 + YAML_PARSE_ERROR on invalid YAML', async () =
   expect((body.errors as unknown[]).length).toBeGreaterThan(0)
 })
 
-test('POST /api/lint rejects missing yaml field at schema level', async () => {
+test('POST /api/lint rejects missing yaml field with BAD_REQUEST envelope', async () => {
   const app = newApp()
-  const res = await app.handle(
-    new Request('http://localhost/api/lint/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notYaml: 'oops' }),
-    }),
-  )
-  // Elysia returns 422 for schema validation failures by default; treat any
-  // 4xx as the expected reject shape (the important assertion is "not 200").
-  expect(res.status).toBeGreaterThanOrEqual(400)
-  expect(res.status).toBeLessThan(500)
+  const { status, body } = await postLint(app, { notYaml: 'oops' })
+  expect(status).toBe(400)
+  expect(body.code).toBe('BAD_REQUEST')
+  expect(Array.isArray(body.errors)).toBe(true)
+  expect((body.errors as unknown[]).length).toBeGreaterThan(0)
+})
+
+test('POST /api/lint rejects wrong-typed yaml field with BAD_REQUEST envelope', async () => {
+  const app = newApp()
+  const { status, body } = await postLint(app, { yaml: 42 })
+  expect(status).toBe(400)
+  expect(body.code).toBe('BAD_REQUEST')
+  expect(Array.isArray(body.errors)).toBe(true)
 })
 
 // --- golden fixture baseline ---------------------------------------------

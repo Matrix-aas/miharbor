@@ -74,3 +74,42 @@ test('insertRule on a doc without a rules: array creates it', () => {
   insertRule({ doc }, { kind: 'match', target: 'DIRECT' })
   expect(doc.getIn(['rules', 0])).toBe('MATCH,DIRECT')
 })
+
+test('insertRule rejects negative indices other than -1', () => {
+  const { doc } = canonicalize(GOLDEN)
+  expect(() => insertRule({ doc }, { kind: 'match', target: 'DIRECT' }, -5)).toThrow(
+    /negative index/i,
+  )
+})
+
+test('deleteAt is a no-op when the path is entirely missing', () => {
+  const { doc } = canonicalize('mode: rule\n')
+  // `does.not.exist` walks through a scalar → no collection to delete from.
+  // Contract: silent success.
+  expect(() => deleteAt({ doc }, ['does', 'not', 'exist'])).not.toThrow()
+  expect(doc.get('mode')).toBe('rule') // unrelated data intact
+})
+
+test('removeRule throws when rules: is missing (API consistency with replaceRule)', () => {
+  const doc = parseDocument('mode: rule\n')
+  expect(() => removeRule({ doc }, 0)).toThrow(/rules array missing/i)
+})
+
+test('removeRule throws on out-of-bounds index', () => {
+  const { doc } = canonicalize(GOLDEN)
+  // One past the end.
+  const count = parseRulesFromDoc(doc).length
+  expect(() => removeRule({ doc }, count)).toThrow(/out of bounds/i)
+})
+
+test('replaceRule throws when rules: is missing (unified message)', () => {
+  const doc = parseDocument('mode: rule\n')
+  expect(() =>
+    replaceRule({ doc }, 0, {
+      kind: 'simple',
+      type: 'DOMAIN',
+      value: 'x.com',
+      target: 'G',
+    }),
+  ).toThrow(/rules array missing/i)
+})

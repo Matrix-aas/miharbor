@@ -7,7 +7,11 @@
 import { Type, type Static, type TSchema } from '@sinclair/typebox'
 
 // I8: canonical list of rule-type strings, as const, exported so validators /
-// parsers / UIs can iterate without drifting from the type union.
+// parsers / UIs can iterate without drifting from the type union. Kept in sync
+// with mihomo 1.19+ — note that parseRule() does NOT reject unknown simple
+// types; it returns a SimpleRule with the user-supplied type as-is. This list
+// powers IDE autocomplete and the shadow-check in unreachable.ts, but configs
+// that use rarer/newer types (e.g. IN-USER, SUB-RULE) still load correctly.
 export const RULE_TYPES = [
   'DOMAIN',
   'DOMAIN-SUFFIX',
@@ -15,15 +19,25 @@ export const RULE_TYPES = [
   'DOMAIN-REGEX',
   'GEOSITE',
   'GEOIP',
+  'SRC-GEOIP',
   'IP-CIDR',
   'IP-CIDR6',
   'IP-ASN',
   'SRC-IP-CIDR',
   'DST-PORT',
   'SRC-PORT',
+  'IN-PORT',
+  'IN-TYPE',
+  'IN-USER',
   'PROCESS-NAME',
+  'PROCESS-NAME-REGEX',
+  'PROCESS-PATH',
+  'PROCESS-PATH-REGEX',
   'NETWORK',
+  'DSCP',
+  'UID',
   'RULE-SET',
+  'SUB-RULE',
   'AND',
   'OR',
   'NOT',

@@ -134,8 +134,36 @@ test('rejects empty input', () => {
   expect(() => parseRule('')).toThrow()
 })
 
-test('rejects simple rule with unknown type', () => {
-  expect(() => parseRule('DOMAIN-BOGUS,x,G')).toThrow()
+test('rejects MATCH with empty target', () => {
+  expect(() => parseRule('MATCH,')).toThrow(/empty/i)
+})
+
+test('rejects simple rule with empty value', () => {
+  expect(() => parseRule('DOMAIN-SUFFIX,,PROXY')).toThrow(/empty/i)
+})
+
+test('rejects simple rule with empty target', () => {
+  expect(() => parseRule('DOMAIN-SUFFIX,example.com,')).toThrow(/empty/i)
+})
+
+test('passes through unknown simple rule type without throwing', () => {
+  // Mihomo 1.19+ has types we don't know about (SUB-RULE, IN-USER, etc.). We
+  // preserve the user's input rather than erroring the entire lint run —
+  // downstream linters just can't reason about subset shadowing for them.
+  const r = parseRule('IN-PORT,8080,MyGroup') as SimpleRule
+  expect(r.kind).toBe('simple')
+  expect(r.type).toBe('IN-PORT')
+  expect(r.value).toBe('8080')
+  expect(r.target).toBe('MyGroup')
+})
+
+test('passes through a totally unknown type — shape is preserved', () => {
+  const r = parseRule('DOMAIN-BOGUS,x,G') as SimpleRule
+  expect(r.kind).toBe('simple')
+  // Cast to string — SimpleRuleType wouldn't include a made-up type, but
+  // parseRule preserves the input verbatim (I8 pass-through).
+  expect(r.type as string).toBe('DOMAIN-BOGUS')
+  expect(r.target).toBe('G')
 })
 
 test('rejects logical rule with no target', () => {

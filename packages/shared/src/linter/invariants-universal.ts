@@ -17,8 +17,12 @@
 //   not_equals            — value at `path` must not be any of `forbidden`.
 //   conditional           — if value at `when` is truthy, value at
 //                           `then_required` must be present + non-empty.
+//   is_array_if_present   — if value at `path` is present (not undefined /
+//                           null), it must be an array (plain JS array or a
+//                           yaml@2 YAMLSeq). Scalars like "auto" fail.
 
 import type { Document } from 'yaml'
+import { isSeq } from 'yaml'
 import type { Issue } from '../types/issue.ts'
 import invariantsJson from '../templates/invariants-universal.json' with { type: 'json' }
 
@@ -37,7 +41,10 @@ interface ConditionalCheck {
   when: string[]
   then_required: string[]
 }
-type InvariantCheck = MinLengthCheck | NotEqualsCheck | ConditionalCheck
+interface IsArrayIfPresentCheck {
+  type: 'is_array_if_present'
+}
+type InvariantCheck = MinLengthCheck | NotEqualsCheck | ConditionalCheck | IsArrayIfPresentCheck
 
 interface InvariantDef {
   id: string
@@ -106,8 +113,9 @@ function runCheck(doc: Document, inv: InvariantDef): Issue | null {
   if (check.type === 'conditional') {
     const when = readPath(doc, check.when)
     // Only fire when the precondition is literally truthy. For booleans that
-    // means `true`; for strings we accept any non-empty string ("on", "1").
-    const gateOn = when === true || (typeof when === 'string' && when.length > 0)
+    // means `true` (or numeric `1` from some hand-written configs); for
+    // strings we accept any non-empty string ("on", "1").
+    const gateOn = when === true || when === 1 || (typeof when === 'string' && when.length > 0)
     if (!gateOn) return null
     const then = readPath(doc, check.then_required)
     if (then === undefined || then === null || then === '') {
@@ -116,6 +124,24 @@ function runCheck(doc: Document, inv: InvariantDef): Issue | null {
         code: inv.message_key,
         path: [...check.then_required],
         params: { id: inv.id, when_path: check.when, when_value: when },
+      }
+    }
+    return null
+  }
+  if (check.type === 'is_array_if_present') {
+    if (!inv.path) return null
+    // `getIn` returns the resolved primitive for scalars or a YAMLSeq / plain
+    // array for sequences. We accept either list shape; anything else — a
+    // string like "auto", a map, a number — fails.
+    const val = doc.getIn(inv.path)
+    if (val === undefined || val === null) return null
+    const isList = Array.isArray(val) || isSeq(val)
+    if (!isList) {
+      return {
+        level: inv.level,
+        code: inv.message_key,
+        path: [...inv.path],
+        params: { id: inv.id },
       }
     }
     return null
