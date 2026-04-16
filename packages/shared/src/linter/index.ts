@@ -3,3 +3,4 @@
 // without pulling in their neighbours.
 
 export * from './unreachable.ts'
+export * from './invariants-universal.ts'

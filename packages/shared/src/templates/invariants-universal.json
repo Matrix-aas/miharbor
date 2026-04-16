@@ -1,0 +1,28 @@
+{
+  "invariants": [
+    {
+      "id": "SECRET_LENGTH",
+      "level": "error",
+      "message_key": "INVARIANT_SECRET_TOO_SHORT",
+      "path": ["secret"],
+      "check": { "type": "min_length_if_present", "min": 16 }
+    },
+    {
+      "id": "DNS_LISTEN_NOT_ZERO53",
+      "level": "error",
+      "message_key": "INVARIANT_DNS_LISTEN_ZERO53",
+      "path": ["dns", "listen"],
+      "check": { "type": "not_equals", "forbidden": ["0.0.0.0:53", ":53"] }
+    },
+    {
+      "id": "TUN_INTERFACE_NAME_REQUIRED",
+      "level": "error",
+      "message_key": "INVARIANT_TUN_NEEDS_INTERFACE",
+      "check": {
+        "type": "conditional",
+        "when": ["tun", "enable"],
+        "then_required": ["interface-name"]
+      }
+    }
+  ]
+}
