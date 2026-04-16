@@ -1,0 +1,7 @@
+proxies:
+  - name: wg-home
+    type: wireguard
+    server: 10.0.0.1
+    private-key: 'kEYA0FWkeJj3fTGt0WlBCQhMErX/u/rt82v+8NLtCEo='
+    public-key: 'xAIRkwUYcExecs6eRsZUGsbEwqc2HBlEjYzMYNOeTwk='
+    pre-shared-key: 'D+gv7oQa2vgmvCbGU68P+3ouuiHU4tPPPHr0rKMlRoo='
