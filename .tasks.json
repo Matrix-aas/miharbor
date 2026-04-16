@@ -1,0 +1,92 @@
+{
+  "plan": "docs/superpowers/plans/2026-04-16-miharbor-stage-1-core.md",
+  "branch": "stage-1-mvp",
+  "tasks": {
+    "1": {
+      "title": "Init monorepo skeleton + tooling",
+      "status": "completed",
+      "commit": "0d54863"
+    },
+    "2": {
+      "title": "Logger + audit-log",
+      "status": "completed",
+      "commit": "1aa1aba"
+    },
+    "3": {
+      "title": "ENV schema + config bootstrap",
+      "status": "completed",
+      "commit": "fabb349"
+    },
+    "4": {
+      "title": "Shared types (Issue, Service, Rule, ProxyNode)",
+      "status": "completed",
+      "commit": "6338f55"
+    },
+    "5": {
+      "title": "YAML loader + canonicalize + rule-parser + views",
+      "status": "completed",
+      "commits": ["3219c6f", "ee303c8"]
+    },
+    "6": {
+      "title": "Linter 1 — unreachable rules",
+      "status": "completed",
+      "commit": "a4f4e39"
+    },
+    "7": {
+      "title": "Linter 2 — universal invariants",
+      "status": "completed",
+      "commit": "9dcabb6"
+    },
+    "8": {
+      "title": "Linter 3 — duplicates & dangling references",
+      "status": "completed",
+      "commit": "ac8891f"
+    },
+    "9": {
+      "title": "Linter aggregator + server endpoint",
+      "status": "completed",
+      "commit": "03e2530"
+    },
+    "10": {
+      "title": "Transport interface + InMemoryTransport",
+      "status": "completed",
+      "commit": "c15bbb3"
+    },
+    "11": {
+      "title": "LocalFsTransport + flock",
+      "status": "completed",
+      "commit": "6f62810"
+    },
+    "12": {
+      "title": "Sentinel vault (AES-256-GCM)",
+      "status": "completed",
+      "commit": "95625b3"
+    },
+    "13": {
+      "title": "Snapshot manager + retention",
+      "status": "completed",
+      "commit": "1fd524f"
+    },
+    "14": {
+      "title": "Mihomo API client",
+      "status": "completed",
+      "commit": "5e2ca43"
+    },
+    "15": {
+      "title": "Deploy pipeline — стейппер (шаги 1-5)",
+      "status": "pending"
+    },
+    "16": {
+      "title": "Healthcheck (4 фазы) + auto-rollback + continuous monitor",
+      "status": "pending"
+    },
+    "17": {
+      "title": "Basic Auth middleware + brute-force rate-limit",
+      "status": "pending"
+    },
+    "18": {
+      "title": "Server bootstrap + all routes mounted",
+      "status": "pending"
+    }
+  }
+}
