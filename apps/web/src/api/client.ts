@@ -110,6 +110,22 @@ export interface DraftResponse {
   updated?: string
 }
 
+export interface SnapshotDetail {
+  meta: SnapshotMeta
+  configMasked: string
+}
+
+export interface EnvEntry {
+  value: string | number | boolean
+  source: 'env' | 'default'
+  masked?: true
+}
+
+export interface OnboardingStatus {
+  needsOnboarding: boolean
+  configPath: string
+}
+
 export const endpoints = {
   auth: {
     status: () => api<AuthStatus>('/api/auth/status'),
@@ -134,7 +150,16 @@ export const endpoints = {
   },
   snapshots: {
     list: () => api<SnapshotMeta[]>('/api/snapshots'),
-    get: (id: string) => api<{ meta: SnapshotMeta; configMasked: string }>(`/api/snapshots/${id}`),
+    get: (id: string) => api<SnapshotDetail>(`/api/snapshots/${id}`),
+    // Rollback returns an SSE stream, not JSON — consumers must use EventSource
+    // or fetch+ReadableStream directly. See `stores/deploy.ts::startRollback`.
+  },
+  settings: {
+    env: () => api<Record<string, EnvEntry>>('/api/settings/env'),
+  },
+  onboarding: {
+    status: () => api<OnboardingStatus>('/api/onboarding/status'),
+    seed: () => api<{ success: boolean; path: string }>('/api/onboarding/seed', { method: 'POST' }),
   },
   lint: (yaml: string) => api<{ issues: Issue[] }>('/api/lint', { method: 'POST', body: { yaml } }),
   mihomo: {

@@ -12,6 +12,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    // Monaco's editor.api chunk is ~2.3MB raw / ~595KB gzip — expected for
+    // a full editor runtime. We lazy-load it, so the main chunk stays lean.
+    chunkSizeWarningLimit: 2600,
+  },
   server: {
     port: 5173,
     proxy: {

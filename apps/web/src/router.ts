@@ -36,20 +36,27 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/raw-yaml',
     name: 'raw-yaml',
-    component: Placeholder,
-    props: { pageKey: 'pages.raw_yaml' },
+    // Lazy-loaded — pulls Monaco into a separate chunk only when the user
+    // navigates here. Also used by History's diff drawer.
+    component: () => import('@/pages/RawYaml.vue'),
   },
   {
     path: '/history',
     name: 'history',
-    component: Placeholder,
-    props: { pageKey: 'pages.history' },
+    component: () => import('@/pages/History.vue'),
   },
   {
     path: '/settings',
     name: 'settings',
-    component: Placeholder,
-    props: { pageKey: 'pages.settings' },
+    component: () => import('@/pages/Settings.vue'),
+  },
+  {
+    path: '/onboarding',
+    name: 'onboarding',
+    // No AppShell wrapper in the onboarding flow — the page renders its own
+    // welcome layout.
+    component: () => import('@/pages/Onboarding.vue'),
+    meta: { noShell: true },
   },
   { path: '/:pathMatch(.*)*', redirect: '/services' },
 ]
