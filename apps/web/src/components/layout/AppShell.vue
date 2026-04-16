@@ -5,11 +5,15 @@
 //   * render <Header>, <Sidebar>, the page (via <RouterView>), and the
 //     <DeployStepper> dialog that activates from the Apply button.
 
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useBreakpoints, breakpointsTailwind } from '@vueuse/core'
 import Header from './Header.vue'
 import Sidebar from './Sidebar.vue'
 import DeployStepper from './DeployStepper.vue'
+
+const route = useRoute()
+const hideShell = computed(() => route.meta.noShell === true)
 
 const collapsed = ref(false)
 const mobileOpen = ref(false)
@@ -42,7 +46,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <div class="flex min-h-screen bg-background text-foreground">
+  <RouterView v-if="hideShell" />
+  <div v-else class="flex min-h-screen bg-background text-foreground">
     <Sidebar :collapsed="collapsed" :mobile-open="mobileOpen" @navigate="closeMobile" />
 
     <!-- Mobile backdrop -->

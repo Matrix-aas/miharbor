@@ -65,3 +65,36 @@ export const router = createRouter({
   history: createWebHistory(),
   routes,
 })
+
+// ----- Onboarding guard ---------------------------------------------------
+// One-shot check at first navigation: if the server reports
+// `needsOnboarding: true` we redirect to /onboarding; otherwise we let the
+// requested route through. The check runs once per page-load; after the
+// operator completes onboarding, subsequent loads see needsOnboarding:false
+// and the guard is a no-op.
+
+type OnboardingProbe = { needsOnboarding: boolean }
+
+let probe: Promise<OnboardingProbe> | null = null
+
+function runProbe(): Promise<OnboardingProbe> {
+  if (probe) return probe
+  probe = fetch('/api/onboarding/status', { credentials: 'include' })
+    .then((r) => (r.ok ? (r.json() as Promise<OnboardingProbe>) : { needsOnboarding: false }))
+    .catch(() => ({ needsOnboarding: false }))
+  return probe
+}
+
+router.beforeEach(async (to) => {
+  if (to.name === 'onboarding') return true
+  let result: OnboardingProbe
+  try {
+    result = await runProbe()
+  } catch {
+    return true
+  }
+  if (result.needsOnboarding) {
+    return { name: 'onboarding' }
+  }
+  return true
+})

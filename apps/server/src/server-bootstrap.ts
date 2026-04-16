@@ -38,6 +38,7 @@ import { authRoutes } from './routes/auth.ts'
 import { lintRoutes } from './routes/lint.ts'
 import { mihomoRoutes } from './routes/mihomo.ts'
 import { settingsRoutes } from './routes/settings.ts'
+import { onboardingRoutes } from './routes/onboarding.ts'
 import { join } from 'node:path'
 import type { AuditLog } from './observability/audit-log.ts'
 import type { Logger } from './observability/logger.ts'
@@ -165,6 +166,15 @@ export async function wireApp(
     .use(authRoutes({ authStore, audit }))
     .use(mihomoRoutes({ mihomoApi }))
     .use(settingsRoutes({ env, rawEnv }))
+    .use(
+      onboardingRoutes({
+        transport,
+        snapshots,
+        configPath: env.MIHARBOR_CONFIG_PATH,
+        lockFile,
+        logger,
+      }),
+    )
 
   return {
     ...app0,
