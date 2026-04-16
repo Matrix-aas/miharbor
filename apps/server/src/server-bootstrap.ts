@@ -39,7 +39,7 @@ import { lintRoutes } from './routes/lint.ts'
 import { mihomoRoutes } from './routes/mihomo.ts'
 import { settingsRoutes } from './routes/settings.ts'
 import { onboardingRoutes } from './routes/onboarding.ts'
-import { join } from 'node:path'
+import { join, normalize, resolve } from 'node:path'
 import type { AuditLog } from './observability/audit-log.ts'
 import type { Logger } from './observability/logger.ts'
 
@@ -175,6 +175,70 @@ export async function wireApp(
         logger,
       }),
     )
+
+  // ---------- SPA static serving ----------
+  // When MIHARBOR_WEB_DIST is set (typically in the Docker image), serve the
+  // pre-built Vue bundle under `/`. Client-side router paths fall back to
+  // index.html. API routes (/api/*) and /health are registered above and so
+  // take precedence — Elysia matches specific routes before the catch-all.
+  if (env.MIHARBOR_WEB_DIST) {
+    const webRoot = resolve(env.MIHARBOR_WEB_DIST)
+    const indexPath = join(webRoot, 'index.html')
+    try {
+      const fs = await import('node:fs/promises')
+      await fs.access(webRoot)
+      logger.info({ msg: 'serving web UI from static bundle', path: webRoot })
+      app.get(
+        '/*',
+        async ({
+          request,
+          set,
+        }: {
+          request: Request
+          set: { status?: number; headers: Record<string, string | undefined> }
+        }) => {
+          const url = new URL(request.url)
+          // Elysia routes specific /api/* + /health paths first, so they
+          // short-circuit before reaching us. Defensive guard anyway — if
+          // the SPA ever introduces a route that starts with /api we don't
+          // want to mask an API 404 with index.html.
+          const rawPath = url.pathname
+          if (rawPath.startsWith('/api/') || rawPath === '/health') {
+            set.status = 404
+            return 'Not Found'
+          }
+          const rel = rawPath === '/' ? 'index.html' : rawPath.replace(/^\/+/, '')
+          // Resolve + confine inside webRoot (defence against "../" path
+          // traversal attempts). normalize strips "..", resolve re-anchors.
+          const target = resolve(webRoot, normalize(rel))
+          if (!target.startsWith(webRoot + '/') && target !== webRoot) {
+            // Traversal attempt — fall back to index.html rather than 400
+            // so SPA deep-links still work.
+            return Bun.file(indexPath)
+          }
+          const file = Bun.file(target)
+          if (await file.exists()) {
+            // Let Bun set Content-Type from extension. For SPA shell index.html
+            // we also set cache headers that prevent stale shells after deploy.
+            if (target === indexPath) {
+              set.headers['cache-control'] = 'no-cache'
+            }
+            return file
+          }
+          // SPA fallback — unknown path, serve index.html so the Vue router
+          // can handle it client-side.
+          set.headers['cache-control'] = 'no-cache'
+          return Bun.file(indexPath)
+        },
+      )
+    } catch (e) {
+      logger.warn({
+        msg: 'MIHARBOR_WEB_DIST is set but directory is not accessible — serving API-only',
+        path: webRoot,
+        error: (e as Error).message,
+      })
+    }
+  }
 
   return {
     ...app0,

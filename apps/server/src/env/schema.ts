@@ -18,6 +18,14 @@ const EnvSchema = Type.Object({
   }),
   MIHARBOR_CONFIG_PATH: Type.String({ default: '/config/config.yaml' }),
   MIHARBOR_DATA_DIR: Type.String({ default: '/app/data' }),
+  /**
+   * Absolute path to the pre-built Vue web bundle (apps/web/dist). If set and
+   * the directory exists, the server will serve the SPA under `/` and handle
+   * client-side routes by falling back to index.html. Empty (default) means
+   * the server runs API-only; in that case the Vite dev server (:5173) is
+   * expected to serve the UI via its `/api` proxy.
+   */
+  MIHARBOR_WEB_DIST: Type.String({ default: '' }),
   MIHOMO_API_URL: Type.String({ default: 'http://host.docker.internal:9090' }),
   MIHOMO_API_SECRET: Type.String({ default: '' }),
   MIHARBOR_AUTH_USER: Type.String({ default: 'admin' }),
