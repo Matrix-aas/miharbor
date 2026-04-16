@@ -14,7 +14,6 @@ import {
 // Fixtures with realistic-looking (but fake) WireGuard-style keys live
 // under tests/fixtures/ so the pre-commit secret guard allows them.
 const WG_FIXTURE = readFileSync('apps/server/tests/fixtures/vault-wg.yaml', 'utf8')
-const WG_FIXTURE_SIMPLE = readFileSync('apps/server/tests/fixtures/vault-wg-simple.yaml', 'utf8')
 
 test('DEFAULT_SECRET_FIELDS contains the spec-required keys', () => {
   // Covers spec §9 — if any of these regress, the vault leaks.

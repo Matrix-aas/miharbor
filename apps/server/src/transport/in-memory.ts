@@ -95,7 +95,11 @@ export class InMemoryTransport implements Transport {
   async readSnapshot(id: string): Promise<SnapshotBundle> {
     const entry = this.#snapshots.get(id)
     if (!entry) throw new Error(`snapshot not found: ${id}`)
-    return { 'config.yaml': entry.files['config.yaml'], meta: entry.meta }
+    return {
+      'config.yaml': entry.files['config.yaml'],
+      'diff.patch': entry.files['diff.patch'],
+      meta: entry.meta,
+    }
   }
 
   async deleteSnapshot(id: string): Promise<void> {

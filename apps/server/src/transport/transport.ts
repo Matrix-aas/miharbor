@@ -68,9 +68,13 @@ export interface SnapshotFiles {
   'diff.patch': string
 }
 
-/** Read-side shape of a snapshot — the masked config plus parsed meta. */
+/** Read-side shape of a snapshot — the masked config, the unified diff
+ *  against the previous masked snapshot, and the parsed meta. `diff.patch`
+ *  may be an empty string for the very first snapshot (in which case it
+ *  is formatted as a `/dev/null` → target patch). */
 export interface SnapshotBundle {
   'config.yaml': string
+  'diff.patch': string
   meta: SnapshotMeta
 }
 

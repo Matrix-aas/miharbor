@@ -240,11 +240,18 @@ export class LocalFsTransport implements Transport {
 
   async readSnapshot(id: string): Promise<SnapshotBundle> {
     const dir = join(this.#snapshotsDir, id)
-    const [cfg, metaRaw] = await Promise.all([
+    const [cfg, metaRaw, patch] = await Promise.all([
       fsp.readFile(join(dir, 'config.yaml'), 'utf8'),
       fsp.readFile(join(dir, 'meta.json'), 'utf8'),
+      // diff.patch is optional — absent on the very first snapshot if
+      // the pipeline ever decides to skip it; tolerate ENOENT.
+      fsp.readFile(join(dir, 'diff.patch'), 'utf8').catch(() => ''),
     ])
-    return { 'config.yaml': cfg, meta: JSON.parse(metaRaw) as SnapshotMeta }
+    return {
+      'config.yaml': cfg,
+      'diff.patch': patch,
+      meta: JSON.parse(metaRaw) as SnapshotMeta,
+    }
   }
 
   async deleteSnapshot(id: string): Promise<void> {
