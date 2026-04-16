@@ -1,0 +1,118 @@
+{
+  "app": {
+    "title": "Miharbor",
+    "tagline": "панель управления mihomo"
+  },
+  "common": {
+    "loading": "Загрузка…",
+    "soon": "Скоро",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "close": "Закрыть",
+    "apply": "Применить",
+    "stage_2_tooltip": "Появится на этапе 2"
+  },
+  "header": {
+    "apply": "Применить",
+    "apply_tooltip_empty": "Нет несохранённых изменений",
+    "apply_tooltip_ready": "Посмотреть и применить изменения",
+    "changes_count": "{count} изменение | {count} изменения | {count} изменений",
+    "no_changes": "Нет изменений",
+    "settings": "Настройки",
+    "language": "Язык",
+    "config_version": "Конфиг v{version}",
+    "transport_docker": "Docker",
+    "transport_ssh": "SSH",
+    "transport_local": "Локально"
+  },
+  "health": {
+    "online": "mihomo работает",
+    "offline": "mihomo недоступен",
+    "unknown": "статус mihomo неизвестен",
+    "canonicalized": "Конфиг канонизирован"
+  },
+  "sidebar": {
+    "routing": "Роутинг",
+    "infra": "Инфра",
+    "advanced": "Продвинутое",
+    "services": "Сервисы",
+    "proxies": "Прокси-ноды",
+    "providers": "Rule-providers",
+    "dns": "DNS",
+    "tun": "TUN",
+    "sniffer": "Sniffer",
+    "profile": "Профиль",
+    "raw_yaml": "Raw YAML",
+    "history": "История",
+    "settings": "Настройки",
+    "toggle": "Свернуть меню"
+  },
+  "deploy": {
+    "title": "Применение изменений",
+    "subtitle": "6 шагов применения",
+    "close": "Закрыть",
+    "run": "Запустить",
+    "steps": {
+      "diff": "Diff",
+      "lint": "Линтер",
+      "snapshot": "Снапшот",
+      "preflight": "Preflight",
+      "write_reload": "Запись и reload",
+      "healthcheck": "Healthcheck"
+    },
+    "status": {
+      "pending": "ожидает",
+      "running": "выполняется…",
+      "ok": "ок",
+      "failed": "ошибка",
+      "skipped": "пропущено"
+    },
+    "skeleton_note": "Реальный стрим событий подключится позже."
+  },
+  "diff": {
+    "title": "Изменения",
+    "placeholder": "Monaco-diff появится позже."
+  },
+  "pages": {
+    "services": {
+      "title": "Сервисы",
+      "placeholder": "Master-detail редактор появится позже."
+    },
+    "proxies": {
+      "title": "Прокси-ноды",
+      "placeholder": "Редактор WireGuard появится позже."
+    },
+    "providers": {
+      "title": "Rule-providers",
+      "placeholder": "Управление rule-providers появится на этапе 2."
+    },
+    "dns": {
+      "title": "DNS",
+      "placeholder": "Редактор DNS появится на этапе 2."
+    },
+    "tun": {
+      "title": "TUN",
+      "placeholder": "Редактор TUN появится на этапе 2."
+    },
+    "sniffer": {
+      "title": "Sniffer",
+      "placeholder": "Редактор Sniffer появится на этапе 2."
+    },
+    "profile": {
+      "title": "Профиль",
+      "placeholder": "Редактор профиля появится на этапе 2."
+    },
+    "raw_yaml": {
+      "title": "Raw YAML",
+      "placeholder": "Read-only Monaco появится позже."
+    },
+    "history": {
+      "title": "История",
+      "placeholder": "Просмотр снапшотов появится позже."
+    },
+    "settings": {
+      "title": "Настройки",
+      "placeholder": "Смена пароля появится позже."
+    }
+  }
+}

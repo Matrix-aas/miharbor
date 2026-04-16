@@ -15,3 +15,4 @@ dist/
 .miharbor.draft.yaml
 .miharbor.test.yaml
 .DS_Store
+*.tsbuildinfo

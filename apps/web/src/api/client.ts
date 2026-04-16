@@ -1,0 +1,140 @@
+// Typed fetch wrapper around the Miharbor server API. Every browser call
+// shares the same cookie/Basic-Auth context (via `credentials: 'include'`)
+// so the server's Basic Auth middleware picks up the operator's session.
+//
+// The client is intentionally minimal: no caching, no retries. Stores
+// compose richer behaviour on top.
+
+import type { Issue } from 'miharbor-shared'
+
+export interface ApiErrorBody {
+  code?: string
+  message?: string
+  errors?: Array<{ message: string; line?: number; col?: number }>
+  issues?: Issue[]
+  [k: string]: unknown
+}
+
+export class ApiError extends Error {
+  readonly status: number
+  readonly body: ApiErrorBody | null
+  constructor(status: number, message: string, body: ApiErrorBody | null) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.body = body
+  }
+}
+
+export interface RequestOptions {
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  headers?: Record<string, string>
+  body?: unknown
+  /**
+   * Parse the response as text instead of JSON (e.g. /api/config/raw returns
+   * `text/plain`). Default: infer from `content-type`.
+   */
+  asText?: boolean
+  signal?: AbortSignal
+}
+
+export async function api<T = unknown>(path: string, opts: RequestOptions = {}): Promise<T> {
+  const headers: Record<string, string> = { ...(opts.headers ?? {}) }
+  let body: BodyInit | undefined
+  if (opts.body !== undefined) {
+    if (typeof opts.body === 'string') {
+      body = opts.body
+      headers['content-type'] ??= 'text/plain'
+    } else {
+      body = JSON.stringify(opts.body)
+      headers['content-type'] ??= 'application/json'
+    }
+  }
+
+  const res = await fetch(path, {
+    method: opts.method ?? 'GET',
+    credentials: 'include',
+    headers,
+    body,
+    signal: opts.signal,
+  })
+
+  const contentType = res.headers.get('content-type') ?? ''
+  const wantsText = opts.asText ?? !contentType.includes('application/json')
+
+  if (!res.ok) {
+    let parsed: ApiErrorBody | null = null
+    try {
+      if (contentType.includes('application/json')) {
+        parsed = (await res.json()) as ApiErrorBody
+      } else {
+        const text = await res.text()
+        parsed = text ? { message: text } : null
+      }
+    } catch {
+      parsed = null
+    }
+    const message = parsed?.message ?? parsed?.code ?? `HTTP ${res.status}`
+    throw new ApiError(res.status, message, parsed)
+  }
+
+  if (wantsText) {
+    return (await res.text()) as unknown as T
+  }
+  return (await res.json()) as T
+}
+
+// --- Endpoint-typed helpers -----------------------------------------------
+// These mirror what the server routes return; wider types stay in miharbor-shared.
+
+export interface AuthStatus {
+  user: string
+  mustChangePassword: boolean
+}
+
+export interface ConfigMeta {
+  [k: string]: unknown
+}
+
+export interface SnapshotMeta {
+  id: string
+  createdAt: string
+  user?: string
+  reason?: string
+  [k: string]: unknown
+}
+
+export interface DraftResponse {
+  source: 'draft' | 'current'
+  text: string
+  updated?: string
+}
+
+export const endpoints = {
+  auth: {
+    status: () => api<AuthStatus>('/api/auth/status'),
+    password: (oldPassword: string, newPassword: string) =>
+      api<{ ok: true }>('/api/auth/password', {
+        method: 'POST',
+        body: { oldPassword, newPassword },
+      }),
+  },
+  config: {
+    services: () => api<unknown>('/api/config/services'),
+    proxies: () => api<unknown>('/api/config/proxies'),
+    meta: () => api<ConfigMeta>('/api/config/meta'),
+    raw: () => api<string>('/api/config/raw', { asText: true }),
+    draft: () => api<DraftResponse>('/api/config/draft'),
+    putDraft: (yaml: string) =>
+      api<{ ok: true; updated: string }>('/api/config/draft', {
+        method: 'PUT',
+        body: { yaml },
+      }),
+    clearDraft: () => api<{ ok: true }>('/api/config/draft', { method: 'DELETE' }),
+  },
+  snapshots: {
+    list: () => api<SnapshotMeta[]>('/api/snapshots'),
+    get: (id: string) => api<{ meta: SnapshotMeta; configMasked: string }>(`/api/snapshots/${id}`),
+  },
+  lint: (yaml: string) => api<{ issues: Issue[] }>('/api/lint', { method: 'POST', body: { yaml } }),
+}

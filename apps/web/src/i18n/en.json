@@ -1,0 +1,118 @@
+{
+  "app": {
+    "title": "Miharbor",
+    "tagline": "mihomo control plane"
+  },
+  "common": {
+    "loading": "Loading…",
+    "soon": "Coming soon",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "apply": "Apply",
+    "stage_2_tooltip": "Shipping in stage 2"
+  },
+  "header": {
+    "apply": "Apply",
+    "apply_tooltip_empty": "No unsaved changes",
+    "apply_tooltip_ready": "Review and deploy pending changes",
+    "changes_count": "{count} change | {count} changes",
+    "no_changes": "No changes",
+    "settings": "Settings",
+    "language": "Language",
+    "config_version": "Config v{version}",
+    "transport_docker": "Docker",
+    "transport_ssh": "SSH",
+    "transport_local": "Local"
+  },
+  "health": {
+    "online": "mihomo online",
+    "offline": "mihomo offline",
+    "unknown": "mihomo status unknown",
+    "canonicalized": "Config canonicalized"
+  },
+  "sidebar": {
+    "routing": "Routing",
+    "infra": "Infrastructure",
+    "advanced": "Advanced",
+    "services": "Services",
+    "proxies": "Proxy nodes",
+    "providers": "Rule providers",
+    "dns": "DNS",
+    "tun": "TUN",
+    "sniffer": "Sniffer",
+    "profile": "Profile",
+    "raw_yaml": "Raw YAML",
+    "history": "History",
+    "settings": "Settings",
+    "toggle": "Toggle sidebar"
+  },
+  "deploy": {
+    "title": "Deploy pipeline",
+    "subtitle": "Review the 6-step flow before applying",
+    "close": "Close",
+    "run": "Run deploy",
+    "steps": {
+      "diff": "Diff",
+      "lint": "Lint",
+      "snapshot": "Snapshot",
+      "preflight": "Preflight",
+      "write_reload": "Write & reload",
+      "healthcheck": "Healthcheck"
+    },
+    "status": {
+      "pending": "waiting",
+      "running": "running…",
+      "ok": "ok",
+      "failed": "failed",
+      "skipped": "skipped"
+    },
+    "skeleton_note": "Live streaming wires up in a later task."
+  },
+  "diff": {
+    "title": "Pending changes",
+    "placeholder": "Monaco diff viewer arrives in a later task."
+  },
+  "pages": {
+    "services": {
+      "title": "Services",
+      "placeholder": "Master-detail editor arrives in a later task."
+    },
+    "proxies": {
+      "title": "Proxy nodes",
+      "placeholder": "WireGuard editor arrives in a later task."
+    },
+    "providers": {
+      "title": "Rule providers",
+      "placeholder": "Rule-providers management ships in stage 2."
+    },
+    "dns": {
+      "title": "DNS",
+      "placeholder": "DNS editor ships in stage 2."
+    },
+    "tun": {
+      "title": "TUN",
+      "placeholder": "TUN editor ships in stage 2."
+    },
+    "sniffer": {
+      "title": "Sniffer",
+      "placeholder": "Sniffer editor ships in stage 2."
+    },
+    "profile": {
+      "title": "Profile",
+      "placeholder": "Profile editor ships in stage 2."
+    },
+    "raw_yaml": {
+      "title": "Raw YAML",
+      "placeholder": "Read-only Monaco editor arrives in a later task."
+    },
+    "history": {
+      "title": "History",
+      "placeholder": "Snapshot browser arrives in a later task."
+    },
+    "settings": {
+      "title": "Settings",
+      "placeholder": "Password + runtime settings arrive in a later task."
+    }
+  }
+}
