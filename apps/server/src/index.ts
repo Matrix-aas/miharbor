@@ -1,8 +1,8 @@
 import { Elysia } from 'elysia'
-import { logger } from './observability/logger.ts'
+import { bootstrap } from './bootstrap.ts'
 
-const port = Number(Bun.env.PORT) || 3000
+const { env, logger } = bootstrap()
 
-new Elysia().get('/health', () => ({ status: 'ok' })).listen(port)
+new Elysia().get('/health', () => ({ status: 'ok' })).listen(env.MIHARBOR_PORT)
 
-logger.info({ msg: 'miharbor-server listening', port })
+logger.info({ msg: 'miharbor-server listening', port: env.MIHARBOR_PORT })

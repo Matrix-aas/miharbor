@@ -17,6 +17,7 @@
     "apps/server": {
       "name": "miharbor-server",
       "dependencies": {
+        "@sinclair/typebox": "~0.34.14",
         "elysia": "~1.2.10",
       },
     },
