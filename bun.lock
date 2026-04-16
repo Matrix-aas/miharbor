@@ -19,6 +19,8 @@
       "dependencies": {
         "@sinclair/typebox": "~0.34.14",
         "elysia": "~1.2.10",
+        "miharbor-shared": "workspace:*",
+        "yaml": "~2.8.3",
       },
     },
     "apps/web": {
@@ -36,6 +38,7 @@
       "name": "miharbor-shared",
       "dependencies": {
         "@sinclair/typebox": "~0.34.14",
+        "yaml": "~2.8.3",
       },
     },
   },

@@ -12,6 +12,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@sinclair/typebox": "~0.34.14"
+    "@sinclair/typebox": "~0.34.14",
+    "yaml": "~2.8.3"
   }
 }
