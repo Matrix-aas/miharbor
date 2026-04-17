@@ -104,7 +104,7 @@ function directionVariant(svc: Service): 'default' | 'secondary' | 'destructive'
       </Button>
     </div>
 
-    <ul class="flex-1 overflow-y-auto" role="list">
+    <ul class="flex-1 overflow-y-auto">
       <li v-for="svc in filtered" :key="svc.name" class="border-b border-border/60">
         <button
           type="button"

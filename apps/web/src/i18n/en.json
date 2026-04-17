@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Miharbor",
-    "tagline": "mihomo control plane"
+    "tagline": "mihomo control plane",
+    "skip_to_main": "Skip to main content"
   },
   "common": {
     "loading": "Loading…",

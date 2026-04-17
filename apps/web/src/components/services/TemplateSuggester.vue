@@ -42,7 +42,7 @@ function onPick(match: ServiceMatch): void {
     <p class="mb-1 text-xs font-medium text-muted-foreground">
       {{ t('services.templates.suggestions_label') }}
     </p>
-    <ul class="flex flex-wrap gap-1.5" role="list" :aria-label="t('services.templates.list_aria')">
+    <ul class="flex flex-wrap gap-1.5" :aria-label="t('services.templates.list_aria')">
       <li v-for="m in matches" :key="m.id" class="inline-flex">
         <button
           type="button"

@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Miharbor",
-    "tagline": "панель управления mihomo"
+    "tagline": "панель управления mihomo",
+    "skip_to_main": "Перейти к основному содержимому"
   },
   "common": {
     "loading": "Загрузка…",
