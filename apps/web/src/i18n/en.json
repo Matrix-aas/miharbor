@@ -119,6 +119,13 @@
       "name_invalid": "Use letters, numbers, dashes, underscores.",
       "direction_label": "Direction",
       "create": "Create"
+    },
+    "templates": {
+      "suggestions_label": "Suggestions:",
+      "list_aria": "Service template suggestions",
+      "use_template_aria": "Use {name} template ({rules} rules)",
+      "rule_count": "{count} rule | {count} rules",
+      "picked_note": "Template selected — {count} rule will be added. | Template selected — {count} rules will be added."
     }
   },
   "rules": {

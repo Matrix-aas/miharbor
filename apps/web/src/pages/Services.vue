@@ -58,9 +58,21 @@ function openAdd(): void {
 async function onCreate(input: {
   name: string
   direction: 'VPN' | 'DIRECT' | 'REJECT'
+  rules: SimpleRule[]
 }): Promise<void> {
   try {
-    await config.createNewService(input)
+    await config.createNewService({ name: input.name, direction: input.direction })
+    // Task 42 — if the user picked a template, insert its curated rules
+    // sequentially. Each call PUTs the draft so the backend sees progress.
+    for (const r of input.rules) {
+      try {
+        await config.addRuleToService(input.name, { ...r, target: input.name })
+      } catch (e) {
+        // Non-fatal: log and keep going. A single rule failing (e.g. a
+        // duplicate DOMAIN-SUFFIX) shouldn't block the rest of the template.
+        console.error('template addRuleToService failed', e)
+      }
+    }
     void router.push({ name: 'service-detail', params: { name: input.name } })
   } catch (e) {
     console.error('createNewService failed', e)
