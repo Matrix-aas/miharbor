@@ -198,7 +198,18 @@
     "read_only": "Только чтение",
     "copy": "Скопировать",
     "copied": "Скопировано!",
-    "copy_failed": "Ошибка"
+    "copy_failed": "Ошибка",
+    "mode_view": "Просмотр",
+    "mode_edit": "Редактирование",
+    "apply": "Применить",
+    "dirty": "Есть изменения",
+    "discard_confirm": "Отменить несохранённые изменения YAML?",
+    "parse_error_title": "Ошибка разбора YAML",
+    "parse_error_line": "Строка {line}, колонка {col}:",
+    "parse_error_generic": "YAML не удалось разобрать.",
+    "invalid_banner_title": "Raw YAML невалиден",
+    "invalid_banner_body": "Исправьте YAML, чтобы вернуть структурное редактирование.",
+    "invalid_banner_link": "Открыть Raw YAML"
   },
   "history": {
     "title": "История",

@@ -198,7 +198,18 @@
     "read_only": "Read-only",
     "copy": "Copy",
     "copied": "Copied!",
-    "copy_failed": "Failed"
+    "copy_failed": "Failed",
+    "mode_view": "View",
+    "mode_edit": "Edit",
+    "apply": "Apply",
+    "dirty": "Unsaved",
+    "discard_confirm": "Discard unsaved YAML changes?",
+    "parse_error_title": "YAML parse error",
+    "parse_error_line": "Line {line}, col {col}:",
+    "parse_error_generic": "YAML could not be parsed.",
+    "invalid_banner_title": "Raw YAML invalid",
+    "invalid_banner_body": "Fix the YAML to re-enable structured editing.",
+    "invalid_banner_link": "Open Raw YAML"
   },
   "history": {
     "title": "History",

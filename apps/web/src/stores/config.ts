@@ -15,7 +15,7 @@
 
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import type { Document } from 'yaml'
+import { parseDocument, type Document } from 'yaml'
 import type {
   DnsConfig,
   Issue,
@@ -174,6 +174,40 @@ export const useConfigStore = defineStore('config', () => {
     if (!rawLive.value) return 0
     return draftText.value === rawLive.value ? 0 : 1
   })
+
+  /** Parse-time diagnostic for the current `draftText`. `null` when the draft
+   *  is empty (no edits yet) or parses cleanly; otherwise contains the first
+   *  error message plus line/col so the editor can highlight it.
+   *
+   *  We use `yaml.parseDocument` directly (not the throwing `parseDraft`
+   *  helper) so we can read all errors without try/catch noise. */
+  const draftParseError = computed<{
+    message: string
+    line?: number
+    col?: number
+  } | null>(() => {
+    const text = draftText.value
+    if (!text) return null
+    // Fast empty-doc check: pure whitespace is a valid (empty) YAML document.
+    if (text.trim() === '') return null
+    const doc = parseDocument(text)
+    if (doc.errors.length === 0) return null
+    const err = doc.errors[0]!
+    // yaml's `YAMLError` carries `linePos` with {line, col}; older versions
+    // exposed `pos`. We handle both shapes defensively.
+    const linePos = (err as unknown as { linePos?: Array<{ line: number; col: number }> }).linePos
+    const firstPos = linePos?.[0]
+    return {
+      message: err.message,
+      line: firstPos?.line,
+      col: firstPos?.col,
+    }
+  })
+
+  /** `true` when the draft parses cleanly or is empty/absent (the app shows
+   *  live config in that case). `false` blocks structural routes so operators
+   *  can't edit a DNS/TUN/Sniffer view that's based on unparseable YAML. */
+  const draftValid = computed<boolean>(() => draftParseError.value === null)
 
   // Derived services/proxies — recomputed on every draftText change.
   const draftServices = computed<Service[]>(() => {
@@ -338,6 +372,26 @@ export const useConfigStore = defineStore('config', () => {
   async function commitDoc(doc: Document): Promise<void> {
     const text = serializeDraft(doc)
     await putDraft(text)
+  }
+
+  /** High-level entry used by the Raw YAML full-edit mode. The text comes
+   *  straight from the Monaco buffer; we set it locally so the `draftValid`
+   *  computed re-runs and the structural-route guard flips before we even
+   *  attempt the PUT. If the text doesn't parse, we short-circuit and return
+   *  `false` — the Raw YAML page keeps editing but the PUT is skipped so the
+   *  server never has to reject invalid YAML. Valid YAML is persisted via
+   *  `putDraft`, which handles lint + server error surfacing. */
+  async function applyRawYaml(text: string): Promise<boolean> {
+    draftText.value = text
+    // Trigger the computed eagerly — the caller may want to act on the result
+    // even before the microtask queue drains.
+    const parseError = draftParseError.value
+    if (parseError) {
+      // Don't push broken YAML to the server; let the editor show markers.
+      return false
+    }
+    await putDraft(text)
+    return true
   }
 
   async function clearDraft(): Promise<void> {
@@ -555,6 +609,8 @@ export const useConfigStore = defineStore('config', () => {
     error,
     hasDraft,
     dirtyCount,
+    draftParseError,
+    draftValid,
     issuesByService,
     liveProxyState,
     // derived
@@ -571,6 +627,7 @@ export const useConfigStore = defineStore('config', () => {
     loadAll,
     fetchLiveProxyState,
     putDraft,
+    applyRawYaml,
     clearDraft,
     // structured mutators
     addRuleToService,

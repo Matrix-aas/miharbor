@@ -11,6 +11,7 @@ import { useBreakpoints, breakpointsTailwind } from '@vueuse/core'
 import Header from './Header.vue'
 import Sidebar from './Sidebar.vue'
 import DeployStepper from './DeployStepper.vue'
+import YamlValidityGuard from './YamlValidityGuard.vue'
 
 const route = useRoute()
 const hideShell = computed(() => route.meta.noShell === true)
@@ -66,7 +67,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
       />
 
       <main class="flex-1 overflow-auto p-4 md:p-6">
-        <RouterView />
+        <!-- YamlValidityGuard short-circuits structural routes (Services /
+             Proxies / DNS / TUN / Sniffer / Profile / Providers) with an
+             invalid-YAML banner when the draft fails to parse. Raw YAML,
+             History, Settings remain reachable. -->
+        <RouterView v-slot="{ Component }">
+          <YamlValidityGuard>
+            <component :is="Component" />
+          </YamlValidityGuard>
+        </RouterView>
       </main>
     </div>
 
