@@ -19,7 +19,13 @@ const routes: RouteRecordRaw[] = [
     component: Placeholder,
     props: { pageKey: 'pages.providers' },
   },
-  { path: '/dns', name: 'dns', component: Placeholder, props: { pageKey: 'pages.dns' } },
+  {
+    path: '/dns',
+    name: 'dns',
+    // Lazy-loaded — Dns.vue pulls the whole DNS subcomponent tree + forms
+    // only when the operator actually navigates here.
+    component: () => import('@/pages/Dns.vue'),
+  },
   { path: '/tun', name: 'tun', component: Placeholder, props: { pageKey: 'pages.tun' } },
   {
     path: '/sniffer',

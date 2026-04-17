@@ -286,7 +286,85 @@
     },
     "dns": {
       "title": "DNS",
-      "placeholder": "Редактор DNS появится на этапе 2."
+      "subtitle": "DNS-движок mihomo — fake-ip, резолверы, политики доменов.",
+      "loading": "Загрузка DNS-конфига…",
+      "save_failed": "Не удалось сохранить изменения DNS — проверьте YAML в Raw YAML.",
+      "sections": {
+        "general": "Общие",
+        "fake_ip": "Fake-IP",
+        "resolvers": "Резолверы",
+        "policy": "Политики доменов",
+        "fallback": "Fallback-фильтр",
+        "extras": "Неизвестные поля"
+      },
+      "fields": {
+        "enable": "Включить DNS-движок",
+        "ipv6": "Резолвить IPv6 (AAAA) записи",
+        "listen": "Адрес прослушивания",
+        "listen_placeholder": "127.0.0.1:1053",
+        "listen_hint": "DNS для клиентов обычно — AdGuardHome/dnsmasq; mihomo слушает только на loopback.",
+        "enhanced_mode": "Режим enhanced-mode",
+        "fake_ip_range": "CIDR для fake-IP",
+        "fake_ip_range_placeholder": "198.18.0.1/16",
+        "use_hosts": "Использовать /etc/hosts",
+        "use_system_hosts": "Следовать системным hosts-записям",
+        "respect_rules": "Учитывать rules (split-DNS)",
+        "direct_nameserver_follow_policy": "Учитывать nameserver-policy для прямых запросов",
+        "cache_algorithm": "Алгоритм кеша",
+        "fake_ip_filter_mode": "Режим фильтра fake-IP",
+        "fake_ip_filter": "Фильтр fake-IP (список исключений)",
+        "default_nameserver": "Default (bootstrap) резолверы",
+        "nameserver": "Основные резолверы",
+        "fallback": "Fallback-резолверы",
+        "proxy_server_nameserver": "Резолверы для имени прокси-сервера",
+        "direct_nameserver": "Резолверы для DIRECT"
+      },
+      "placeholders": {
+        "nameserver": "https://cloudflare-dns.com/dns-query",
+        "ip_nameserver": "1.1.1.1",
+        "domain_pattern": "+.example.com"
+      },
+      "enhanced_mode": {
+        "fake-ip": "fake-ip",
+        "redir-host": "redir-host",
+        "normal": "normal"
+      },
+      "cache_algorithm": {
+        "arc": "ARC",
+        "lru": "LRU"
+      },
+      "fake_ip_filter_mode": {
+        "blacklist": "blacklist (перечисленные домены — без fake-IP)",
+        "whitelist": "whitelist (только перечисленные домены — с fake-IP)"
+      },
+      "guardrails": {
+        "listen_lan": "Привязка к 0.0.0.0 выставит DNS mihomo на всех интерфейсах.",
+        "listen_port_53": "Порт 53 обычно занят AdGuardHome/systemd-resolved — используйте 1053 или другой высокий порт.",
+        "literal_ip_required": "Это поле ДОЛЖНО содержать только литеральные IP. Имена хостов вызовут DNS-петлю, т.к. mihomo не может резолвить их до поднятия DNS.",
+        "listen_header": "Смена этого адреса меняет всю DNS-цепочку на хосте.",
+        "proxy_ns_header": "Резолвит имена прокси-серверов ДО поднятия DNS — только литеральные IP.",
+        "default_ns_header": "Bootstrap-резолверы для имён DoH — только литеральные IP."
+      },
+      "nameserver_policy": {
+        "title": "Nameserver-policy",
+        "description": "Направляйте конкретные домены на конкретные резолверы. Строки обрабатываются сверху вниз; срабатывает первое совпадение.",
+        "domain": "Шаблон домена",
+        "nameservers": "Резолверы (через запятую для нескольких)",
+        "add": "Добавить политику",
+        "remove": "Удалить",
+        "move_up": "Выше",
+        "move_down": "Ниже",
+        "empty": "Политик пока нет."
+      },
+      "list": {
+        "add": "Добавить",
+        "empty": "Список пуст.",
+        "remove": "Удалить запись",
+        "placeholder": "значение"
+      },
+      "extras": {
+        "note": "Неизвестные поля сохранены как есть из YAML — редактируйте их в Raw YAML."
+      }
     },
     "tun": {
       "title": "TUN",

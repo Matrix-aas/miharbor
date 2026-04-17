@@ -22,7 +22,13 @@ import {
   YAMLMap,
   YAMLSeq,
 } from 'yaml'
-import { type ProxyNode, type Rule, serializeRule, type WireGuardNode } from 'miharbor-shared'
+import {
+  type DnsConfig,
+  type ProxyNode,
+  type Rule,
+  serializeRule,
+  type WireGuardNode,
+} from 'miharbor-shared'
 
 /** Parse YAML text. Surfaces parse errors as a thrown Error with a flattened
  *  human-readable message (to keep the editor stores small). */
@@ -321,6 +327,59 @@ export function listProxyNodeNames(doc: Document): string[] {
  *  the SFC. */
 export function isWireGuardNode(node: ProxyNode): node is WireGuardNode {
   return node.type === 'wireguard'
+}
+
+// ----- dns: section mutators ---------------------------------------------
+
+/** The canonical key order Miharbor writes out; keys not in this list come
+ *  from `extras` and are appended after the known ones. */
+const DNS_KEY_ORDER: readonly string[] = [
+  'enable',
+  'listen',
+  'ipv6',
+  'cache-algorithm',
+  'enhanced-mode',
+  'fake-ip-range',
+  'use-hosts',
+  'use-system-hosts',
+  'respect-rules',
+  'direct-nameserver-follow-policy',
+  'default-nameserver',
+  'nameserver',
+  'fallback',
+  'fallback-filter',
+  'proxy-server-nameserver',
+  'direct-nameserver',
+  'nameserver-policy',
+  'fake-ip-filter-mode',
+  'fake-ip-filter',
+]
+
+/** Replace the entire `dns:` section with `config`. Unknown keys on
+ *  `config.extras` are preserved (appended at the end). Callers should pass a
+ *  freshly-merged object; this writes, it does not merge. */
+export function setDnsConfig(doc: Document, config: DnsConfig): void {
+  const raw: Record<string, unknown> = {}
+  // Copy known keys in canonical order.
+  for (const k of DNS_KEY_ORDER) {
+    const v = (config as Record<string, unknown>)[k]
+    if (v === undefined) continue
+    raw[k] = v
+  }
+  // Extras go at the end, sorted for determinism.
+  if (config.extras) {
+    const extraKeys = Object.keys(config.extras).sort()
+    for (const k of extraKeys) {
+      raw[k] = config.extras[k]
+    }
+  }
+  if (Object.keys(raw).length === 0) {
+    // Empty config — remove the section entirely rather than emitting `dns: {}`.
+    doc.deleteIn(['dns'])
+    return
+  }
+  const node = doc.createNode(raw)
+  doc.setIn(['dns'], node)
 }
 
 // ----- low-level re-exports ------------------------------------------------

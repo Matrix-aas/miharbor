@@ -286,7 +286,85 @@
     },
     "dns": {
       "title": "DNS",
-      "placeholder": "DNS editor ships in stage 2."
+      "subtitle": "Mihomo DNS engine — fake-ip, resolvers, domain policies.",
+      "loading": "Loading DNS config…",
+      "save_failed": "Couldn't save DNS changes — check the YAML in Raw YAML.",
+      "sections": {
+        "general": "General",
+        "fake_ip": "Fake-IP",
+        "resolvers": "Resolvers",
+        "policy": "Domain policies",
+        "fallback": "Fallback filter",
+        "extras": "Unknown fields"
+      },
+      "fields": {
+        "enable": "Enable DNS engine",
+        "ipv6": "Resolve IPv6 (AAAA) records",
+        "listen": "Listen address",
+        "listen_placeholder": "127.0.0.1:1053",
+        "listen_hint": "Client-facing DNS is usually AdGuardHome/dnsmasq; mihomo listens on the loopback only.",
+        "enhanced_mode": "Enhanced mode",
+        "fake_ip_range": "Fake-IP CIDR",
+        "fake_ip_range_placeholder": "198.18.0.1/16",
+        "use_hosts": "Use /etc/hosts",
+        "use_system_hosts": "Follow system host records",
+        "respect_rules": "Respect rules (split-DNS)",
+        "direct_nameserver_follow_policy": "Follow nameserver-policy for direct queries",
+        "cache_algorithm": "Cache algorithm",
+        "fake_ip_filter_mode": "Fake-IP filter mode",
+        "fake_ip_filter": "Fake-IP filter (skip list)",
+        "default_nameserver": "Default (bootstrap) nameservers",
+        "nameserver": "Main nameservers",
+        "fallback": "Fallback nameservers",
+        "proxy_server_nameserver": "Proxy-server nameserver",
+        "direct_nameserver": "Direct nameservers"
+      },
+      "placeholders": {
+        "nameserver": "https://cloudflare-dns.com/dns-query",
+        "ip_nameserver": "1.1.1.1",
+        "domain_pattern": "+.example.com"
+      },
+      "enhanced_mode": {
+        "fake-ip": "fake-ip",
+        "redir-host": "redir-host",
+        "normal": "normal"
+      },
+      "cache_algorithm": {
+        "arc": "ARC",
+        "lru": "LRU"
+      },
+      "fake_ip_filter_mode": {
+        "blacklist": "blacklist (listed domains skip fake-ip)",
+        "whitelist": "whitelist (only listed domains use fake-ip)"
+      },
+      "guardrails": {
+        "listen_lan": "Binding to 0.0.0.0 exposes mihomo DNS on every interface.",
+        "listen_port_53": "Port 53 usually collides with AdGuardHome/systemd-resolved — use 1053 or another high port.",
+        "literal_ip_required": "This field MUST use literal IPs. Hostname-based resolvers cause DNS loops because mihomo can't resolve them before DNS is up.",
+        "listen_header": "Changing this alters the whole DNS chain on the host.",
+        "proxy_ns_header": "Resolves proxy server hostnames BEFORE DNS is up — literal IPs only.",
+        "default_ns_header": "Bootstrap resolvers used to look up DoH hostnames — literal IPs only."
+      },
+      "nameserver_policy": {
+        "title": "Nameserver policy",
+        "description": "Route specific domains to specific resolvers. Rows are evaluated top-down; first match wins.",
+        "domain": "Domain pattern",
+        "nameservers": "Nameservers (comma-separated for multi)",
+        "add": "Add policy",
+        "remove": "Remove",
+        "move_up": "Move up",
+        "move_down": "Move down",
+        "empty": "No policies yet."
+      },
+      "list": {
+        "add": "Add",
+        "empty": "Empty list.",
+        "remove": "Remove entry",
+        "placeholder": "value"
+      },
+      "extras": {
+        "note": "Unknown fields preserved verbatim from the YAML — edit them in Raw YAML."
+      }
     },
     "tun": {
       "title": "TUN",

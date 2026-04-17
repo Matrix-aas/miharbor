@@ -16,7 +16,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import type { Document } from 'yaml'
-import type { Issue, ProxyNode, Rule, Service } from 'miharbor-shared'
+import type { DnsConfig, Issue, ProxyNode, Rule, Service } from 'miharbor-shared'
 import { endpoints, ApiError } from '@/api/client'
 import type { DraftResponse } from '@/api/client'
 import {
@@ -30,12 +30,14 @@ import {
   removeRule,
   replaceRule,
   serializeDraft,
+  setDnsConfig,
   setGroupDirection,
   upsertProxyNode,
   YAMLMap,
   isMap,
   isSeq,
 } from '@/lib/yaml-mutator'
+import { getDnsConfig } from '@/lib/dns-view'
 import type { Node, YAMLSeq } from 'yaml'
 import { parseRulesFromDoc } from 'miharbor-shared'
 
@@ -193,6 +195,18 @@ export const useConfigStore = defineStore('config', () => {
       return listProxyNodeNames(parseDraft(draftText.value))
     } catch {
       return []
+    }
+  })
+
+  /** Typed view of the `dns:` section from the draft. Recomputes on every
+   *  draft change; empty object when the section is absent or the doc is
+   *  unparseable (the editor surfaces parse errors elsewhere). */
+  const dnsConfig = computed<DnsConfig>(() => {
+    if (!draftText.value) return {}
+    try {
+      return getDnsConfig(parseDraft(draftText.value))
+    } catch {
+      return {}
     }
   })
 
@@ -393,6 +407,19 @@ export const useConfigStore = defineStore('config', () => {
     await commitDoc(doc)
   }
 
+  /** Replace the entire `dns:` section in the draft with `config`. The Dns
+   *  screen calls this on every structured edit; the PUT is debounced by the
+   *  store's lint pipeline. Passes `extras` through unchanged. */
+  async function setDnsConfigDraft(config: DnsConfig): Promise<void> {
+    if (!draftText.value) {
+      if (rawLive.value === null) throw new Error('no live config to bootstrap draft from')
+      draftText.value = rawLive.value
+    }
+    const doc = parseDraft(draftText.value)
+    setDnsConfig(doc, config)
+    await commitDoc(doc)
+  }
+
   // Initial lint on first load.
   watch(
     () => draftText.value,
@@ -421,6 +448,7 @@ export const useConfigStore = defineStore('config', () => {
     proxies: draftProxies,
     existingGroupNames,
     existingProxyNodeNames,
+    dnsConfig,
     // lifecycle
     loadAll,
     fetchLiveProxyState,
@@ -435,5 +463,6 @@ export const useConfigStore = defineStore('config', () => {
     deleteServiceDraft,
     upsertProxyNodeDraft,
     removeProxyNodeDraft,
+    setDnsConfigDraft,
   }
 })
