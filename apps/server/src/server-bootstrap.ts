@@ -18,6 +18,7 @@ import { Elysia } from 'elysia'
 import { bootstrap, type AppContext } from './bootstrap.ts'
 import { LocalFsTransport } from './transport/local-fs.ts'
 import { InMemoryTransport } from './transport/in-memory.ts'
+import { createSshTransport, type SshTransport } from './transport/ssh.ts'
 import type { Transport } from './transport/transport.ts'
 import { createVault, type Vault } from './vault/vault.ts'
 import { createSnapshotManager, type SnapshotManager } from './deploy/snapshot.ts'
@@ -84,20 +85,54 @@ export async function wireApp(
   const { env, logger, audit } = app0
 
   // ---------- transport ----------
-  const transport: Transport =
-    env.MIHARBOR_TRANSPORT === 'local'
-      ? new LocalFsTransport({
-          configPath: env.MIHARBOR_CONFIG_PATH,
-          dataDir: env.MIHARBOR_DATA_DIR,
-          mihomoApiUrl: env.MIHOMO_API_URL,
-          mihomoApiSecret: env.MIHOMO_API_SECRET,
-          validationMode: env.MIHOMO_API_VALIDATION_MODE,
-          logger,
-        })
-      : new InMemoryTransport({
-          mihomoApiUrl: env.MIHOMO_API_URL,
-          mihomoApiSecret: env.MIHOMO_API_SECRET,
-        })
+  let transport: Transport
+  let sshTransport: SshTransport | null = null
+  if (env.MIHARBOR_TRANSPORT === 'local') {
+    transport = new LocalFsTransport({
+      configPath: env.MIHARBOR_CONFIG_PATH,
+      dataDir: env.MIHARBOR_DATA_DIR,
+      mihomoApiUrl: env.MIHOMO_API_URL,
+      mihomoApiSecret: env.MIHOMO_API_SECRET,
+      validationMode: env.MIHOMO_API_VALIDATION_MODE,
+      logger,
+    })
+  } else if (env.MIHARBOR_TRANSPORT === 'ssh') {
+    if (!env.MIHARBOR_SSH_HOST || !env.MIHARBOR_SSH_USER) {
+      throw new Error(
+        'MIHARBOR_TRANSPORT=ssh requires MIHARBOR_SSH_HOST and MIHARBOR_SSH_USER to be set',
+      )
+    }
+    // At least one auth source must exist. We surface the misconfiguration
+    // at bootstrap rather than failing on the first deploy.
+    const agentSocket = rawEnv.SSH_AUTH_SOCK ?? ''
+    if (!env.MIHARBOR_SSH_KEY_PATH && !agentSocket) {
+      throw new Error(
+        'MIHARBOR_TRANSPORT=ssh requires either MIHARBOR_SSH_KEY_PATH or SSH_AUTH_SOCK (ssh-agent) to be set',
+      )
+    }
+    sshTransport = await createSshTransport({
+      host: env.MIHARBOR_SSH_HOST,
+      port: env.MIHARBOR_SSH_PORT,
+      username: env.MIHARBOR_SSH_USER,
+      keyPath: env.MIHARBOR_SSH_KEY_PATH || undefined,
+      passphrase: env.MIHARBOR_SSH_KEY_PASSPHRASE || undefined,
+      agentSocket: agentSocket || undefined,
+      remoteConfigPath: env.MIHARBOR_SSH_REMOTE_CONFIG_PATH,
+      remoteLockPath: env.MIHARBOR_SSH_REMOTE_LOCK_PATH,
+      dataDir: env.MIHARBOR_DATA_DIR,
+      mihomoApiUrl: env.MIHOMO_API_URL,
+      mihomoApiSecret: env.MIHOMO_API_SECRET,
+      connectTimeoutMs: env.MIHARBOR_SSH_CONNECT_TIMEOUT_MS,
+      keepaliveIntervalMs: env.MIHARBOR_SSH_KEEPALIVE_INTERVAL_MS,
+      logger,
+    })
+    transport = sshTransport
+  } else {
+    transport = new InMemoryTransport({
+      mihomoApiUrl: env.MIHOMO_API_URL,
+      mihomoApiSecret: env.MIHOMO_API_SECRET,
+    })
+  }
 
   // ---------- vault ----------
   const vault = await createVault({

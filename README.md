@@ -89,8 +89,8 @@ Miharbor never edits the mihomo process directly — it writes `/config/config.y
 
 ## Modes (transports)
 
-- **Docker + LocalFs** _(v0.1, default)_ — Miharbor runs in a container, bind-mounts the host's mihomo config directory. Shortest path to a working setup.
-- **SSH** _(planned, v0.2)_ — Miharbor runs on a jump host and deploys to a remote mihomo over SSH. The transport interface is already abstracted, the SSH implementation is the only missing piece.
+- **Docker + LocalFs** _(default)_ — Miharbor runs in a container, bind-mounts the host's mihomo config directory. Shortest path to a working setup.
+- **SSH** — Miharbor runs on a workstation / jump host and deploys to a remote mihomo over SSH (SFTP write + `mihomo -t` over exec, remote `flock` for locking). See [`docs/SSH_SETUP.md`](./docs/SSH_SETUP.md) for env vars, auth modes (agent / key / passphrase-encrypted key), and troubleshooting.
 
 ## Supported mihomo versions
 
@@ -100,26 +100,26 @@ CI smoke-tests aim for the current three: **1.18.x, 1.19.x, 1.20.x**. In practic
 
 All configuration is via environment variables. Defaults shown are what Miharbor falls back to if the variable is unset.
 
-| Variable                            | Default                            | Purpose                                                           |
-| ----------------------------------- | ---------------------------------- | ----------------------------------------------------------------- |
-| `MIHARBOR_PORT`                     | `3000`                             | HTTP listen port inside the container.                            |
-| `MIHARBOR_TRANSPORT`                | `local`                            | `local` (bind-mount) or `ssh` (planned).                          |
-| `MIHARBOR_CONFIG_PATH`              | `/config/config.yaml`              | Path to mihomo's config inside the container.                     |
-| `MIHARBOR_DATA_DIR`                 | `/app/data`                        | Miharbor's own persistent state (snapshots, vault, auth).         |
-| `MIHARBOR_WEB_DIST`                 | _(set in image)_                   | Directory with the pre-built Vue bundle. Unset = API-only mode.   |
-| `MIHOMO_API_URL`                    | `http://host.docker.internal:9090` | mihomo REST API base URL.                                         |
-| `MIHOMO_API_SECRET`                 | _(empty, required)_                | mihomo REST API Bearer token.                                     |
-| `MIHARBOR_AUTH_USER`                | `admin`                            | Admin username.                                                   |
-| `MIHARBOR_AUTH_PASS_HASH`           | _(empty)_                          | Argon2id hash. Empty = bootstrap mode (forces password change).   |
-| `MIHARBOR_AUTH_DISABLED`            | `false`                            | Dev escape hatch. Never enable in production.                     |
-| `MIHARBOR_VAULT_KEY`                | _(empty, required)_                | 32-byte hex key for snapshot-vault AES-256-GCM.                   |
-| `MIHARBOR_TRUST_PROXY_HEADER`       | _(empty)_                          | Header name to trust for user identity (e.g. `X-Forwarded-User`). |
-| `MIHARBOR_TRUSTED_PROXY_CIDRS`      | _(empty)_                          | CIDRs allowed to set the trust header (e.g. `127.0.0.1/32`).      |
-| `MIHARBOR_SNAPSHOT_RETENTION_COUNT` | `50`                               | Keep at most N most-recent snapshots.                             |
-| `MIHARBOR_SNAPSHOT_RETENTION_DAYS`  | `30`                               | Prune snapshots older than N days.                                |
-| `MIHARBOR_AUTO_ROLLBACK`            | `true`                             | If healthcheck fails after deploy, auto-restore prior snapshot.   |
-| `MIHARBOR_LOG_LEVEL`                | `info`                             | `debug` / `info` / `warn` / `error`.                              |
-| `MIHARBOR_LLM_DISABLED`             | `false`                            | Hide LLM-assistant UI and endpoints (planned for v0.2+).          |
+| Variable                            | Default                            | Purpose                                                                   |
+| ----------------------------------- | ---------------------------------- | ------------------------------------------------------------------------- |
+| `MIHARBOR_PORT`                     | `3000`                             | HTTP listen port inside the container.                                    |
+| `MIHARBOR_TRANSPORT`                | `local`                            | `local` (bind-mount) or `ssh` (remote via SSH — see `docs/SSH_SETUP.md`). |
+| `MIHARBOR_CONFIG_PATH`              | `/config/config.yaml`              | Path to mihomo's config inside the container.                             |
+| `MIHARBOR_DATA_DIR`                 | `/app/data`                        | Miharbor's own persistent state (snapshots, vault, auth).                 |
+| `MIHARBOR_WEB_DIST`                 | _(set in image)_                   | Directory with the pre-built Vue bundle. Unset = API-only mode.           |
+| `MIHOMO_API_URL`                    | `http://host.docker.internal:9090` | mihomo REST API base URL.                                                 |
+| `MIHOMO_API_SECRET`                 | _(empty, required)_                | mihomo REST API Bearer token.                                             |
+| `MIHARBOR_AUTH_USER`                | `admin`                            | Admin username.                                                           |
+| `MIHARBOR_AUTH_PASS_HASH`           | _(empty)_                          | Argon2id hash. Empty = bootstrap mode (forces password change).           |
+| `MIHARBOR_AUTH_DISABLED`            | `false`                            | Dev escape hatch. Never enable in production.                             |
+| `MIHARBOR_VAULT_KEY`                | _(empty, required)_                | 32-byte hex key for snapshot-vault AES-256-GCM.                           |
+| `MIHARBOR_TRUST_PROXY_HEADER`       | _(empty)_                          | Header name to trust for user identity (e.g. `X-Forwarded-User`).         |
+| `MIHARBOR_TRUSTED_PROXY_CIDRS`      | _(empty)_                          | CIDRs allowed to set the trust header (e.g. `127.0.0.1/32`).              |
+| `MIHARBOR_SNAPSHOT_RETENTION_COUNT` | `50`                               | Keep at most N most-recent snapshots.                                     |
+| `MIHARBOR_SNAPSHOT_RETENTION_DAYS`  | `30`                               | Prune snapshots older than N days.                                        |
+| `MIHARBOR_AUTO_ROLLBACK`            | `true`                             | If healthcheck fails after deploy, auto-restore prior snapshot.           |
+| `MIHARBOR_LOG_LEVEL`                | `info`                             | `debug` / `info` / `warn` / `error`.                                      |
+| `MIHARBOR_LLM_DISABLED`             | `false`                            | Hide LLM-assistant UI and endpoints (planned for v0.2+).                  |
 
 ## Development
 

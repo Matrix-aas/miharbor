@@ -28,7 +28,7 @@ afterEach(() => {
 function testEnv(extra: Record<string, string> = {}): Record<string, string | undefined> {
   return {
     MIHARBOR_PORT: String(3000 + port),
-    MIHARBOR_TRANSPORT: 'ssh', // uses InMemoryTransport in wireApp (non-local)
+    MIHARBOR_TRANSPORT: 'memory', // test-only — swaps in InMemoryTransport
     MIHARBOR_DATA_DIR: dataDir,
     MIHARBOR_CONFIG_PATH: '/tmp/nonexistent-config.yaml',
     MIHOMO_API_URL: 'http://127.0.0.1:9999',

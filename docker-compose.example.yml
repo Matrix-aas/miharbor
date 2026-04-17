@@ -60,3 +60,21 @@ services:
 
 volumes:
   miharbor_data:
+# ---------------------------------------------------------------------------
+# Alternative: SSH transport
+# ---------------------------------------------------------------------------
+# If Miharbor runs elsewhere than the mihomo host, set MIHARBOR_TRANSPORT=ssh
+# and point it at the remote. See docs/SSH_SETUP.md for the full setup and
+# troubleshooting guide. Minimal overrides (replacing the `environment:` block
+# above):
+#
+#   MIHARBOR_TRANSPORT: ssh
+#   MIHARBOR_SSH_HOST: router.lan
+#   MIHARBOR_SSH_USER: matrix
+#   MIHARBOR_SSH_KEY_PATH: /ssh/key         # bind-mount the private key
+#   MIHARBOR_SSH_REMOTE_CONFIG_PATH: /etc/mihomo/config.yaml
+#   MIHARBOR_SSH_REMOTE_LOCK_PATH: /etc/mihomo/.miharbor.lock
+#   MIHOMO_API_URL: http://router.lan:9090
+#
+# Plus a read-only key mount:
+#   - /home/matrix/.ssh/miharbor_ed25519:/ssh/key:ro

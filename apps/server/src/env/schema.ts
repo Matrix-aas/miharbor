@@ -13,9 +13,17 @@ import { applyDeprecations } from './deprecations.ts'
 
 const EnvSchema = Type.Object({
   MIHARBOR_PORT: Type.Number({ default: 3000 }),
-  MIHARBOR_TRANSPORT: Type.Union([Type.Literal('local'), Type.Literal('ssh')], {
-    default: 'local',
-  }),
+  // `memory` is a test-only transport that swaps LocalFs/Ssh for
+  // InMemoryTransport. It is intentionally in the schema so tests can
+  // set the env var without TypeBox validation rejecting it, but it is
+  // NOT documented in README / docker-compose and is never selected by
+  // production code paths.
+  MIHARBOR_TRANSPORT: Type.Union(
+    [Type.Literal('local'), Type.Literal('ssh'), Type.Literal('memory')],
+    {
+      default: 'local',
+    },
+  ),
   MIHARBOR_CONFIG_PATH: Type.String({ default: '/config/config.yaml' }),
   MIHARBOR_DATA_DIR: Type.String({ default: '/app/data' }),
   /**
@@ -63,6 +71,26 @@ const EnvSchema = Type.Object({
    * security headers stay on.
    */
   MIHARBOR_CSP_DISABLED: Type.Boolean({ default: false }),
+
+  // --- SSH transport (only read when MIHARBOR_TRANSPORT=ssh) ---
+  /** Remote host — required when MIHARBOR_TRANSPORT=ssh. */
+  MIHARBOR_SSH_HOST: Type.String({ default: '' }),
+  MIHARBOR_SSH_PORT: Type.Number({ default: 22 }),
+  /** Remote login user — required when MIHARBOR_TRANSPORT=ssh. */
+  MIHARBOR_SSH_USER: Type.String({ default: '' }),
+  /** Absolute path to a private key file on the Miharbor host. When empty,
+   *  falls back to `SSH_AUTH_SOCK` (ssh-agent). At least one must be set. */
+  MIHARBOR_SSH_KEY_PATH: Type.String({ default: '' }),
+  /** Passphrase for an encrypted key file. Ignored when the key is
+   *  unencrypted or when agent auth is used. */
+  MIHARBOR_SSH_KEY_PASSPHRASE: Type.String({ default: '' }),
+  /** Remote absolute path to mihomo's config.yaml. */
+  MIHARBOR_SSH_REMOTE_CONFIG_PATH: Type.String({ default: '/etc/mihomo/config.yaml' }),
+  /** Remote absolute path to the lock sidecar used by Miharbor to serialise
+   *  writes. Must be on the same filesystem as the config so `mv` is atomic. */
+  MIHARBOR_SSH_REMOTE_LOCK_PATH: Type.String({ default: '/etc/mihomo/.miharbor.lock' }),
+  MIHARBOR_SSH_CONNECT_TIMEOUT_MS: Type.Number({ default: 10_000 }),
+  MIHARBOR_SSH_KEEPALIVE_INTERVAL_MS: Type.Number({ default: 30_000 }),
 })
 
 export type Env = Static<typeof EnvSchema>
