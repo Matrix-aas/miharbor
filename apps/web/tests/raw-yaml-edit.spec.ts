@@ -1,4 +1,4 @@
-// Raw YAML full-edit mode tests (Task 39 AC).
+// Raw YAML full-edit mode tests (Task 39 AC + monaco-yaml follow-up).
 //
 // Scope:
 //   * useConfigStore: draftParseError / draftValid / applyRawYaml contract.
@@ -8,16 +8,21 @@
 //     draftValid === false.
 //   * mihomo.schema.json shape sanity — at least the known keys are
 //     described so future consumers have something to reference.
+//   * MonacoYamlEdit: verifies `configureMonacoYaml` is invoked exactly once
+//     per page load with the miharbor schema registered under fileMatch: ['*']
+//     and the stable `miharbor.local` uri (live hover/completion contract).
 //
-// Monaco is mocked — jsdom can't run the editor runtime, and the test goal
-// is the Vue plumbing, not Monaco itself.
+// Monaco + monaco-yaml + the yaml.worker wrapper are all stubbed — jsdom
+// can't run the editor runtime and can't spawn Web Workers from `?worker`
+// URL imports. The tests focus on the Vue plumbing and the monaco-yaml
+// registration call shape.
 
-import { describe, expect, it, beforeEach, vi } from 'vitest'
+import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import { createRouter, createMemoryHistory, type Router } from 'vue-router'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 
 import en from '../src/i18n/en.json'
 import ru from '../src/i18n/ru.json'
@@ -25,6 +30,10 @@ import mihomoSchema from '../src/schemas/mihomo.schema.json'
 import { useConfigStore } from '../src/stores/config'
 import YamlValidityGuard from '../src/components/layout/YamlValidityGuard.vue'
 import RawYaml from '../src/pages/RawYaml.vue'
+
+// Spy handle shared with the mock below so tests can assert on the
+// monaco-yaml registration call shape without re-mocking per case.
+const configureMonacoYamlSpy = vi.fn()
 
 // Stub Monaco + its YAML contribution so defineAsyncComponent's dynamic
 // import resolves in jsdom. The editable wrapper is replaced with a plain
@@ -78,6 +87,41 @@ vi.mock('monaco-editor/esm/vs/editor/editor.api', () => {
 })
 
 vi.mock('monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution', () => ({}))
+
+// Stub the lazy-loaded worker entries — `?worker` imports don't resolve in
+// jsdom. We return a noop Worker constructor so `new YamlWorker()` /
+// `new EditorWorker()` inside `MonacoEnvironment.getWorker` doesn't throw.
+class NoopWorker {
+  postMessage(): void {}
+  terminate(): void {}
+  addEventListener(): void {}
+  removeEventListener(): void {}
+  dispatchEvent(): boolean {
+    return true
+  }
+  onmessage: ((this: Worker, ev: MessageEvent) => unknown) | null = null
+  onerror: ((this: AbstractWorker, ev: ErrorEvent) => unknown) | null = null
+  onmessageerror: ((this: Worker, ev: MessageEvent) => unknown) | null = null
+}
+
+vi.mock('monaco-editor/esm/vs/editor/editor.worker?worker', () => ({
+  default: NoopWorker,
+}))
+
+vi.mock('@/workers/yaml.worker?worker', () => ({
+  default: NoopWorker,
+}))
+
+// Stub monaco-yaml: capture the call + args so tests can assert the schema
+// registration contract (fileMatch, uri, schema identity, hover/completion/
+// validate flags). We never want real monaco-yaml to run under jsdom —
+// spawning the language-server worker breaks the runtime.
+vi.mock('monaco-yaml', () => ({
+  configureMonacoYaml: (...args: unknown[]) => {
+    configureMonacoYamlSpy(...args)
+    return { dispose: () => {}, update: async () => undefined, getOptions: () => ({}) }
+  },
+}))
 
 // Stub the shadcn Button — its SFC is fine, but the inner lucide icons the
 // RawYaml header uses can be left alone; we explicitly import the page
@@ -385,5 +429,114 @@ describe('mihomo.schema.json', () => {
     expect(mode.enum).toContain('rule')
     expect(mode.enum).toContain('global')
     expect(mode.enum).toContain('direct')
+  })
+})
+
+// ---- MonacoYamlEdit live schema wiring ---------------------------------
+//
+// We don't test Monaco's actual completion popup — jsdom can't render it
+// and the worker is stubbed. Instead we assert the registration contract:
+// `configureMonacoYaml` is invoked (exactly once across the whole page
+// lifecycle) with the mihomo schema under `fileMatch: ['*']` and the
+// stable miharbor.local uri. That's the ground truth for live schema
+// hover + autocomplete — once monaco-yaml receives it, the language
+// server does the rest.
+
+describe('MonacoYamlEdit — monaco-yaml live schema wiring', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  afterEach(() => {
+    // Clear the global probe so each test starts from a known state.
+    delete (globalThis as { __MIHARBOR_YAML_SCHEMA?: unknown }).__MIHARBOR_YAML_SCHEMA
+  })
+
+  it('registers the mihomo schema exactly once with the expected shape', async () => {
+    // Freshly import the component so the module-scoped `yamlConfigured`
+    // flag starts false for this test (vitest isolates per-file, but
+    // within a file modules are cached — so we reset the call log and
+    // assert from this mount onward).
+    configureMonacoYamlSpy.mockClear()
+    const { default: MonacoYamlEdit } = await import('../src/components/yaml/MonacoYamlEdit.vue')
+    const wrapper = mount(MonacoYamlEdit, {
+      props: { modelValue: 'mode: rule\n' },
+      global: { plugins: [makeI18n()] },
+    })
+    await flushPromises()
+    await nextTick()
+
+    // configureMonacoYaml may already have been called in a prior test
+    // within this file (module-scoped guard); we only care that after
+    // ALL current mounts the call happened at least once with the right
+    // shape, AND that the guard prevents duplicate registration by a
+    // second mount.
+    const probe = (globalThis as { __MIHARBOR_YAML_SCHEMA?: Record<string, unknown> })
+      .__MIHARBOR_YAML_SCHEMA
+    expect(probe).toBeDefined()
+    expect(probe?.uri).toBe('https://miharbor.local/schemas/mihomo.schema.json')
+    expect(probe?.schema).toBe(mihomoSchema)
+    expect(probe?.configured).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  it('only calls configureMonacoYaml once across multiple remounts', async () => {
+    const { default: MonacoYamlEdit } = await import('../src/components/yaml/MonacoYamlEdit.vue')
+    const before = configureMonacoYamlSpy.mock.calls.length
+
+    const w1 = mount(MonacoYamlEdit, {
+      props: { modelValue: 'a: 1\n' },
+      global: { plugins: [makeI18n()] },
+    })
+    await flushPromises()
+    w1.unmount()
+
+    const w2 = mount(MonacoYamlEdit, {
+      props: { modelValue: 'b: 2\n' },
+      global: { plugins: [makeI18n()] },
+    })
+    await flushPromises()
+    w2.unmount()
+
+    // Zero net-new calls: the module-scoped `yamlConfigured` guard means
+    // remounting does NOT re-register the schema. (In the first-mount test
+    // above, the call may already have happened; subsequent mounts must
+    // NOT bump the counter.)
+    expect(configureMonacoYamlSpy.mock.calls.length).toBe(Math.max(before, 1))
+  })
+
+  it('passes fileMatch: ["*"], hover:true, completion:true, validate:true, format:false to monaco-yaml', async () => {
+    // The single call (over the whole test file) must carry the contract
+    // we promise: live schema hints for every model, formatter off.
+    // If the call hasn't happened yet (test ordering), force a mount.
+    if (configureMonacoYamlSpy.mock.calls.length === 0) {
+      const { default: MonacoYamlEdit } = await import('../src/components/yaml/MonacoYamlEdit.vue')
+      const w = mount(MonacoYamlEdit, {
+        props: { modelValue: '' },
+        global: { plugins: [makeI18n()] },
+      })
+      await flushPromises()
+      w.unmount()
+    }
+    expect(configureMonacoYamlSpy.mock.calls.length).toBeGreaterThanOrEqual(1)
+    const [, options] = configureMonacoYamlSpy.mock.calls[0] as [
+      unknown,
+      {
+        schemas: Array<{ fileMatch: string[]; uri: string; schema: unknown }>
+        hover?: boolean
+        completion?: boolean
+        validate?: boolean
+        format?: boolean
+      },
+    ]
+    expect(options.schemas).toHaveLength(1)
+    expect(options.schemas[0].fileMatch).toEqual(['*'])
+    expect(options.schemas[0].uri).toBe('https://miharbor.local/schemas/mihomo.schema.json')
+    expect(options.schemas[0].schema).toBe(mihomoSchema)
+    expect(options.hover).toBe(true)
+    expect(options.completion).toBe(true)
+    expect(options.validate).toBe(true)
+    expect(options.format).toBe(false)
   })
 })

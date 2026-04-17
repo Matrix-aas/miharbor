@@ -14,7 +14,10 @@ All notable changes to Miharbor are documented here. Format follows
   `extras` round-trip, and full EN + RU i18n.
 - Raw YAML full-edit mode with parse-error guard that blocks structural
   sections (Services/DNS/TUN/…) until the YAML parses, surfacing Monaco
-  markers inline.
+  markers inline — now with `monaco-yaml` live schema hints (hover +
+  autocomplete) driven by the bundled mihomo JSON Schema. The YAML
+  language-server worker is lazy-loaded in the same chunk as the editor,
+  so the initial bundle stays well under the 600 KB gzipped budget.
 - Tree editor for AND / OR / NOT logical rules (Services screen) with
   depth limit and serializer/parser round-trip fuzz-tested on 150
   seeded trees.

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://miharbor.local/schemas/mihomo.schema.json",
   "title": "mihomo configuration",
-  "description": "JSON Schema for mihomo YAML configuration. Permissive: known fields get type/enum hints, but `additionalProperties: true` at the root keeps hand-rolled or forward-compatible keys valid.",
+  "description": "JSON Schema for mihomo YAML configuration. Actively consumed by monaco-yaml in the Raw YAML edit mode (hover + autocomplete + schema validation). Permissive: known fields get type/enum hints, but `additionalProperties: true` at the root keeps hand-rolled or forward-compatible keys valid.",
   "type": "object",
   "additionalProperties": true,
   "properties": {

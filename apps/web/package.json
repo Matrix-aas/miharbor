@@ -19,6 +19,7 @@
     "lucide-vue-next": "~0.468.0",
     "miharbor-shared": "workspace:*",
     "monaco-editor": "~0.52.2",
+    "monaco-yaml": "~5.4.1",
     "pinia": "~2.3.0",
     "radix-vue": "~1.9.11",
     "tailwind-merge": "~2.5.5",

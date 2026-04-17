@@ -1,24 +1,53 @@
+<script lang="ts">
+// Module-scoped state lives in a non-setup script block so it's truly shared
+// across every instance of this component. Vue's `<script setup>` wraps its
+// top-level bindings in the component's per-instance setup function — so a
+// `let yamlConfigured = false` inside `<script setup>` would reset on each
+// mount and defeat the "configure monaco-yaml exactly once per page load"
+// invariant that follow-up to Task 39 promises. We export the getter + setter
+// as named helpers so tests can assert / reset without spelunking the
+// module's closure.
+let yamlConfigured = false
+
+export function __isYamlConfiguredForTests(): boolean {
+  return yamlConfigured
+}
+
+export function __setYamlConfiguredForTests(v: boolean): void {
+  yamlConfigured = v
+}
+</script>
+
 <script setup lang="ts">
 // MonacoYamlEdit — read-write Monaco wrapper used by Raw YAML edit mode
-// (Task 39). Shares the lazy-load + no-worker strategy with MonacoYamlView
-// but is a distinct component because the editable side needs:
-//   * two-way sync with `v-model` (debounced `update:modelValue` emits)
-//   * inline parse-error markers surfaced via `editor.setModelMarkers`
-//   * an `isDirty` flag for the Apply button in RawYaml.vue
-//   * a JSON Schema registered as an advisory reference — Stage 2 keeps
-//     schema hints as a "nice-to-have" (see task notes: monaco-yaml isn't
-//     currently installed, so we surface YAML parse errors from the
-//     `yaml` library and stash the JSON Schema next to this file for a
-//     future monaco-yaml drop-in).
+// (Task 39 + follow-up: live schema hover/autocomplete via monaco-yaml).
 //
-// The parse-error marker pipeline:
-//   1. user types → editor fires `onDidChangeModelContent`
-//   2. we emit `update:modelValue`
-//   3. a parent-watched `parseError` prop flows back in with {line, col,
-//      message} — we translate it into `monaco.MarkerSeverity.Error` and
-//      call `editor.setModelMarkers(model, 'miharbor-yaml', […])`.
-// Passing the error diagnostic as a prop (rather than re-parsing inside
-// the wrapper) keeps the store as the single source of truth.
+// Pipeline:
+//   * Lazy dynamic import of `monaco-editor/esm/vs/editor/editor.api` plus the
+//     yaml basic-languages tokenizer contribution keeps the Monaco runtime in
+//     a separate chunk (verified by `scripts/check-bundle-size.ts`).
+//   * monaco-yaml is imported in the same async chunk and `configureMonacoYaml`
+//     is invoked ONCE per page load (module-scoped flag `yamlConfigured`). The
+//     yaml language server ships as a Web Worker — Vite's `?worker` suffix
+//     emits it as an ES-module worker so the ~300 KB worker payload doesn't
+//     land in the main bundle either.
+//   * Schema source: `@/schemas/mihomo.schema.json`. Registered against
+//     `fileMatch: ['*']` so every model opened by this wrapper receives live
+//     hover + completion hints. The schema URI is the same stable
+//     `https://miharbor.local/schemas/mihomo.schema.json` used before — it
+//     both identifies the schema to the language server and shows up as the
+//     source in hover tooltips.
+//   * Two-way sync with `v-model` (debounce lives in the parent store),
+//     parse-error markers surfaced via `editor.setModelMarkers` for errors
+//     the `yaml` library catches before the worker does, and a module-scoped
+//     `__MIHARBOR_YAML_SCHEMA` probe is still set so integration tests and
+//     devtools can confirm the schema is wired.
+//
+// Why `configureMonacoYaml` instead of a fresh call per mount?
+//   monaco-yaml is documented as "only one configured instance at a time"
+//   (see https://github.com/remcohaszing/monaco-yaml). Re-running the setup
+//   on every component remount would churn the language-server worker; a
+//   single configure + keep-alive is the supported path.
 
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import mihomoSchema from '@/schemas/mihomo.schema.json'
@@ -32,10 +61,9 @@ interface ParseErrorProp {
 interface Props {
   modelValue: string
   parseError?: ParseErrorProp | null
-  /** Optional JSON Schema URL. When monaco-yaml is available in the bundle,
-   *  a future version can pipe this through the YAML language service for
-   *  autocomplete/hover. The current read-write wrapper only uses it as a
-   *  reference (the schema lives next to this file). */
+  /** Optional JSON Schema URL. Used as the `uri` we hand to monaco-yaml, so
+   *  the language server also reports this URL as the schema source in its
+   *  hover tooltips. */
   schemaUri?: string
   height?: string
 }
@@ -83,6 +111,10 @@ interface MonacoNamespace {
   MarkerSeverity: { Error: number; Warning: number; Info: number; Hint: number }
 }
 
+// `yamlConfigured` lives in the non-setup <script> block above — Vue's
+// `<script setup>` would otherwise wrap it per-instance, losing the "once
+// per page load" guarantee.
+
 const container = ref<HTMLDivElement | null>(null)
 const loading = ref(true)
 const loadError = ref<string | null>(null)
@@ -95,23 +127,74 @@ let suppressNextChange = false
 async function init(): Promise<void> {
   if (!container.value) return
   try {
+    // Web workers: we need BOTH Monaco's editorWorkerService (core worker)
+    // AND monaco-yaml's yaml.worker. The `?worker` suffix is Vite's
+    // directive to emit a worker entry; it matches monaco-yaml's documented
+    // Vite workaround. Workers are imported eagerly here (inside the async
+    // init) so they land inside the MonacoYamlEdit chunk, not the initial
+    // bundle.
+    const envTarget = globalThis as unknown as {
+      MonacoEnvironment?: { getWorker?: (moduleId: string, label: string) => Worker }
+    }
+    const [{ default: EditorWorker }, { default: YamlWorker }] = await Promise.all([
+      import('monaco-editor/esm/vs/editor/editor.worker?worker'),
+      import('@/workers/yaml.worker?worker'),
+    ])
+    envTarget.MonacoEnvironment = {
+      getWorker: (_moduleId: string, label: string): Worker => {
+        if (label === 'yaml') return new YamlWorker()
+        return new EditorWorker()
+      },
+    }
+
     const monacoPromise = import('monaco-editor/esm/vs/editor/editor.api')
     const contribPromise = import('monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution')
-    const [monaco] = await Promise.all([monacoPromise, contribPromise])
+    const yamlPluginPromise = import('monaco-yaml')
+    const [monaco, , yamlPlugin] = await Promise.all([
+      monacoPromise,
+      contribPromise,
+      yamlPluginPromise,
+    ])
     monacoRef = monaco as unknown as MonacoNamespace
     if (!container.value) return
 
-    // Stub worker — read-write basic-languages tokenizer runs on the main
-    // thread; without this, Monaco throws when language-server modules try
-    // to spawn a worker. Same pattern as MonacoYamlView.
-    const envTarget = globalThis as unknown as { MonacoEnvironment?: unknown }
-    envTarget.MonacoEnvironment = {
-      getWorker: () => {
-        const blobURL = URL.createObjectURL(
-          new Blob(['self.onmessage = () => {};'], { type: 'application/javascript' }),
-        )
-        return new Worker(blobURL)
-      },
+    // Configure monaco-yaml exactly once. Idempotent across remounts; a
+    // future hot-reload should clear `yamlConfigured` if we ever want to
+    // rebind the schema dynamically (not needed today — schema is static).
+    if (!yamlConfigured) {
+      yamlPlugin.configureMonacoYaml(
+        monaco as Parameters<typeof yamlPlugin.configureMonacoYaml>[0],
+        {
+          schemas: [
+            {
+              fileMatch: ['*'],
+              uri: props.schemaUri,
+              schema: mihomoSchema as Parameters<typeof yamlPlugin.configureMonacoYaml>[1] extends {
+                schemas?: Array<{ schema?: infer S }>
+              }
+                ? S
+                : never,
+            },
+          ],
+          hover: true,
+          completion: true,
+          validate: true,
+          // Prettier formatting is useful in theory but would grab Cmd/Ctrl+Shift+I
+          // globally and diff against a formatter we don't control — keep the
+          // user's whitespace until the ecosystem settles on a consistent style.
+          format: false,
+        },
+      )
+      yamlConfigured = true
+    }
+
+    // Leave a discoverable probe for tests + devtools. Real schema loading
+    // now goes through monaco-yaml (above), but the probe confirms the
+    // wiring ran and exposes the raw schema + URI for inspection.
+    ;(globalThis as unknown as { __MIHARBOR_YAML_SCHEMA?: unknown }).__MIHARBOR_YAML_SCHEMA = {
+      uri: props.schemaUri,
+      schema: mihomoSchema,
+      configured: yamlConfigured,
     }
 
     editor = monacoRef.editor.create(container.value, {
@@ -130,15 +213,6 @@ async function init(): Promise<void> {
       scrollbar: { useShadows: false },
       tabSize: 2,
     })
-
-    // Schema: stash a reference on the global so a future monaco-yaml drop-in
-    // can grab it. We deliberately don't register it against `languages.yaml`
-    // because that module isn't in the bundle; logging the intent keeps the
-    // reference path discoverable for reviewers.
-    ;(globalThis as unknown as { __MIHARBOR_YAML_SCHEMA?: unknown }).__MIHARBOR_YAML_SCHEMA = {
-      uri: props.schemaUri,
-      schema: mihomoSchema,
-    }
 
     contentDisposer = editor.onDidChangeModelContent(() => {
       if (!editor) return

@@ -48,11 +48,29 @@ function checkBundleSize(): void {
   const files = fs.readdirSync(DIST_DIR)
   const bundles: BundleInfo[] = []
 
-  // Identify key bundles
-  const indexFile = files.find((f) => f.match(/^index-[a-zA-Z0-9]+\.js$/))
-  const editorFile = files.find((f) => f.match(/^editor\.api-[a-zA-Z0-9]+\.js$/))
-  const monacoYamlEditFile = files.find((f) => f.match(/^MonacoYamlEdit-[a-zA-Z0-9]+\.js$/))
-  const diff2htmlFile = files.find((f) => f.match(/^diff2html-[a-zA-Z0-9]+\.js$/))
+  // Identify the actual app entry by reading index.html — after the
+  // monaco-yaml drop-in, the deps graph contains multiple chunks that
+  // happen to be named `index-*.js` (monaco-yaml's own `index.js`, for
+  // instance). Using the HTML entry is the only disambiguating source
+  // of truth; filesystem ordering isn't stable across platforms.
+  const indexHtmlPath = path.join(DIST_DIR, '..', 'index.html')
+  let indexFile: string | undefined
+  if (fs.existsSync(indexHtmlPath)) {
+    const html = fs.readFileSync(indexHtmlPath, 'utf8')
+    const entryMatch = html.match(/\/assets\/(index-[a-zA-Z0-9_-]+\.js)/)
+    if (entryMatch) indexFile = entryMatch[1]
+  }
+  // Fallback: any file matching the pattern, largest one wins (the real
+  // entry dwarfs monaco-yaml's `index.js` chunk).
+  if (!indexFile) {
+    const candidates = files.filter((f) => /^index-[a-zA-Z0-9_-]+\.js$/.test(f))
+    indexFile = candidates
+      .map((f) => ({ f, size: fs.statSync(path.join(DIST_DIR, f)).size }))
+      .sort((a, b) => b.size - a.size)[0]?.f
+  }
+  const editorFile = files.find((f) => f.match(/^editor\.api-[a-zA-Z0-9_-]+\.js$/))
+  const monacoYamlEditFile = files.find((f) => f.match(/^MonacoYamlEdit-[a-zA-Z0-9_-]+\.js$/))
+  const diff2htmlFile = files.find((f) => f.match(/^diff2html-[a-zA-Z0-9_-]+\.js$/))
 
   if (!indexFile) {
     console.error('❌ Initial bundle index-*.js not found')
