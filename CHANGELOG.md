@@ -16,11 +16,18 @@ body, which real mihomo (1.19.x) rejects with HTTP 400 "Body invalid".
   The empty body caused a 400 error on the live router. The `{}` body reloads
   from the currently loaded config path on disk (no need to pass path, which
   would require container context).
+- **`SshTransport` now honours `MIHARBOR_CONFIG_WRITE_MODE` for remote config
+  writes.** Symmetric to the v0.2.1 `LocalFsTransport` fix: the remote
+  `config.yaml` is now written with mode 0o644 by default (or overridden via
+  the env var), allowing hardened mihomo processes (with `CAP_DAC_OVERRIDE`
+  dropped) running under a different UID to still read the config after atomic
+  rename. The temporary config upload remains 0o600 (restrictive until rename).
 
 ### Tests
 
-- 644 tests maintained. Updated `reloadConfig` test now verifies correct body
-  (`{}`), content-type header (`application/json`), and preserves Authorization.
+- 646 tests maintained. Added two tests asserting SSH config write mode defaults
+  to 0o644 and that the override is honoured. Updated `FakeSshAdapter` to
+  capture and expose `writeFileModes` for mode assertion in tests.
 
 ---
 
