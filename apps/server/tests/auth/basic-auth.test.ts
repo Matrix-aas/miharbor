@@ -288,3 +288,94 @@ test('no trustProxy evaluator → always returns socket IP', async () => {
   })
   expect(extractClientIp(req, '1.1.1.1')).toBe('1.1.1.1')
 })
+
+// ---------------------------------------------------------------------------
+// v0.2.1 hotfix — /api/onboarding/status bypasses auth
+// ---------------------------------------------------------------------------
+// The SPA router guard probes /api/onboarding/status BEFORE the user has a
+// chance to authenticate (so it can decide whether to render the onboarding
+// screen). With auth enabled and no cached creds, the probe was getting 401
+// and the router was bailing out, never showing onboarding.
+//
+// Status is safe to expose anonymously: it reveals only "config file missing
+// or not" + the configured path — no secrets. Writes (/seed) stay gated.
+
+async function buildOnboardingApp(overrides: { disabled?: boolean } = {}) {
+  const authStore = await createAuthStore({
+    dataDir,
+    defaultUser: 'admin',
+    envPassHash: `fake$s3cret`,
+    hash: fakeHash,
+    verify: fakeVerify,
+  })
+  const rateLimiter = createRateLimiter({ now: () => 0 })
+  const trustProxy = createTrustProxyEvaluator('')
+  const app = new Elysia()
+    .use(
+      basicAuth({
+        authStore,
+        rateLimiter,
+        trustProxy,
+        trustProxyHeader: '',
+        disabled: overrides.disabled ?? false,
+      }),
+    )
+    .get('/api/onboarding/status', () => ({ needsOnboarding: false }))
+    .post('/api/onboarding/seed', () => ({ success: true }))
+    .get('/api/onboarding/other', () => ({ other: true }))
+  return app
+}
+
+test('GET /api/onboarding/status bypasses auth (SPA router guard pre-login probe)', async () => {
+  const app = await buildOnboardingApp()
+  const r = await app.handle(new Request('http://localhost/api/onboarding/status'))
+  expect(r.status).toBe(200)
+  const body = (await r.json()) as { needsOnboarding: boolean }
+  expect(body.needsOnboarding).toBe(false)
+})
+
+test('POST /api/onboarding/seed still requires auth', async () => {
+  const app = await buildOnboardingApp()
+  const r = await app.handle(
+    new Request('http://localhost/api/onboarding/seed', { method: 'POST' }),
+  )
+  expect(r.status).toBe(401)
+})
+
+test('other /api/onboarding/* paths still require auth', async () => {
+  const app = await buildOnboardingApp()
+  const r = await app.handle(new Request('http://localhost/api/onboarding/other'))
+  expect(r.status).toBe(401)
+})
+
+test('/api/onboarding/status prefix-tricks do not bypass auth', async () => {
+  // Defense against someone sneaking a path like
+  // `/api/onboarding/status/secret` or `/api/onboarding/statusleak` past
+  // the gate via loose matching. The check is exact-match.
+  const authStore = await createAuthStore({
+    dataDir,
+    defaultUser: 'admin',
+    envPassHash: `fake$s3cret`,
+    hash: fakeHash,
+    verify: fakeVerify,
+  })
+  const rateLimiter = createRateLimiter({ now: () => 0 })
+  const trustProxy = createTrustProxyEvaluator('')
+  const app = new Elysia()
+    .use(
+      basicAuth({
+        authStore,
+        rateLimiter,
+        trustProxy,
+        trustProxyHeader: '',
+        disabled: false,
+      }),
+    )
+    .get('/api/onboarding/status/secret', () => ({ leaked: true }))
+    .get('/api/onboarding/statusleak', () => ({ leaked: true }))
+
+  const r1 = await app.handle(new Request('http://localhost/api/onboarding/status/secret'))
+  expect(r1.status).toBe(401)
+  const r2 = await app.handle(new Request('http://localhost/api/onboarding/statusleak'))
+  expect(r2.status).toBe(401)
+})

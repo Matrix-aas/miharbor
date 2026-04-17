@@ -4,6 +4,51 @@ All notable changes to Miharbor are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [semver](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] — 2026-04-17
+
+Hotfix for two v0.2.0 deploy blockers discovered during the first
+real-world rollout on a hardened mihomo router.
+
+### Fixed
+
+- **`LocalFsTransport` wrote `config.yaml` as mode 0600, breaking
+  hardened mihomo readers.** Symptom: `PUT /configs?force=true` returns
+  `400 permission denied` when mihomo runs as root but under a
+  `CapabilityBoundingSet` without `CAP_DAC_OVERRIDE`, or as any UID that
+  differs from the `bun` (UID 1000) process that Miharbor runs as inside
+  the container. Root cause: the atomic tmp-write baked mode `0o600` into
+  `open(2)`, and the follow-up `chmod` pinned it there. Resolution: the
+  public config path (`MIHARBOR_CONFIG_PATH`) now defaults to `0o644` after
+  atomic rename — group + world readable, never world-writable. Internal
+  files (`.miharbor.lock`, `snapshots/*`, `.miharbor.tmp`, draft YAMLs) keep
+  their restrictive owner-only modes. Override with the new
+  `MIHARBOR_CONFIG_WRITE_MODE` env var (decimal — e.g. `384` for `0o600`,
+  `416` for `0o640`) if you run Miharbor and mihomo under the same UID.
+- **`basicAuth` middleware blocked `/api/onboarding/status`, leaving the
+  SPA unable to decide "show onboarding or login".** Symptom: on a
+  fresh install with `MIHARBOR_AUTH_PASS_HASH` configured but no cached
+  login, the router guard probed `/api/onboarding/status`, got `401`, and
+  bailed — the operator saw a blank screen instead of the onboarding
+  wizard. Root cause: only `/health` was exempt from the auth gate.
+  Resolution: `/api/onboarding/status` is now also exempt (exact-match).
+  The endpoint is read-only and only reveals "is the mihomo config file
+  missing?" + the configured path, which is not sensitive. Write paths
+  (`POST /api/onboarding/seed`) and all other `/api/onboarding/*` routes
+  remain behind auth.
+
+### New environment variables
+
+- `MIHARBOR_CONFIG_WRITE_MODE` — POSIX mode (decimal) applied to the
+  public `config.yaml` after the atomic rename. Default `420` (`0o644`).
+
+### Tests
+
+- 638 → **644** tests. Regression tests cover both bugs plus defense
+  against prefix-matching attacks on the new auth exemption
+  (`/api/onboarding/statusleak`, `/api/onboarding/status/secret`).
+
+---
+
 ## [0.2.0] — 2026-04-17
 
 ### Added — Stage 2 (full config surface)

@@ -62,7 +62,11 @@ test('writeConfig atomically replaces the file under flock', async () => {
   expect(readFileSync(configPath, 'utf8')).toBe('mode: global\n')
 })
 
-test('writeConfig sets mode 0600 on the written file', async () => {
+test('writeConfig sets mode 0644 on the written file by default (v0.2.1 — mihomo reader compat)', async () => {
+  // Regression guard for v0.2.1 hotfix: mihomo with a hardened
+  // CapabilityBoundingSet (no CAP_DAC_OVERRIDE) or running under a different
+  // UID than Miharbor (UID 1000 `bun`) cannot read 0600 files. Default is
+  // now 0o644 — not world-writable, world-readable OK.
   const t = new LocalFsTransport({
     configPath,
     dataDir,
@@ -71,10 +75,35 @@ test('writeConfig sets mode 0600 on the written file', async () => {
   })
   await t.writeConfig('a: 1\n', lockFile)
   const mode = statSync(configPath).mode & 0o777
-  // Some Docker volume drivers reject chmod; accept 0600 or 0644 (the
-  // umask-default) but require "not world-writable".
-  expect(mode & 0o002).toBe(0)
-  expect([0o600, 0o644]).toContain(mode)
+  expect(mode & 0o002).toBe(0) // never world-writable
+  expect(mode).toBe(0o644)
+})
+
+test('writeConfig honours configWriteMode override (0o640 for same-group deployments)', async () => {
+  const t = new LocalFsTransport({
+    configPath,
+    dataDir,
+    mihomoApiUrl: 'http://x',
+    mihomoApiSecret: 's',
+    configWriteMode: 0o640,
+  })
+  await t.writeConfig('a: 1\n', lockFile)
+  const mode = statSync(configPath).mode & 0o777
+  expect(mode).toBe(0o640)
+})
+
+test('verifyAndWrite honours configWriteMode override', async () => {
+  const t = new LocalFsTransport({
+    configPath,
+    dataDir,
+    mihomoApiUrl: 'http://x',
+    mihomoApiSecret: 's',
+    configWriteMode: 0o600,
+  })
+  const before = await t.readConfig()
+  await t.verifyAndWrite('mode: global\n', lockFile, before.hash)
+  const mode = statSync(configPath).mode & 0o777
+  expect(mode).toBe(0o600)
 })
 
 test('writeConfig leaves no tmp files behind after rename', async () => {
