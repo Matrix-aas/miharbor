@@ -12,12 +12,14 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AlertTriangle, Plus, Trash2 } from 'lucide-vue-next'
-import type { Rule, Service, SimpleRule } from 'miharbor-shared'
+import type { LogicalRule, Rule, Service, SimpleRule } from 'miharbor-shared'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import RuleRow from './RuleRow.vue'
 import RuleEditor from './RuleEditor.vue'
+import LogicalRuleEditor from './LogicalRuleEditor.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
+import IssueList from '@/components/linter/IssueList.vue'
 
 interface Props {
   service: Service
@@ -28,8 +30,8 @@ interface Props {
 const props = defineProps<Props>()
 const emit = defineEmits<{
   'change-direction': [name: string, direction: 'VPN' | 'DIRECT' | 'REJECT']
-  'add-rule': [serviceName: string, rule: SimpleRule]
-  'replace-rule': [index: number, rule: SimpleRule]
+  'add-rule': [serviceName: string, rule: SimpleRule, suggestedIndex?: number]
+  'replace-rule': [index: number, rule: Rule]
   'remove-rule': [index: number]
   'delete-service': [name: string]
 }>()
@@ -39,6 +41,10 @@ const { t } = useI18n()
 const editorOpenIndex = ref<number | null>(null)
 const adderOpen = ref<boolean>(false)
 const deleteOpen = ref<boolean>(false)
+// Separate state for the logical-rule tree editor (modal, not inline).
+const logicalEditorOpen = ref<boolean>(false)
+const logicalEditorIndex = ref<number | null>(null)
+const logicalEditorInitial = ref<LogicalRule | undefined>(undefined)
 
 const effectiveDirection = computed<'VPN' | 'DIRECT' | 'REJECT' | 'MIXED'>(() => {
   const live = props.liveState[props.service.name]
@@ -64,7 +70,25 @@ function onDirection(d: 'VPN' | 'DIRECT' | 'REJECT'): void {
 
 function startEdit(index: number): void {
   adderOpen.value = false
+  // If the rule at this index is logical, open the tree-editor modal.
+  const match = props.service.rules.find((r) => r.index === index)
+  if (match && match.rule.kind === 'logical') {
+    logicalEditorInitial.value = match.rule
+    logicalEditorIndex.value = index
+    logicalEditorOpen.value = true
+    editorOpenIndex.value = null
+    return
+  }
   editorOpenIndex.value = index
+}
+
+function onSaveLogical(rule: LogicalRule): void {
+  const idx = logicalEditorIndex.value
+  logicalEditorOpen.value = false
+  logicalEditorIndex.value = null
+  logicalEditorInitial.value = undefined
+  if (idx === null) return
+  emit('replace-rule', idx, rule)
 }
 
 function openAdder(): void {
@@ -77,8 +101,8 @@ function cancelEdit(): void {
   adderOpen.value = false
 }
 
-function onSaveNew(rule: SimpleRule): void {
-  emit('add-rule', props.service.name, rule)
+function onSaveNew(rule: SimpleRule, suggestedIndex?: number): void {
+  emit('add-rule', props.service.name, rule, suggestedIndex)
   adderOpen.value = false
 }
 
@@ -173,6 +197,17 @@ function ruleKey(pair: { index: number; rule: Rule }): string {
       </p>
     </div>
 
+    <div
+      v-if="service.issues.length > 0"
+      class="border-b border-border px-4 py-3"
+      data-testid="service-issues"
+    >
+      <p class="mb-2 text-xs font-medium uppercase text-muted-foreground">
+        {{ t('services.issues_label') }}
+      </p>
+      <IssueList :issues="service.issues" />
+    </div>
+
     <div class="flex-1 space-y-2 overflow-y-auto p-4" data-testid="rules-list">
       <div v-if="service.rules.length === 0 && !adderOpen" class="text-sm text-muted-foreground">
         {{ t('services.no_rules') }}
@@ -195,7 +230,13 @@ function ruleKey(pair: { index: number; rule: Rule }): string {
         />
       </template>
 
-      <RuleEditor v-if="adderOpen" :target="service.name" @save="onSaveNew" @cancel="cancelEdit" />
+      <RuleEditor
+        v-if="adderOpen"
+        :target="service.name"
+        :existing-rules="service.rules.map((r) => r.rule)"
+        @save="onSaveNew"
+        @cancel="cancelEdit"
+      />
 
       <Button
         v-if="!adderOpen"
@@ -216,6 +257,13 @@ function ruleKey(pair: { index: number; rule: Rule }): string {
       :body="bodyForDelete()"
       :confirm-label="t('common.delete')"
       @confirm="confirmDelete"
+    />
+
+    <LogicalRuleEditor
+      v-model:open="logicalEditorOpen"
+      :initial="logicalEditorInitial"
+      :target="service.name"
+      @save="onSaveLogical"
     />
   </section>
 </template>

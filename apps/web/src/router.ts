@@ -6,7 +6,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import Services from '@/pages/Services.vue'
 import Proxies from '@/pages/Proxies.vue'
-import Placeholder from '@/pages/Placeholder.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/services' },
@@ -16,22 +15,38 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/providers',
     name: 'providers',
-    component: Placeholder,
-    props: { pageKey: 'pages.providers' },
+    // Lazy-loaded — Providers.vue pulls its subcomponent tree (ProviderList,
+    // ProviderForm, InlineRulesEditor) only when the operator actually
+    // navigates here.
+    component: () => import('@/pages/Providers.vue'),
   },
-  { path: '/dns', name: 'dns', component: Placeholder, props: { pageKey: 'pages.dns' } },
-  { path: '/tun', name: 'tun', component: Placeholder, props: { pageKey: 'pages.tun' } },
+  {
+    path: '/dns',
+    name: 'dns',
+    // Lazy-loaded — Dns.vue pulls the whole DNS subcomponent tree + forms
+    // only when the operator actually navigates here.
+    component: () => import('@/pages/Dns.vue'),
+  },
+  {
+    path: '/tun',
+    name: 'tun',
+    // Lazy-loaded — Tun.vue pulls the TUN subcomponent tree + route-exclude
+    // cross-reference only when the operator actually navigates here.
+    component: () => import('@/pages/Tun.vue'),
+  },
   {
     path: '/sniffer',
     name: 'sniffer',
-    component: Placeholder,
-    props: { pageKey: 'pages.sniffer' },
+    // Lazy-loaded — Sniffer.vue pulls its subcomponent tree only when the
+    // operator actually navigates here.
+    component: () => import('@/pages/Sniffer.vue'),
   },
   {
     path: '/profile',
     name: 'profile',
-    component: Placeholder,
-    props: { pageKey: 'pages.profile' },
+    // Lazy-loaded — Profile.vue pulls its subcomponent tree (auth dialog,
+    // form sections) only when the operator actually navigates here.
+    component: () => import('@/pages/Profile.vue'),
   },
   {
     path: '/raw-yaml',

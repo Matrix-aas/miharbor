@@ -22,7 +22,21 @@ import {
   YAMLMap,
   YAMLSeq,
 } from 'yaml'
-import { type ProxyNode, type Rule, serializeRule, type WireGuardNode } from 'miharbor-shared'
+import {
+  type DnsConfig,
+  type ProfileConfig,
+  type ProfileNested,
+  type ProxyNode,
+  type Rule,
+  type RuleProviderConfig,
+  type RuleProvidersConfig,
+  serializeRule,
+  type SnifferConfig,
+  type SnifferProtocol,
+  type SnifferProtocolConfig,
+  type TunConfig,
+  type WireGuardNode,
+} from 'miharbor-shared'
 
 /** Parse YAML text. Surfaces parse errors as a thrown Error with a flattened
  *  human-readable message (to keep the editor stores small). */
@@ -321,6 +335,408 @@ export function listProxyNodeNames(doc: Document): string[] {
  *  the SFC. */
 export function isWireGuardNode(node: ProxyNode): node is WireGuardNode {
   return node.type === 'wireguard'
+}
+
+// ----- dns: section mutators ---------------------------------------------
+
+/** The canonical key order Miharbor writes out; keys not in this list come
+ *  from `extras` and are appended after the known ones. */
+const DNS_KEY_ORDER: readonly string[] = [
+  'enable',
+  'listen',
+  'ipv6',
+  'cache-algorithm',
+  'enhanced-mode',
+  'fake-ip-range',
+  'use-hosts',
+  'use-system-hosts',
+  'respect-rules',
+  'direct-nameserver-follow-policy',
+  'default-nameserver',
+  'nameserver',
+  'fallback',
+  'fallback-filter',
+  'proxy-server-nameserver',
+  'direct-nameserver',
+  'nameserver-policy',
+  'fake-ip-filter-mode',
+  'fake-ip-filter',
+]
+
+/** Replace the entire `dns:` section with `config`. Unknown keys on
+ *  `config.extras` are preserved (appended at the end). Callers should pass a
+ *  freshly-merged object; this writes, it does not merge. */
+export function setDnsConfig(doc: Document, config: DnsConfig): void {
+  const raw: Record<string, unknown> = {}
+  // Copy known keys in canonical order.
+  for (const k of DNS_KEY_ORDER) {
+    const v = (config as Record<string, unknown>)[k]
+    if (v === undefined) continue
+    raw[k] = v
+  }
+  // Extras go at the end, sorted for determinism.
+  if (config.extras) {
+    const extraKeys = Object.keys(config.extras).sort()
+    for (const k of extraKeys) {
+      raw[k] = config.extras[k]
+    }
+  }
+  if (Object.keys(raw).length === 0) {
+    // Empty config — remove the section entirely rather than emitting `dns: {}`.
+    doc.deleteIn(['dns'])
+    return
+  }
+  const node = doc.createNode(raw)
+  doc.setIn(['dns'], node)
+}
+
+// ----- tun: section mutators ---------------------------------------------
+
+/** Canonical order for `tun:` keys. Matches mihomo's conventional ordering
+ *  (enable/device/stack first, then routing flags, then address/interface
+ *  bindings, finally list fields). Keys not in this list come from `extras`
+ *  and are appended after the known ones. */
+const TUN_KEY_ORDER: readonly string[] = [
+  'enable',
+  'device',
+  'stack',
+  'mtu',
+  'auto-route',
+  'auto-redirect',
+  'auto-detect-interface',
+  'strict-route',
+  'interface-name',
+  'endpoint-independent-nat',
+  'inet4-address',
+  'inet6-address',
+  'dns-hijack',
+  'route-address',
+  'route-exclude-address',
+  'exclude-interface',
+]
+
+/** Replace the entire `tun:` section with `config`. Unknown keys on
+ *  `config.extras` are preserved (appended at the end). Callers should pass a
+ *  freshly-merged object; this writes, it does not merge. */
+export function setTunConfig(doc: Document, config: TunConfig): void {
+  const raw: Record<string, unknown> = {}
+  for (const k of TUN_KEY_ORDER) {
+    const v = (config as Record<string, unknown>)[k]
+    if (v === undefined) continue
+    raw[k] = v
+  }
+  if (config.extras) {
+    const extraKeys = Object.keys(config.extras).sort()
+    for (const k of extraKeys) {
+      raw[k] = config.extras[k]
+    }
+  }
+  if (Object.keys(raw).length === 0) {
+    doc.deleteIn(['tun'])
+    return
+  }
+  const node = doc.createNode(raw)
+  doc.setIn(['tun'], node)
+}
+
+// ----- sniffer: section mutators -----------------------------------------
+
+/** Canonical order for `sniffer:` keys. Roughly matches mihomo's example
+ *  docs — enable/override first, then parse-pure-ip, then the nested sniff
+ *  map, then domain lists, then dns-mapping, then port-whitelist. */
+const SNIFFER_KEY_ORDER: readonly string[] = [
+  'enable',
+  'override-destination',
+  'parse-pure-ip',
+  'force-dns-mapping',
+  'sniff',
+  'force-domain',
+  'skip-domain',
+  'port-whitelist',
+]
+
+const SNIFFER_PROTOCOL_ORDER: readonly SnifferProtocol[] = ['HTTP', 'TLS', 'QUIC']
+const SNIFFER_PROTOCOL_KEY_ORDER: readonly string[] = ['ports', 'override-destination']
+
+function buildProtocolConfig(cfg: SnifferProtocolConfig): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const k of SNIFFER_PROTOCOL_KEY_ORDER) {
+    const v = (cfg as Record<string, unknown>)[k]
+    if (v === undefined) continue
+    out[k] = v
+  }
+  if (cfg.extras) {
+    const extraKeys = Object.keys(cfg.extras).sort()
+    for (const k of extraKeys) {
+      out[k] = cfg.extras[k]
+    }
+  }
+  return out
+}
+
+function buildSniffMap(sniff: NonNullable<SnifferConfig['sniff']>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const proto of SNIFFER_PROTOCOL_ORDER) {
+    const p = sniff[proto]
+    if (p === undefined) continue
+    out[proto] = buildProtocolConfig(p)
+  }
+  if (sniff.extras) {
+    const extraKeys = Object.keys(sniff.extras).sort()
+    for (const k of extraKeys) {
+      out[k] = sniff.extras[k]
+    }
+  }
+  return out
+}
+
+/** Replace the entire `sniffer:` section with `config`. Unknown keys on
+ *  `config.extras` (and per-protocol `extras`) are preserved. Callers pass a
+ *  freshly-merged object; this writes, it does not merge. */
+export function setSnifferConfig(doc: Document, config: SnifferConfig): void {
+  const raw: Record<string, unknown> = {}
+  for (const k of SNIFFER_KEY_ORDER) {
+    if (k === 'sniff') {
+      if (config.sniff !== undefined) raw.sniff = buildSniffMap(config.sniff)
+      continue
+    }
+    const v = (config as Record<string, unknown>)[k]
+    if (v === undefined) continue
+    raw[k] = v
+  }
+  if (config.extras) {
+    const extraKeys = Object.keys(config.extras).sort()
+    for (const k of extraKeys) {
+      raw[k] = config.extras[k]
+    }
+  }
+  if (Object.keys(raw).length === 0) {
+    doc.deleteIn(['sniffer'])
+    return
+  }
+  const node = doc.createNode(raw)
+  doc.setIn(['sniffer'], node)
+}
+
+// ----- profile: top-level scalars mutator --------------------------------
+
+/** Canonical ordering for the top-level scalar keys Miharbor's profile view
+ *  owns. When a key is NEW to the document (wasn't present before) the
+ *  mutator appends it in this order AFTER the last existing known key (or
+ *  at the top of the doc when none of the known keys existed). Keys that
+ *  already exist keep their original position — we only rewrite their
+ *  values in place. */
+const PROFILE_KEY_ORDER: readonly string[] = [
+  'mode',
+  'log-level',
+  'mixed-port',
+  'allow-lan',
+  'bind-address',
+  'ipv6',
+  'tcp-concurrent',
+  'unified-delay',
+  'geodata-mode',
+  'geo-auto-update',
+  'geo-update-interval',
+  'keep-alive-interval',
+  'find-process-mode',
+  'global-client-fingerprint',
+  'external-controller',
+  'secret',
+  'external-ui',
+  'external-ui-name',
+  'external-ui-url',
+  'authentication',
+  'profile',
+]
+
+/** Nested `profile:` sub-section key order. */
+const PROFILE_NESTED_KEY_ORDER: readonly string[] = ['store-selected', 'store-fake-ip']
+
+const PROFILE_MANAGED_KEYS: ReadonlySet<string> = new Set(PROFILE_KEY_ORDER)
+
+function buildProfileNested(cfg: ProfileNested): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const k of PROFILE_NESTED_KEY_ORDER) {
+    const v = (cfg as Record<string, unknown>)[k]
+    if (v === undefined) continue
+    out[k] = v
+  }
+  if (cfg.extras) {
+    const extraKeys = Object.keys(cfg.extras).sort()
+    for (const k of extraKeys) {
+      out[k] = cfg.extras[k]
+    }
+  }
+  return out
+}
+
+/** Replace the top-level profile fields in `doc` with the values from
+ *  `config`. Unknown keys on `config.extras` are preserved (appended after
+ *  the managed keys, sorted). Reserved sections (dns/tun/sniffer/rules/…)
+ *  are never touched — this mutator only edits the keys declared in
+ *  `PROFILE_KEY_ORDER` plus any `extras` the operator already had.
+ *
+ *  Keys already present in the document keep their original position so the
+ *  operator's YAML layout is preserved. Keys NEW to the document are
+ *  appended in `PROFILE_KEY_ORDER`. */
+export function setProfileConfig(doc: Document, config: ProfileConfig): void {
+  const root = doc.contents
+  if (!root || !isMap(root as Node)) {
+    // Doc has no mapping at the root — bootstrap one.
+    const node = doc.createNode({}) as YAMLMap
+    doc.contents = node
+  }
+  const rootMap = doc.contents as YAMLMap
+
+  // 1. Update or remove every managed scalar key.
+  const managed = new Map<string, unknown>()
+  for (const k of PROFILE_KEY_ORDER) {
+    const v = (config as Record<string, unknown>)[k]
+    if (k === 'profile') {
+      // Nested sub-section: emitted only when the sub-config is non-empty.
+      const nested = config.profile
+      if (
+        nested &&
+        (nested['store-selected'] !== undefined ||
+          nested['store-fake-ip'] !== undefined ||
+          (nested.extras && Object.keys(nested.extras).length > 0))
+      ) {
+        managed.set('profile', buildProfileNested(nested))
+      }
+      continue
+    }
+    if (k === 'authentication') {
+      const auth = config.authentication
+      if (auth && auth.length > 0) managed.set('authentication', auth)
+      continue
+    }
+    if (v === undefined) continue
+    managed.set(k, v)
+  }
+  // Unknown extras (sorted for determinism).
+  if (config.extras) {
+    for (const k of Object.keys(config.extras).sort()) {
+      managed.set(k, config.extras[k])
+    }
+  }
+
+  // 2. Remove managed keys that are no longer present.
+  const toRemove: string[] = []
+  for (const item of rootMap.items) {
+    if (!(item instanceof Pair)) continue
+    const keyNode = item.key as Scalar | { value?: unknown }
+    const key =
+      keyNode instanceof Scalar
+        ? String(keyNode.value)
+        : String((keyNode as { value?: unknown }).value ?? '')
+    if (!key) continue
+    // Only remove keys we manage — leave nested sections (dns/tun/…) alone.
+    if (
+      !PROFILE_MANAGED_KEYS.has(key) &&
+      !(config.extras && Object.prototype.hasOwnProperty.call(config.extras, key))
+    ) {
+      // Skip — not managed.
+      continue
+    }
+    if (!managed.has(key)) toRemove.push(key)
+  }
+  for (const k of toRemove) {
+    rootMap.delete(k)
+  }
+
+  // 3. Update existing keys in place, and append newly-added ones at the end.
+  for (const [k, v] of managed) {
+    if (rootMap.has(k)) {
+      rootMap.set(k, doc.createNode(v))
+    } else {
+      // New key — append. The YAMLMap preserves insertion order, so we just
+      // add with .set(). (Canonical order is advisory when the original doc
+      // is brand-new; existing docs keep their layout.)
+      rootMap.set(k, doc.createNode(v))
+    }
+  }
+}
+
+// ----- rule-providers: section mutators ----------------------------------
+
+/** Canonical per-provider key order. Matches the typical mihomo example
+ *  layout: type/behavior/format first, then transport-specific fields. The
+ *  specific key subset written depends on `type` — for http we emit
+ *  url/interval/proxy; for file just path; for inline the payload. */
+const PROVIDER_KEY_ORDER: readonly (keyof RuleProviderConfig)[] = [
+  'type',
+  'behavior',
+  'format',
+  'url',
+  'interval',
+  'proxy',
+  'path',
+  'payload',
+]
+
+function buildProviderMap(cfg: RuleProviderConfig): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const k of PROVIDER_KEY_ORDER) {
+    const v = cfg[k]
+    if (v === undefined) continue
+    out[k] = v
+  }
+  if (cfg.extras) {
+    const extraKeys = Object.keys(cfg.extras).sort()
+    for (const k of extraKeys) {
+      out[k] = cfg.extras[k]
+    }
+  }
+  return out
+}
+
+/** Replace the entire `rule-providers:` section with `config`. Providers are
+ *  written in the insertion order of `config.providers`; top-level extras
+ *  (malformed entries round-tripped from the view projection) are appended
+ *  after, sorted by key for determinism. An empty config removes the
+ *  section entirely rather than emitting `rule-providers: {}`. */
+export function setProvidersConfig(doc: Document, config: RuleProvidersConfig): void {
+  const raw: Record<string, unknown> = {}
+  if (config.providers) {
+    for (const [name, cfg] of Object.entries(config.providers)) {
+      raw[name] = buildProviderMap(cfg)
+    }
+  }
+  if (config.extras) {
+    const extraKeys = Object.keys(config.extras).sort()
+    for (const k of extraKeys) {
+      // Don't overwrite a real provider with an extras entry of the same
+      // name — defensive, shouldn't happen on normal round-trip because
+      // the projection never emits a name to both buckets.
+      if (k in raw) continue
+      raw[k] = config.extras[k]
+    }
+  }
+  if (Object.keys(raw).length === 0) {
+    doc.deleteIn(['rule-providers'])
+    return
+  }
+  const node = doc.createNode(raw)
+  doc.setIn(['rule-providers'], node)
+}
+
+/** Collect proxy-server IPs from the current doc. Used by the Tun page to
+ *  cross-reference `route-exclude-address` against every server that would
+ *  otherwise self-intercept. Returns bare IPs (no /32 suffix) for each proxy
+ *  entry that has a resolvable `server:` key. */
+export function listProxyServerIps(doc: Document): string[] {
+  const seq = getProxiesSeq(doc)
+  if (!seq) return []
+  const out: string[] = []
+  for (const item of seq.items) {
+    if (!isMap(item as Node)) continue
+    const server = (item as YAMLMap).get('server')
+    if (typeof server === 'string' && server.trim().length > 0) {
+      out.push(server.trim())
+    }
+  }
+  return out
 }
 
 // ----- low-level re-exports ------------------------------------------------

@@ -10,7 +10,7 @@
 //   * Validation is intentionally minimal — the server linter provides the
 //     authoritative check; we just surface obvious omissions locally.
 
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AlertTriangle, ChevronDown, ChevronRight, Eye, EyeOff } from 'lucide-vue-next'
 import type { WireGuardNode } from 'miharbor-shared'
@@ -173,46 +173,64 @@ const awgKeys: Array<keyof typeof awg.value> = [
   'h3',
   'h4',
 ]
+
+// Stable per-instance id prefix so <label for> / <input id> pairs line up
+// for screen readers. Vue 3.5 `useId` returns an SSR-safe unique string.
+const uid = useId()
+const ids = {
+  name: `${uid}-name`,
+  server: `${uid}-server`,
+  port: `${uid}-port`,
+  ip: `${uid}-ip`,
+  privateKey: `${uid}-pk`,
+  publicKey: `${uid}-pub`,
+  preSharedKey: `${uid}-psk`,
+  dns: `${uid}-dns`,
+  allowedIps: `${uid}-allowed`,
+  keepalive: `${uid}-keep`,
+  udp: `${uid}-udp`,
+}
 </script>
 
 <template>
   <form class="space-y-4" data-testid="wireguard-form" @submit.prevent="onSubmit">
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
       <div>
-        <label class="mb-1 block text-xs font-medium text-muted-foreground">
+        <label :for="ids.name" class="mb-1 block text-xs font-medium text-muted-foreground">
           {{ t('proxies.wireguard.name') }}
         </label>
-        <Input v-model="name" :disabled="editing" class="h-9" />
+        <Input :id="ids.name" v-model="name" :disabled="editing" class="h-9" />
         <p v-if="nameError && name.length > 0" class="mt-1 text-xs text-destructive">
           {{ nameError }}
         </p>
       </div>
       <div>
-        <label class="mb-1 block text-xs font-medium text-muted-foreground">
+        <label :for="ids.server" class="mb-1 block text-xs font-medium text-muted-foreground">
           {{ t('proxies.wireguard.server') }}
         </label>
-        <Input v-model="server" class="h-9" />
+        <Input :id="ids.server" v-model="server" class="h-9" />
       </div>
       <div>
-        <label class="mb-1 block text-xs font-medium text-muted-foreground">
+        <label :for="ids.port" class="mb-1 block text-xs font-medium text-muted-foreground">
           {{ t('proxies.wireguard.port') }}
         </label>
-        <Input v-model.number="port" type="number" class="h-9" />
+        <Input :id="ids.port" v-model.number="port" type="number" class="h-9" />
       </div>
       <div>
-        <label class="mb-1 block text-xs font-medium text-muted-foreground">
+        <label :for="ids.ip" class="mb-1 block text-xs font-medium text-muted-foreground">
           {{ t('proxies.wireguard.ip') }}
         </label>
-        <Input v-model="ip" class="h-9 font-mono" />
+        <Input :id="ids.ip" v-model="ip" class="h-9 font-mono" />
       </div>
     </div>
 
     <div>
-      <label class="mb-1 block text-xs font-medium text-muted-foreground">
+      <label :for="ids.privateKey" class="mb-1 block text-xs font-medium text-muted-foreground">
         {{ t('proxies.wireguard.private_key') }}
       </label>
       <div class="flex gap-2">
         <Input
+          :id="ids.privateKey"
           v-model="privateKey"
           :type="showPrivate ? 'text' : 'password'"
           class="h-9 font-mono"
@@ -224,6 +242,7 @@ const awgKeys: Array<keyof typeof awg.value> = [
           size="icon"
           class="h-9 w-9"
           :title="showPrivate ? t('common.hide') : t('common.show')"
+          :aria-label="showPrivate ? t('common.hide') : t('common.show')"
           @click="showPrivate = !showPrivate"
         >
           <component :is="showPrivate ? EyeOff : Eye" class="h-4 w-4" />
@@ -235,27 +254,33 @@ const awgKeys: Array<keyof typeof awg.value> = [
     </div>
 
     <div>
-      <label class="mb-1 block text-xs font-medium text-muted-foreground">
+      <label :for="ids.publicKey" class="mb-1 block text-xs font-medium text-muted-foreground">
         {{ t('proxies.wireguard.public_key') }}
       </label>
-      <Input v-model="publicKey" class="h-9 font-mono" />
+      <Input :id="ids.publicKey" v-model="publicKey" class="h-9 font-mono" />
       <p v-if="publicKeyError && publicKey.length > 0" class="mt-1 text-xs text-destructive">
         {{ publicKeyError }}
       </p>
     </div>
 
     <div>
-      <label class="mb-1 block text-xs font-medium text-muted-foreground">
+      <label :for="ids.preSharedKey" class="mb-1 block text-xs font-medium text-muted-foreground">
         {{ t('proxies.wireguard.pre_shared_key') }}
       </label>
       <div class="flex gap-2">
-        <Input v-model="preSharedKey" :type="showPsk ? 'text' : 'password'" class="h-9 font-mono" />
+        <Input
+          :id="ids.preSharedKey"
+          v-model="preSharedKey"
+          :type="showPsk ? 'text' : 'password'"
+          class="h-9 font-mono"
+        />
         <Button
           type="button"
           variant="outline"
           size="icon"
           class="h-9 w-9"
           :title="showPsk ? t('common.hide') : t('common.show')"
+          :aria-label="showPsk ? t('common.hide') : t('common.show')"
           @click="showPsk = !showPsk"
         >
           <component :is="showPsk ? EyeOff : Eye" class="h-4 w-4" />
@@ -265,20 +290,22 @@ const awgKeys: Array<keyof typeof awg.value> = [
 
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
       <div>
-        <label class="mb-1 block text-xs font-medium text-muted-foreground">
+        <label :for="ids.dns" class="mb-1 block text-xs font-medium text-muted-foreground">
           {{ t('proxies.wireguard.dns') }}
         </label>
         <textarea
+          :id="ids.dns"
           v-model="dns"
           rows="3"
           class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
         />
       </div>
       <div>
-        <label class="mb-1 block text-xs font-medium text-muted-foreground">
+        <label :for="ids.allowedIps" class="mb-1 block text-xs font-medium text-muted-foreground">
           {{ t('proxies.wireguard.allowed_ips') }}
         </label>
         <textarea
+          :id="ids.allowedIps"
           v-model="allowedIps"
           rows="3"
           class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
@@ -288,16 +315,17 @@ const awgKeys: Array<keyof typeof awg.value> = [
 
     <div class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto]">
       <div>
-        <label class="mb-1 block text-xs font-medium text-muted-foreground">
+        <label :for="ids.keepalive" class="mb-1 block text-xs font-medium text-muted-foreground">
           {{ t('proxies.wireguard.persistent_keepalive') }}
         </label>
-        <Input v-model.number="keepalive" type="number" class="h-9" />
+        <Input :id="ids.keepalive" v-model.number="keepalive" type="number" class="h-9" />
       </div>
       <div class="flex items-end">
         <label
+          :for="ids.udp"
           class="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <input type="checkbox" v-model="udp" class="h-4 w-4" />
+          <input :id="ids.udp" v-model="udp" type="checkbox" class="h-4 w-4" />
           {{ t('proxies.wireguard.udp') }}
         </label>
       </div>
@@ -322,8 +350,13 @@ const awgKeys: Array<keyof typeof awg.value> = [
         </p>
         <div class="grid grid-cols-3 gap-2">
           <div v-for="k in awgKeys" :key="k">
-            <label class="mb-1 block text-[10px] uppercase text-muted-foreground">{{ k }}</label>
+            <label
+              :for="`${uid}-awg-${k}`"
+              class="mb-1 block text-[10px] uppercase text-muted-foreground"
+              >{{ k }}</label
+            >
             <Input
+              :id="`${uid}-awg-${k}`"
               :model-value="awg[k] ?? ''"
               type="number"
               class="h-9"

@@ -18,51 +18,63 @@
 
 import { Elysia, t } from 'elysia'
 import { parseDocument } from 'yaml'
-import { runSharedLinters } from 'miharbor-shared'
+import { runSharedLinters, type UserInvariant } from 'miharbor-shared'
 
-export const lintRoutes = new Elysia({ prefix: '/api/lint' })
-  .onError(({ code, error, set }) => {
-    if (code === 'VALIDATION') {
-      set.status = 400
-      const message = error instanceof Error ? error.message : String(error)
-      return {
-        code: 'BAD_REQUEST',
-        errors: [{ message: message || 'Invalid request body' }],
+/** Optional dependency: a getter returning the current list of user
+ *  invariants. When absent, the linter runs with the universal catalogue
+ *  only. The getter form lets server-bootstrap hand a live reference to a
+ *  state object whose `.current` field is updated by the /api/invariants
+ *  route without re-constructing the route. */
+export interface LintRoutesDeps {
+  userInvariants?: () => UserInvariant[]
+}
+
+export function lintRoutes(deps: LintRoutesDeps = {}) {
+  return new Elysia({ prefix: '/api/lint' })
+    .onError(({ code, error, set }) => {
+      if (code === 'VALIDATION') {
+        set.status = 400
+        const message = error instanceof Error ? error.message : String(error)
+        return {
+          code: 'BAD_REQUEST',
+          errors: [{ message: message || 'Invalid request body' }],
+        }
       }
-    }
-    // Other error codes (NOT_FOUND, PARSE, INTERNAL_SERVER_ERROR, …) bubble
-    // up to Elysia's default handler — we only intercept schema validation.
-    return undefined
-  })
-  .post(
-    '/',
-    ({ body, set }) => {
-      try {
-        const doc = parseDocument(body.yaml, { prettyErrors: true })
-        if (doc.errors.length > 0) {
+      // Other error codes (NOT_FOUND, PARSE, INTERNAL_SERVER_ERROR, …) bubble
+      // up to Elysia's default handler — we only intercept schema validation.
+      return undefined
+    })
+    .post(
+      '/',
+      ({ body, set }) => {
+        try {
+          const doc = parseDocument(body.yaml, { prettyErrors: true })
+          if (doc.errors.length > 0) {
+            set.status = 400
+            return {
+              code: 'YAML_PARSE_ERROR',
+              errors: doc.errors.map((e) => {
+                const linePos = e.linePos?.[0]
+                return {
+                  message: e.message,
+                  line: linePos?.line,
+                  col: linePos?.col,
+                }
+              }),
+            }
+          }
+          const userInvariants = deps.userInvariants ? deps.userInvariants() : []
+          return { issues: runSharedLinters(doc, { userInvariants }) }
+        } catch (e) {
+          // Covers anything the parser throws synchronously — usually a malformed
+          // document that skipped the `errors` array (rare). Fall back to 400.
           set.status = 400
           return {
             code: 'YAML_PARSE_ERROR',
-            errors: doc.errors.map((e) => {
-              const linePos = e.linePos?.[0]
-              return {
-                message: e.message,
-                line: linePos?.line,
-                col: linePos?.col,
-              }
-            }),
+            message: e instanceof Error ? e.message : String(e),
           }
         }
-        return { issues: runSharedLinters(doc) }
-      } catch (e) {
-        // Covers anything the parser throws synchronously — usually a malformed
-        // document that skipped the `errors` array (rare). Fall back to 400.
-        set.status = 400
-        return {
-          code: 'YAML_PARSE_ERROR',
-          message: e instanceof Error ? e.message : String(e),
-        }
-      }
-    },
-    { body: t.Object({ yaml: t.String() }) },
-  )
+      },
+      { body: t.Object({ yaml: t.String() }) },
+    )
+}

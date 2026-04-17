@@ -73,7 +73,7 @@ function editDisabled(node: ProxyNode): boolean {
     </div>
 
     <div class="rounded-md border border-border">
-      <ul class="divide-y divide-border" role="list" data-testid="proxy-list">
+      <ul class="divide-y divide-border" data-testid="proxy-list">
         <li v-for="p in filtered" :key="p.name" class="flex items-center gap-3 px-3 py-2">
           <Badge variant="outline" class="shrink-0 text-[10px]">{{ typeLabel(p.type) }}</Badge>
           <div class="min-w-0 flex-1">

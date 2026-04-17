@@ -186,6 +186,44 @@ test('refreshProvider uses PUT /providers/proxies/:name', async () => {
   expect(mock.received[0]!.path).toBe('/providers/proxies/my-provider')
 })
 
+test('listRuleProviders returns raw JSON from /providers/rules', async () => {
+  mock.stop()
+  mock = startMockServer({
+    '/providers/rules': () =>
+      new Response(
+        JSON.stringify({
+          providers: {
+            adblock: { behavior: 'domain', updatedAt: '2026-04-01T00:00:00Z' },
+          },
+        }),
+      ),
+  })
+  const api = createMihomoApi({ baseUrl: mock.baseUrl, secret: 's' })
+  const out = await api.listRuleProviders()
+  expect(out).toHaveProperty('providers')
+})
+
+test('refreshRuleProvider uses PUT /providers/rules/:name', async () => {
+  mock.stop()
+  mock = startMockServer({
+    'PUT /providers/rules/adblock': () => new Response(null, { status: 204 }),
+  })
+  const api = createMihomoApi({ baseUrl: mock.baseUrl, secret: 's' })
+  await api.refreshRuleProvider('adblock')
+  expect(mock.received[0]!.method).toBe('PUT')
+  expect(mock.received[0]!.path).toBe('/providers/rules/adblock')
+})
+
+test('refreshRuleProvider escapes names with special chars', async () => {
+  mock.stop()
+  mock = startMockServer({
+    'PUT /providers/rules/ads%20list': () => new Response(null, { status: 204 }),
+  })
+  const api = createMihomoApi({ baseUrl: mock.baseUrl, secret: 's' })
+  await api.refreshRuleProvider('ads list')
+  expect(mock.received[0]!.path).toBe('/providers/rules/ads%20list')
+})
+
 test('listRules extracts the rules array', async () => {
   mock.stop()
   mock = startMockServer({

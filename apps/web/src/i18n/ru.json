@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Miharbor",
-    "tagline": "панель управления mihomo"
+    "tagline": "панель управления mihomo",
+    "skip_to_main": "Перейти к основному содержимому"
   },
   "common": {
     "loading": "Загрузка…",
@@ -45,15 +46,15 @@
     "canonicalized": "Конфиг канонизирован"
   },
   "sidebar": {
-    "routing": "Роутинг",
-    "infra": "Инфра",
+    "routing": "Маршрутизация",
+    "infra": "Инфраструктура",
     "advanced": "Продвинутое",
     "services": "Сервисы",
-    "proxies": "Прокси-ноды",
-    "providers": "Rule-providers",
+    "proxies": "Узлы прокси",
+    "providers": "Поставщики правил",
     "dns": "DNS",
     "tun": "TUN",
-    "sniffer": "Sniffer",
+    "sniffer": "Сниффер",
     "profile": "Профиль",
     "raw_yaml": "Raw YAML",
     "history": "История",
@@ -99,7 +100,7 @@
     "rule_count": "нет правил | {count} правило | {count} правила | {count} правил",
     "delete_service": "Удалить сервис",
     "delete_confirm_title": "Удалить сервис «{name}»?",
-    "delete_confirm_body": "Также будет удалено {count} связанное правило. | Также будут удалены {count} связанных правила. | Также будет удалено {count} связанных правил.",
+    "delete_confirm_body": "Будет удалено {count} связанное правило. | Будут удалены {count} связанных правила. | Будут удалены {count} связанных правил.",
     "delete_confirm_body_none": "С сервисом не связано ни одного правила.",
     "direction_label": "Направление",
     "direction_vpn": "VPN",
@@ -119,6 +120,13 @@
       "name_invalid": "Используйте буквы, цифры, дефис, подчёркивание.",
       "direction_label": "Направление",
       "create": "Создать"
+    },
+    "templates": {
+      "suggestions_label": "Предложения:",
+      "list_aria": "Подсказки шаблонов сервисов",
+      "use_template_aria": "Использовать шаблон {name} ({rules} правил)",
+      "rule_count": "{count} правило | {count} правила | {count} правил",
+      "picked_note": "Шаблон выбран — будет добавлено {count} правило. | Шаблон выбран — будут добавлены {count} правила. | Шаблон выбран — будут добавлены {count} правил."
     }
   },
   "rules": {
@@ -129,12 +137,31 @@
     "modifiers_placeholder": "no-resolve, src",
     "save": "Сохранить",
     "cancel": "Отмена",
-    "edit": "Редактировать правило",
-    "delete": "Удалить правило",
+    "edit": "Редактировать",
+    "delete": "Удалить",
     "complex": {
       "badge": "Сложное правило",
-      "tooltip": "Редактируй в Raw YAML — tree-editor появится на этапе 2.",
+      "tooltip": "Откройте дерево, чтобы изменить структуру AND/OR/NOT.",
       "match": "MATCH (catch-all)"
+    },
+    "tree": {
+      "title": "Редактор логического правила",
+      "description": "Визуальное редактирование групп AND / OR / NOT и их условий.",
+      "target_label": "Куда",
+      "add_condition": "Добавить условие",
+      "add_and": "Добавить группу AND",
+      "add_or": "Добавить группу OR",
+      "add_not": "Добавить группу NOT",
+      "remove_node": "Удалить узел",
+      "move_up": "Выше",
+      "move_down": "Ниже",
+      "group_label": "Группа {op}, {count} элемент | Группа {op}, {count} элемента | Группа {op}, {count} элементов",
+      "max_depth": "Достигнут максимум вложенности (5).",
+      "empty_group": "Группа пуста — добавьте ребёнка или удалите группу.",
+      "empty_not_child": "NOT требует ровно один элемент.",
+      "too_many_not_children": "NOT принимает только один элемент — удалите лишние.",
+      "invalid_tree": "Исправьте подсвеченные поля перед сохранением.",
+      "no_children": "Пока нет условий — добавьте первое ниже."
     },
     "validation": {
       "empty": "Значение обязательно.",
@@ -144,6 +171,17 @@
       "cidr_v4": "Некорректный IPv4 CIDR (например, 10.0.0.0/8).",
       "cidr_v6": "Некорректный IPv6 CIDR.",
       "port": "Некорректный порт или диапазон портов."
+    },
+    "placement": {
+      "suggested": "Рекомендуемое место",
+      "after_rule": "после правила #{index}",
+      "override_checkbox": "Добавить в конец",
+      "reason_ads": "Группирует блокировку рекламы в начало",
+      "reason_private": "Группирует локальные IP и домены",
+      "reason_ru": "Группирует русские домены и гео-правила",
+      "reason_services": "Группирует сервисы и прокси-правила",
+      "reason_match": "MATCH всегда последнее правило",
+      "reason_empty": "Первое правило в пустом списке"
     }
   },
   "proxies": {
@@ -174,22 +212,22 @@
       "hysteria2": "Hysteria2"
     },
     "wireguard": {
-      "title": "WireGuard нода",
+      "title": "Узел WireGuard",
       "name": "Имя",
       "server": "Сервер",
       "port": "Порт",
-      "ip": "IP в туннеле",
-      "private_key": "Private key",
-      "public_key": "Public key",
-      "pre_shared_key": "Pre-shared key (опционально)",
-      "dns": "DNS-серверы (по одному на строку)",
-      "allowed_ips": "Allowed IPs (по одному на строку)",
+      "ip": "IP туннеля",
+      "private_key": "Приватный ключ",
+      "public_key": "Публичный ключ",
+      "pre_shared_key": "Общий ключ (опционально)",
+      "dns": "DNS-серверы (один на строку)",
+      "allowed_ips": "Разрешённые IP (один на строку)",
       "persistent_keepalive": "Persistent keepalive",
       "udp": "UDP",
-      "amnezia_section": "Обфускация Amnezia-WG",
-      "amnezia_hint": "Значения ДОЛЖНЫ совпадать с .awg-params сервера. Оставь пустым — обфускация не включится.",
-      "save": "Сохранить ноду",
-      "name_taken": "Прокси с таким именем уже есть.",
+      "amnezia_section": "Obfuscation Amnezia-WG",
+      "amnezia_hint": "Значения ДОЛЖНЫ совпадать с .awg-params сервера. Оставьте пусто, чтобы отключить obfuscation.",
+      "save": "Сохранить узел",
+      "name_taken": "Узел с таким именем уже существует.",
       "name_required": "Имя обязательно.",
       "key_invalid": "Некорректный WireGuard-ключ (base64, ≥40 символов)."
     }
@@ -198,7 +236,18 @@
     "read_only": "Только чтение",
     "copy": "Скопировать",
     "copied": "Скопировано!",
-    "copy_failed": "Ошибка"
+    "copy_failed": "Ошибка",
+    "mode_view": "Просмотр",
+    "mode_edit": "Редактирование",
+    "apply": "Применить",
+    "dirty": "Есть изменения",
+    "discard_confirm": "Отменить несохранённые изменения YAML?",
+    "parse_error_title": "Ошибка разбора YAML",
+    "parse_error_line": "Строка {line}, колонка {col}:",
+    "parse_error_generic": "YAML не удалось разобрать.",
+    "invalid_banner_title": "Raw YAML невалиден",
+    "invalid_banner_body": "Исправьте YAML, чтобы снова включить структурное редактирование.",
+    "invalid_banner_link": "Открыть Raw YAML"
   },
   "history": {
     "title": "История",
@@ -208,18 +257,18 @@
     "filter_rollback": "Откат",
     "filter_auto_rollback": "Авто-откат",
     "filter_canonicalization": "Канонизация",
-    "applied_by": "источник: {by}",
-    "snapshot_id": "Снапшот {id}",
+    "applied_by": "применил {by}",
+    "snapshot_id": "Снимок {id}",
     "ip": "с {ip}",
     "diff_summary": "+{added} / -{removed}",
     "empty": "Снапшотов пока нет.",
     "loading": "Загрузка снапшотов…",
     "open": "Показать diff",
-    "rollback": "Откатиться на этот снапшот",
+    "rollback": "Откатиться к этому снимку",
     "rollback_confirm_title": "Откатить конфиг?",
-    "rollback_confirm_body": "Live-конфиг будет перезаписан выбранным снапшотом. Для отката будет создан новый снапшот.",
+    "rollback_confirm_body": "Текущий конфиг будет заменён на выбранный снимок. Для отката будет создан новый снимок.",
     "diff_title": "Diff",
-    "diff_empty": "Нет diff — первый снапшот",
+    "diff_empty": "Нет diff — первый снимок",
     "drawer_close": "Закрыть",
     "just_now": "только что",
     "seconds_ago": "{n} сек назад",
@@ -235,11 +284,11 @@
     "password_confirm": "Повторите новый пароль",
     "password_submit": "Сменить пароль",
     "password_success": "Пароль обновлён.",
-    "password_mismatch": "Новые пароли не совпадают.",
-    "password_too_short": "Пароль должен быть не короче 8 символов.",
-    "password_wrong_current": "Текущий пароль неверен.",
+    "password_mismatch": "Пароли не совпадают.",
+    "password_too_short": "Пароль должен быть минимум 8 символов.",
+    "password_wrong_current": "Текущий пароль неверный.",
     "env_title": "Переменные окружения",
-    "env_subtitle": "Переменные только для чтения — измените ваш compose / .env и перезапустите.",
+    "env_subtitle": "Переменные среды только для чтения — измените compose или .env и перезапустите.",
     "env_key": "Ключ",
     "env_value": "Значение",
     "env_source": "Источник",
@@ -247,28 +296,71 @@
     "env_source_default": "по-умолчанию",
     "env_masked": "секрет",
     "env_empty": "(пусто)",
-    "llm_title": "LLM-ключи",
-    "llm_disabled_note": "LLM-режим появится в v1.0 (Tasks 58–59).",
-    "llm_anthropic_placeholder": "Anthropic API-ключ (скоро)",
-    "llm_openai_placeholder": "OpenAI API-ключ (скоро)"
+    "llm_title": "Ключи LLM",
+    "llm_disabled_note": "Режим LLM появится в v1.0 (Tasks 58–59).",
+    "llm_anthropic_placeholder": "API-ключ Anthropic (скоро)",
+    "llm_openai_placeholder": "API-ключ OpenAI (скоро)",
+    "invariants_title": "Пользовательские инварианты",
+    "invariants_subtitle": "Собственные lint-правила поверх встроенного каталога. Хранятся в {path}.",
+    "invariants_add": "Добавить инвариант",
+    "invariants_empty": "Пользовательских инвариантов пока нет.",
+    "invariants_save": "Сохранить",
+    "invariants_cancel": "Отмена",
+    "invariants_edit": "Редактировать",
+    "invariants_delete": "Удалить",
+    "invariants_delete_aria": "Удалить инвариант {id}",
+    "invariants_edit_aria": "Редактировать инвариант {id}",
+    "invariants_active_label": "Активен",
+    "invariants_active_guardrail": "Выключение инварианта отключает проверку в lint-прогоне. Используйте осторожно — пока вы не включите его обратно, условие не проверяется.",
+    "invariants_saved": "Инварианты сохранены.",
+    "invariants_save_failed": "Не удалось сохранить: {error}",
+    "invariants_load_failed": "Не удалось загрузить инварианты: {error}",
+    "invariants_parse_errors": "{count} запись содержала ошибку схемы и была отброшена. | {count} записи содержали ошибки схемы и были отброшены. | {count} записей содержали ошибки схемы и были отброшены.",
+    "invariants_form_id": "ID",
+    "invariants_form_id_placeholder": "stable-kebab-id",
+    "invariants_form_id_hint": "Буквы, цифры, точка, подчёркивание, дефис. Начинается с буквы или цифры.",
+    "invariants_form_name": "Название",
+    "invariants_form_name_placeholder": "Короткий человекочитаемый заголовок",
+    "invariants_form_level": "Уровень",
+    "invariants_form_level_error": "error",
+    "invariants_form_level_warning": "warning",
+    "invariants_form_level_info": "info",
+    "invariants_form_description": "Описание",
+    "invariants_form_description_placeholder": "Зачем нужен этот инвариант (необязательно).",
+    "invariants_form_rule_kind": "Тип правила",
+    "invariants_form_rule_path": "YAML-путь",
+    "invariants_form_rule_path_placeholder": "dns.listen",
+    "invariants_form_rule_value": "Ожидаемое значение",
+    "invariants_form_rule_values": "Разрешённые значения (по одному в строке)",
+    "invariants_form_rule_values_placeholder": "127.0.0.1:1053",
+    "invariants_form_rule_required_values": "Укажите минимум одно значение.",
+    "invariants_form_id_required": "ID обязателен.",
+    "invariants_form_name_required": "Название обязательно.",
+    "invariants_form_path_required": "YAML-путь обязателен.",
+    "invariants_form_id_bad_chars": "ID должен соответствовать паттерну: буквы, цифры, точка, подчёркивание, дефис.",
+    "invariants_form_id_duplicate": "Другой инвариант уже использует этот ID.",
+    "invariants_kind_path_must_equal": "Значение должно равняться",
+    "invariants_kind_path_must_not_equal": "Значение не должно равняться",
+    "invariants_kind_path_must_be_in": "Значение — одно из",
+    "invariants_kind_path_must_contain_all": "Список содержит всё из"
   },
   "onboarding": {
     "title": "Добро пожаловать в Miharbor",
     "subtitle": "Файл конфига mihomo не найден по пути {path}",
     "question": "Создать минимальный starter-конфиг?",
-    "create": "Создать минимальный конфиг",
-    "creating": "Создаём…",
-    "created": "Starter-конфиг создан — переадресация…",
+    "create": "Создать стартовый конфиг",
+    "creating": "Создание…",
+    "created": "Стартовый конфиг создан — переход…",
     "failed": "Не удалось создать: {error}",
-    "about_seed": "Starter включает TUN + fake-ip DNS и единственный сервис «Default → DIRECT». mihomo API-секрет генерируется автоматически (64 hex-символа)."
+    "about_seed": "Стартовый конфиг включает TUN + fake-ip DNS и один сервис «Default → DIRECT». API-секрет mihomo генерируется автоматически (64 hex-символа)."
   },
   "deploy_live": {
     "running": "Применяем…",
     "ok": "Применено",
     "error": "Ошибка",
-    "rollback_auto": "Авто-откат запущен",
-    "reconnect": "Поток прерван — повторить",
-    "health_canonicalized_banner": "Конфиг был канонизирован при старте — открыть Историю",
+    "rollback_auto": "Автоматический откат запущен",
+    "reconnect": "Соединение потеряно — повторить",
+    "health_canonicalized_banner": "Конфиг был переформатирован при запуске — смотреть историю",
     "dismiss": "Закрыть"
   },
   "pages": {
@@ -281,24 +373,363 @@
       "placeholder": "Редактор WireGuard."
     },
     "providers": {
-      "title": "Rule-providers",
-      "placeholder": "Управление rule-providers появится на этапе 2."
+      "title": "Поставщики правил",
+      "subtitle": "Внешние наборы правил (списки adblock, GeoSite, inline-правила) — ссылаются из `rules:` как `RULE-SET,<name>,…`.",
+      "add": "Добавить provider",
+      "list": {
+        "title": "Настроенные поставщики",
+        "empty": "Поставщики ещё не настроены. Нажмите «Добавить поставщика», чтобы создать.",
+        "table_aria": "Настроенные поставщики правил",
+        "col_name": "Имя",
+        "col_type": "Тип",
+        "col_behavior": "Поведение",
+        "col_format": "Формат",
+        "col_interval": "Интервал (сек)",
+        "col_updated": "Последнее обновление",
+        "col_actions": "Действия",
+        "refresh": "Обновить поставщика {name} сейчас",
+        "edit": "Редактировать поставщика {name}",
+        "delete": "Удалить поставщика {name}",
+        "updating": "обновляется",
+        "never_updated": "—"
+      },
+      "types": {
+        "http": "http (удалённый URL)",
+        "file": "file (локальный путь)",
+        "inline": "inline (встроенные правила)"
+      },
+      "behaviors": {
+        "domain": "domain",
+        "ipcidr": "ipcidr",
+        "classical": "classical"
+      },
+      "form": {
+        "add_title": "Новый поставщик правил",
+        "edit_title": "Редактирование поставщика «{name}»",
+        "name": "Имя",
+        "name_placeholder": "adblock",
+        "name_taken": "Поставщик с таким именем уже существует.",
+        "type": "Тип",
+        "behavior": "Поведение",
+        "format": "Формат",
+        "url": "URL",
+        "url_placeholder": "https://example.com/adblock.yaml",
+        "interval": "Интервал обновления (секунды)",
+        "interval_placeholder": "86400",
+        "interval_hint": "Как часто mihomo автоматически перезагружает набор правил. Ручное обновление доступно всегда.",
+        "proxy": "Скачивать через прокси",
+        "proxy_placeholder": "PROXY",
+        "proxy_hint": "Необязательно: через какую группу прокси mihomo скачивает файл (для заблокированных источников). Пусто — напрямую.",
+        "path": "Путь",
+        "path_placeholder": "./rules/my-rules.txt",
+        "path_hint": "Относительно директории конфига mihomo.",
+        "payload": "Правила (payload)",
+        "payload_hint": "По одному правилу на строку — например, «DOMAIN-SUFFIX,example.com», «IP-CIDR,10.0.0.0/8,no-resolve». Префикс «RULE-SET,NAME,» не указывайте — mihomo добавит автоматически.",
+        "err_url_required": "URL обязателен для http-поставщиков.",
+        "err_interval_required": "Интервал > 0 обязателен для http-поставщиков.",
+        "err_path_required": "Путь обязателен для file-поставщиков.",
+        "err_payload_required": "Встроенный поставщик требует минимум одно правило."
+      },
+      "inline": {
+        "placeholder": "DOMAIN-SUFFIX,example.com",
+        "empty": "Встроенных правил пока нет.",
+        "add": "Добавить правило",
+        "remove": "Удалить правило",
+        "aria_label": "Список встроенных правил",
+        "entry_aria": "Встроенное правило № {index}"
+      },
+      "toast": {
+        "refresh_ok": "Обновление поставщика «{name}» запущено.",
+        "refresh_err": "Ошибка обновления поставщика «{name}»: {msg}"
+      },
+      "extras": {
+        "title": "Сохранённые записи",
+        "note": "Эти записи не удалось полностью разобрать, но они сохранены в YAML как есть — редактируйте их в Raw YAML."
+      }
     },
     "dns": {
       "title": "DNS",
-      "placeholder": "Редактор DNS появится на этапе 2."
+      "subtitle": "DNS-движок mihomo — fake-ip, резолверы, политики доменов.",
+      "loading": "Загрузка DNS-конфига…",
+      "save_failed": "Не удалось сохранить DNS — проверьте YAML в Raw YAML.",
+      "sections": {
+        "general": "Общие",
+        "fake_ip": "Fake-IP",
+        "resolvers": "Резолверы",
+        "policy": "Политики доменов",
+        "fallback": "Fallback-фильтр",
+        "extras": "Неизвестные поля"
+      },
+      "fields": {
+        "enable": "Включить DNS-движок",
+        "ipv6": "Резолвить IPv6 (AAAA) записи",
+        "listen": "Адрес прослушивания",
+        "listen_placeholder": "127.0.0.1:1053",
+        "listen_hint": "DNS для клиентов обычно это AdGuardHome или dnsmasq; mihomo слушает только на loopback.",
+        "enhanced_mode": "Режим Enhanced",
+        "fake_ip_range": "CIDR для fake-IP",
+        "fake_ip_range_placeholder": "198.18.0.1/16",
+        "use_hosts": "Использовать /etc/hosts",
+        "use_system_hosts": "Применять системные hosts-записи",
+        "respect_rules": "Использовать rules (split-DNS)",
+        "direct_nameserver_follow_policy": "Применять nameserver-policy для DIRECT-запросов",
+        "cache_algorithm": "Алгоритм кеша",
+        "fake_ip_filter_mode": "Режим фильтра fake-IP",
+        "fake_ip_filter": "Фильтр fake-IP (список исключений)",
+        "default_nameserver": "Default (bootstrap) резолверы",
+        "nameserver": "Основные резолверы",
+        "fallback": "Резолверы на случай отказа",
+        "proxy_server_nameserver": "Резолверы для хоста прокси",
+        "direct_nameserver": "Резолверы для DIRECT-трафика"
+      },
+      "placeholders": {
+        "nameserver": "https://cloudflare-dns.com/dns-query",
+        "ip_nameserver": "1.1.1.1",
+        "domain_pattern": "+.example.com"
+      },
+      "enhanced_mode": {
+        "fake-ip": "fake-ip",
+        "redir-host": "redir-host",
+        "normal": "normal"
+      },
+      "cache_algorithm": {
+        "arc": "ARC",
+        "lru": "LRU"
+      },
+      "fake_ip_filter_mode": {
+        "blacklist": "blacklist (перечисленные домены — без fake-IP)",
+        "whitelist": "whitelist (только перечисленные домены — с fake-IP)"
+      },
+      "guardrails": {
+        "listen_lan": "Привязка к 0.0.0.0 выставит DNS mihomo на всех интерфейсах.",
+        "listen_port_53": "Порт 53 обычно занят AdGuardHome/systemd-resolved — используйте 1053 или другой высокий порт.",
+        "literal_ip_required": "Это поле ДОЛЖНО содержать только IP-адреса. Имена хостов вызовут DNS-петлю, так как mihomo не может их резолвить до запуска DNS.",
+        "listen_header": "Изменение этого адреса меняет всю DNS-цепочку на хосте.",
+        "proxy_ns_header": "Резолвит имена прокси-серверов до запуска DNS — только IP-адреса.",
+        "default_ns_header": "Bootstrap-резолверы для имён DoH — только IP-адреса."
+      },
+      "nameserver_policy": {
+        "title": "Политика резолверов",
+        "description": "Маршрутизируйте конкретные домены на конкретные резолверы. Строки обрабатываются сверху вниз; первое совпадение выигрывает.",
+        "domain": "Шаблон домена",
+        "nameservers": "Резолверы (несколько через запятую)",
+        "add": "Добавить политику",
+        "remove": "Удалить",
+        "move_up": "Выше",
+        "move_down": "Ниже",
+        "empty": "Политик пока нет."
+      },
+      "list": {
+        "add": "Добавить",
+        "empty": "Список пуст.",
+        "remove": "Удалить",
+        "placeholder": "значение"
+      },
+      "extras": {
+        "note": "Неизвестные поля сохранены как есть из YAML — редактируйте их в Raw YAML."
+      }
     },
     "tun": {
       "title": "TUN",
-      "placeholder": "Редактор TUN появится на этапе 2."
+      "subtitle": "TUN-интерфейс mihomo — прозрачный перехват и маршрутизация.",
+      "placeholder": "Редактор TUN появится на этапе 2.",
+      "sections": {
+        "general": "Общие",
+        "dns_hijack": "Перехват DNS",
+        "route_exclude": "Исключения маршрутизации (защита от self-intercept)",
+        "route_address": "Дополнительные маршруты",
+        "addresses": "Адреса и интерфейсы",
+        "extras": "Неизвестные поля"
+      },
+      "fields": {
+        "enable": "Включить TUN",
+        "device": "Имя устройства",
+        "device_placeholder": "mihomo-tun",
+        "device_hint": "Имя TUN-интерфейса (`ip link`). Пусто — mihomo выберет по умолчанию (utun* на macOS, tun* на Linux).",
+        "stack": "Стек",
+        "stack_hint": "`system` — системный TCP/IP (самый быстрый). `gvisor` — user-space sandbox. `mixed` — комбинация.",
+        "mtu": "MTU",
+        "mtu_placeholder": "9000",
+        "auto_route": "auto-route (установка маршрутов по умолчанию)",
+        "auto_redirect": "auto-redirect (правила прозрачного перенаправления)",
+        "auto_detect_interface": "auto-detect-interface",
+        "strict_route": "strict-route",
+        "endpoint_independent_nat": "endpoint-independent-nat",
+        "interface_name": "Имя WAN-интерфейса (явная привязка)",
+        "interface_name_placeholder": "enp170s0",
+        "interface_name_hint": "Явный WAN-интерфейс — рекомендуется на хостах с несколькими NIC.",
+        "inet4_address": "IPv4-адреса",
+        "inet4_placeholder": "198.18.0.1/30",
+        "inet6_address": "IPv6-адреса",
+        "inet6_placeholder": "fd00::1/64",
+        "exclude_interface": "Исключить интерфейсы",
+        "exclude_interface_placeholder": "docker0"
+      },
+      "stack": {
+        "system": "system (системный стек, самый быстрый)",
+        "gvisor": "gvisor (user-space sandbox)",
+        "mixed": "mixed"
+      },
+      "guardrails": {
+        "device_empty": "Имя устройства не задано — mihomo выберет по умолчанию (utun* в macOS, tun* в Linux). Лучше задать явно (например, `mihomo-tun`) — легче отлаживать.",
+        "auto_detect": "`auto-detect-interface` обычно работает, но ломается на хостах с несколькими NIC (например, на роутерах с WAN≠LAN). Вместо этого явно укажите `interface-name`."
+      },
+      "dns_hijack": {
+        "hint": "Список host:port, которые TUN перехватывает для DNS. Оставьте пусто — перехват отключен (рекомендуется при первом запуске).",
+        "placeholder": "any:53",
+        "aria_label": "DNS hijack entries"
+      },
+      "route_exclude": {
+        "description": "CIDR, обходящие TUN. ДОЛЖНЫ включать все IP прокси-серверов — иначе трафик mihomo зациклится через его собственный TUN и туннель упадёт.",
+        "placeholder": "91.132.58.113/32",
+        "aria_label": "Route exclude entries",
+        "entry_aria": "Route exclude запись {index}",
+        "empty": "Исключений пока нет — добавьте все IP прокси-серверов как /32.",
+        "add": "Добавить исключение",
+        "remove": "Удалить исключение",
+        "badge": "IP прокси",
+        "badge_title": "Совпадает с IP прокси-сервера {ip} — self-intercept предотвращён",
+        "missing_header": "Риск self-intercept-петли",
+        "missing_hint": "Добавьте эти IP в исключения (как /32), иначе трафик прокси mihomo зациклится через его TUN."
+      },
+      "route_address": {
+        "hint": "Дополнительные CIDR для маршрутизации через TUN. Обычно не нужно — `auto-route: true` покрывает стандартные маршруты.",
+        "placeholder": "1.2.3.0/24",
+        "aria_label": "Route address entries"
+      },
+      "extras": {
+        "note": "Неизвестные поля сохранены как есть из YAML — редактируйте их в Raw YAML."
+      }
     },
     "sniffer": {
       "title": "Sniffer",
-      "placeholder": "Редактор Sniffer появится на этапе 2."
+      "subtitle": "Protocol sniffer mihomo — определение домена из HTTP/TLS/QUIC.",
+      "sections": {
+        "general": "Общие",
+        "protocols": "Порты по протоколам",
+        "domains": "Force / skip домены",
+        "port_whitelist": "Белый список портов",
+        "extras": "Неизвестные поля"
+      },
+      "fields": {
+        "enable": "Включить sniffer",
+        "override_destination": "Переписывать destination (правила учитывают sniffed домен)",
+        "parse_pure_ip": "Анализировать IP-подключения",
+        "force_dns_mapping": "Кешировать выявленное имя в DNS",
+        "force_domain": "Список force-domain",
+        "force_domain_hint": "Домены, где выявленное имя используется всегда — даже если override-destination отключен.",
+        "force_domain_placeholder": "+.netflix.com",
+        "skip_domain": "Список skip-domain",
+        "skip_domain_hint": "Домены, пропускаемые sniffer полностью.",
+        "skip_domain_placeholder": "+.apple.com",
+        "port_whitelist": "Белый список портов",
+        "port_whitelist_hint": "Если не пусто — sniffer работает ТОЛЬКО на этих портах, настройки по протоколам игнорируются. По одному диапазону на строку (например, «80», «8080-8090»).",
+        "port_whitelist_placeholder": "80"
+      },
+      "guardrails": {
+        "override_destination": "`override-destination` переписывает destination в правилах с IP на выявленный домен. Полезно, но неочевидно — правила по доменам начнут срабатывать на трафик, который ловили CIDR-правила. Осознайте последствия перед включением."
+      },
+      "protocols": {
+        "description": "Настройка портов по протоколам для мониторинга mihomo. Каждая запись — один порт («80») или диапазон («80-90»). Списки через запятую не допускаются — используйте несколько строк.",
+        "http": "HTTP",
+        "tls": "TLS",
+        "quic": "QUIC",
+        "placeholder": "80 или 8080-8090",
+        "add": "Добавить диапазон",
+        "remove": "Удалить",
+        "empty": "Диапазонов нет — sniffer не работает для этого протокола.",
+        "aria_label": "{protocol} port ranges",
+        "entry_aria": "{protocol} port range {index}",
+        "override_destination": "{protocol}: per-protocol override-destination",
+        "extras_title": "Неизвестные протоколы",
+        "extras_note": "Сохранены как есть из YAML — редактируйте в Raw YAML."
+      },
+      "extras": {
+        "note": "Неизвестные поля сохранены как есть из YAML — редактируйте их в Raw YAML."
+      }
     },
     "profile": {
       "title": "Профиль",
-      "placeholder": "Редактор профиля появится на этапе 2."
+      "subtitle": "Верхнеуровневые поля mihomo — mode, log-level, external-controller, secret и связанные настройки.",
+      "sections": {
+        "general": "Общие",
+        "control_plane": "Панель управления",
+        "behavior": "Поведение",
+        "geo": "Геоданные",
+        "profile_nested": "Подсекция profile",
+        "authentication": "Аутентификация",
+        "extras": "Неизвестные поля"
+      },
+      "fields": {
+        "mode": "Режим",
+        "log_level": "Уровень логов",
+        "mixed_port": "Mixed port (HTTP + SOCKS5)",
+        "mixed_port_placeholder": "7890",
+        "allow_lan": "allow-lan (слушатели привязаны к LAN)",
+        "bind_address": "Адрес привязки",
+        "bind_address_placeholder": "*",
+        "ipv6": "Включить IPv6",
+        "external_controller": "Внешний контроллер",
+        "external_controller_placeholder": "127.0.0.1:9090",
+        "external_controller_hint": "host:port управляющего API mihomo. Привязывайте к 127.0.0.1 если возможно; привязка к LAN/WAN ТРЕБУЕТ секрет.",
+        "secret": "Секрет (Bearer-токен)",
+        "secret_placeholder": "64 hex-символа (сгенерировать: `openssl rand -hex 32`)",
+        "secret_show": "Показать",
+        "secret_hide": "Скрыть",
+        "external_ui": "Путь External UI",
+        "external_ui_placeholder": "./zash",
+        "external_ui_name": "Имя External UI",
+        "external_ui_url": "URL загрузки External UI",
+        "tcp_concurrent": "tcp-concurrent",
+        "unified_delay": "unified-delay",
+        "find_process_mode": "find-process-mode",
+        "global_client_fingerprint": "global-client-fingerprint",
+        "global_client_fingerprint_placeholder": "chrome",
+        "geodata_mode": "geodata-mode",
+        "geo_auto_update": "geo-auto-update",
+        "geo_update_interval": "geo-update-interval (часы)",
+        "geo_update_interval_hint": "Как часто mihomo обновляет базы GeoIP и GeoSite.",
+        "keep_alive_interval": "keep-alive-interval (секунды)",
+        "store_selected": "Запоминать выбранный прокси по сервису",
+        "store_fake_ip": "Сохранять fake-IP кеш между перезапусками"
+      },
+      "mode": {
+        "rule": "rule (использовать rule-engine)",
+        "global": "global (весь трафик через PROXY)",
+        "direct": "direct (без проксирования)"
+      },
+      "nested": {
+        "description": "Вложенная секция `profile:` mihomo — это runtime-настройки, а не политика роутинга."
+      },
+      "auth": {
+        "description": "Записи аутентификации HTTP-прокси (user:pass). Имена показаны ниже; пароли записываются один раз — редактирование позволяет задать новый пароль, но старые значения не отображаются.",
+        "list_aria": "Записи аутентификации",
+        "add": "Добавить пользователя",
+        "empty": "Записей пока нет.",
+        "has_password": "пароль задан",
+        "no_password": "без пароля",
+        "edit_aria": "Изменить пароль {user}",
+        "remove_aria": "Удалить {user}",
+        "dialog_add_title": "Добавить пользователя",
+        "dialog_edit_title": "Изменить пароль",
+        "dialog_description": "Пароли записываются напрямую в конфиг mihomo. Храните их отдельно — UI не повторит их после сохранения.",
+        "dialog_guardrail": "UI не показывает пароли после сохранения. Если забыли — удалите запись и создайте пользователя заново.",
+        "user_label": "Имя пользователя",
+        "user_placeholder": "operator",
+        "password_label": "Пароль",
+        "password_placeholder": "надёжный пароль",
+        "user_taken": "Пользователь с таким именем уже существует.",
+        "user_colon_invalid": "Имя не может содержать `:` (это разделитель)."
+      },
+      "guardrails": {
+        "ipv6": "IPv6 включён. Runbook рекомендует держать IPv6 отключённым до полного тестирования — NAT и rule-плоскость ещё не проверены на IPv6.",
+        "external_controller": "External controller привязан не к loopback и секрет не задан. Любой хост в LAN может управлять mihomo. Задайте 64-символьный hex-секрет.",
+        "secret": "Секрет — это Bearer-токен управляющего API mihomo. Храните как пароль: не коммитьте, ротируйте после подозрения на утечку (`openssl rand -hex 32`, перезапуск mihomo, обновление в дашборде).",
+        "authentication": "Пароли записываются в конфиг mihomo как есть. После сохранения UI показывает только имена — если забыли пароль, удалите запись и добавьте пользователя заново."
+      },
+      "extras": {
+        "note": "Неизвестные поля сохранены как есть из YAML — редактируйте их в Raw YAML."
+      }
     },
     "raw_yaml": {
       "title": "Raw YAML",
@@ -306,11 +737,75 @@
     },
     "history": {
       "title": "История",
-      "placeholder": "Просмотр снапшотов появится позже."
+      "placeholder": "Просмотр снимков появится позже."
     },
     "settings": {
       "title": "Настройки",
       "placeholder": "Смена пароля появится позже."
+    }
+  },
+  "suggestion_unreachable_rule_after_match": "Это правило никогда не сработает, так как правило MATCH выше перехватит весь трафик. Удалите его или переместите перед правилом MATCH #{covered_by_index}.",
+  "suggestion_unreachable_rule_shadowed": "Это правило затенено правилом #{covered_by_index}, которое охватывает намного более широкий набор входов. Удалите его или переупорядочьте.",
+  "suggestion_duplicate_rule": "Это правило дублирует правило #{duplicate_of_index}. Удалите одно из них.",
+  "suggestion_dangling_group_reference": "Целевая группа прокси '{target}' не существует. Создайте её в разделе proxy-groups или измените цель на существующую группу либо DIRECT/REJECT.",
+  "suggestion_dangling_node_reference": "Узел прокси '{ref}' не найден в разделе proxies и не является другой группой. Добавьте его в proxies или удалите ссылку из группы '{group}'.",
+  "suggestion_dangling_ruleset_reference": "Поставщик правил '{provider}' не существует. Добавьте его в rule-providers или измените правило на существующего поставщика.",
+  "suggestion_intra_group_duplicate": "Это правило дублирует правило #{duplicate_of_index} (один тип и значение, оба нацелены на '{group}'). Удалите одно из них.",
+  "suggestion_cross_group_duplicate": "Это правило имеет тот же тип и значение, что и правило #{firstAt}, но нацелено на другую группу ('{currentTarget}' против '{firstTarget}'). Обычно это ошибка.",
+  "suggestion_rule_parse_error": "Не удалось разобрать раздел rules. Ошибка: {message}. Проверьте YAML-синтаксис — rules должны быть списком элементов вида TYPE,VALUE,TARGET[,modifiers].",
+  "suggestion_universal_invariant": "Этот конфиг нарушает встроенное правило (id: {id}). Проверьте требования конфига в документации. Подробнее см. основное сообщение об ошибке.",
+  "suggestion_user_invariant": "Нарушение пользовательского правила: {name}. {description}. Проверьте конфигурацию правил и внесите необходимые изменения.",
+  "issues": {
+    "empty": "Нет проблем.",
+    "severity_error": "Ошибка",
+    "severity_warning": "Предупреждение",
+    "severity_info": "Информация",
+    "suggestion_prefix": "Подсказка",
+    "aria_item": "{severity}: {message}"
+  },
+  "linter": {
+    "issues": {
+      "LINTER_UNREACHABLE_RULE": {
+        "message": "Правило #{covered_by_index} в той же позиции делает это правило недостижимым.",
+        "message_match_above": "Правило MATCH #{covered_by_index} выше перехватывает весь трафик — это правило недостижимо.",
+        "message_shadowed": "Правило #{covered_by_index} охватывает строго более широкий набор входов, затеняя это."
+      },
+      "LINTER_DUPLICATE_RULE": {
+        "message": "Дубликат правила #{duplicate_of_index}."
+      },
+      "LINTER_DANGLING_GROUP_REFERENCE": {
+        "message": "Правило ссылается на прокси-группу '{target}', которой не существует."
+      },
+      "LINTER_DANGLING_NODE_REFERENCE": {
+        "message": "Прокси-группа '{group}' ссылается на узел '{ref}', которого не существует."
+      },
+      "LINTER_DANGLING_RULESET_REFERENCE": {
+        "message": "Правило ссылается на rule-provider '{provider}', которого не существует."
+      },
+      "LINTER_INTRA_GROUP_DUPLICATE": {
+        "message": "Дубликат внутри группы '{group}' (совпадает с правилом #{duplicate_of_index})."
+      },
+      "LINTER_CROSS_GROUP_DUPLICATE": {
+        "message": "Тот же предикат, что и у правила #{firstAt}, но другая цель ('{currentTarget}' против '{firstTarget}')."
+      },
+      "LINTER_RULE_PARSE_ERROR": {
+        "message": "Не удалось разобрать правило: {message}"
+      },
+      "INVARIANT_SECRET_TOO_SHORT": {
+        "message": "Секрет должен быть не менее {min} символов (сейчас: {actual})."
+      },
+      "INVARIANT_DNS_LISTEN_ZERO53": {
+        "message": "DNS listen '{value}' открывает резолвер на wildcard-адресе; укажите конкретный интерфейс."
+      },
+      "INVARIANT_TUN_NEEDS_INTERFACE": {
+        "message": "TUN включён, но interface-name не задан — обязателен для корректного выбора маршрутов."
+      },
+      "INVARIANT_TUN_DNS_HIJACK_MUST_BE_ARRAY": {
+        "message": "tun.dns-hijack должен быть списком."
+      },
+      "USER_INVARIANT": {
+        "message": "Нарушено пользовательское правило: {name} ({reason})."
+      }
     }
   }
 }

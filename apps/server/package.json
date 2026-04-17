@@ -13,10 +13,12 @@
     "elysia": "~1.2.10",
     "miharbor-shared": "workspace:*",
     "proper-lockfile": "^4.1.2",
+    "ssh2": "~1.15.0",
     "yaml": "~2.8.3"
   },
   "devDependencies": {
     "@types/diff": "^8.0.0",
-    "@types/proper-lockfile": "^4.1.4"
+    "@types/proper-lockfile": "^4.1.4",
+    "@types/ssh2": "~1.15.0"
   }
 }

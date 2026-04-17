@@ -6,30 +6,45 @@
 // Flow:
 //   * parent renders `<RuleEditor>` inside a ServiceDetail "add rule" slot
 //     OR in place of a RuleRow (when the row is in edit mode).
-//   * emits `save(rule)` with the SimpleRule the user assembled.
+//   * emits `save(rule, suggestedIndex)` with the SimpleRule the user assembled
+//     and the optional suggestedIndex for placement.
 //   * emits `cancel` to close without persisting.
 
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { SIMPLE_RULE_TYPES, type SimpleRule, type SimpleRuleType } from 'miharbor-shared'
+import {
+  SIMPLE_RULE_TYPES,
+  type SimpleRule,
+  type SimpleRuleType,
+  type Rule,
+  suggestPlacement,
+} from 'miharbor-shared'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { validateRuleValue } from '@/lib/rule-validation'
 
 interface Props {
   target: string
   /** Optional — when supplied the form opens in edit mode. */
   initial?: SimpleRule
+  /** List of existing rules in the service — used for placement suggestion. */
+  existingRules?: Rule[]
 }
-const props = defineProps<Props>()
-const emit = defineEmits<{ save: [rule: SimpleRule]; cancel: [] }>()
+const props = withDefaults(defineProps<Props>(), {
+  existingRules: () => [],
+})
+const emit = defineEmits<{ save: [rule: SimpleRule, suggestedIndex?: number]; cancel: [] }>()
 
 const { t } = useI18n()
 
 const type = ref<SimpleRuleType>(props.initial?.type ?? 'DOMAIN-SUFFIX')
 const value = ref<string>(props.initial?.value ?? '')
 const modifiersText = ref<string>((props.initial?.modifiers ?? []).join(', '))
+const useCustomIndex = ref<boolean>(false)
+const customIndex = ref<number>(0)
 
 watch(
   () => props.initial,
@@ -50,6 +65,35 @@ const modifiers = computed<string[]>(() =>
 const validation = computed(() => validateRuleValue(type.value, value.value))
 const canSave = computed(() => validation.value.ok)
 
+// Placement suggestion — only show when adding (not editing).
+const isAddingMode = computed(() => !props.initial)
+
+const placementSuggestion = computed(() => {
+  if (!isAddingMode.value || !validation.value.ok) return null
+  const newRule: SimpleRule = {
+    kind: 'simple',
+    type: type.value,
+    value: value.value.trim(),
+    target: props.target,
+  }
+  if (modifiers.value.length > 0) newRule.modifiers = modifiers.value
+  return suggestPlacement(newRule, props.existingRules)
+})
+
+// Compute the index to use — either the suggested one or the custom override.
+const suggestedIndexValue = computed(() => placementSuggestion.value?.index ?? 0)
+
+watch(
+  () => suggestedIndexValue.value,
+  (newSuggested) => {
+    customIndex.value = newSuggested
+  },
+)
+
+const finalIndex = computed(() =>
+  useCustomIndex.value ? customIndex.value : suggestedIndexValue.value,
+)
+
 function onSave(): void {
   if (!canSave.value) return
   const rule: SimpleRule = {
@@ -59,7 +103,8 @@ function onSave(): void {
     target: props.target,
   }
   if (modifiers.value.length > 0) rule.modifiers = modifiers.value
-  emit('save', rule)
+  // Pass the suggested or custom index for placement.
+  emit('save', rule, isAddingMode.value ? finalIndex.value : undefined)
 }
 </script>
 
@@ -105,6 +150,45 @@ function onSave(): void {
         <Badge v-for="mod in modifiers" :key="mod" variant="muted" class="text-[10px]">
           {{ mod }}
         </Badge>
+      </div>
+    </div>
+
+    <!-- Placement suggestion — only shown when adding a new rule -->
+    <div
+      v-if="placementSuggestion && isAddingMode"
+      class="rounded-md bg-muted/40 p-2 text-xs space-y-2"
+      data-testid="placement-suggestion"
+    >
+      <div class="font-medium">
+        {{ t('rules.placement.suggested') }}:
+        <span class="text-primary">
+          {{ t('rules.placement.after_rule', { index: suggestedIndexValue }) }}
+        </span>
+      </div>
+      <p class="text-muted-foreground">
+        {{ t(`rules.placement.${placementSuggestion.reason}`) }}
+      </p>
+      <div class="flex items-center gap-2">
+        <Checkbox
+          v-model:checked="useCustomIndex"
+          :id="`placement-override-${props.target}`"
+          class="h-4 w-4"
+        />
+        <Label
+          :for="`placement-override-${props.target}`"
+          class="text-xs cursor-pointer font-normal"
+        >
+          {{ t('rules.placement.override_checkbox') }}
+        </Label>
+        <Input
+          v-if="useCustomIndex"
+          v-model.number="customIndex"
+          type="number"
+          class="h-7 w-12 font-mono text-xs"
+          :min="0"
+          :max="props.existingRules.length"
+          :aria-label="`Custom placement index (0 to ${props.existingRules.length})`"
+        />
       </div>
     </div>
 

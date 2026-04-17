@@ -14,6 +14,7 @@
 // and waits for the /version endpoint to respond before running the tests.
 
 const port = Number(process.env.MOCK_MIHOMO_PORT ?? '19999')
+const version = process.env.MOCK_MIHOMO_VERSION ?? '1.19.23'
 
 // Keep a single in-memory copy of the last-pushed config so test flows can
 // round-trip PUT → GET if they care.
@@ -27,7 +28,7 @@ const server = Bun.serve({
     const path = url.pathname
 
     if (req.method === 'GET' && path === '/version') {
-      return Response.json({ version: '1.19.23', meta: true, premium: false })
+      return Response.json({ version, meta: true, premium: false })
     }
     if (req.method === 'GET' && path === '/configs') {
       return Response.json({ mode: 'Rule', 'mixed-port': 7890 })

@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Miharbor",
-    "tagline": "mihomo control plane"
+    "tagline": "mihomo control plane",
+    "skip_to_main": "Skip to main content"
   },
   "common": {
     "loading": "Loading…",
@@ -119,6 +120,13 @@
       "name_invalid": "Use letters, numbers, dashes, underscores.",
       "direction_label": "Direction",
       "create": "Create"
+    },
+    "templates": {
+      "suggestions_label": "Suggestions:",
+      "list_aria": "Service template suggestions",
+      "use_template_aria": "Use {name} template ({rules} rules)",
+      "rule_count": "{count} rule | {count} rules",
+      "picked_note": "Template selected — {count} rule will be added. | Template selected — {count} rules will be added."
     }
   },
   "rules": {
@@ -133,8 +141,27 @@
     "delete": "Delete rule",
     "complex": {
       "badge": "Complex rule",
-      "tooltip": "Edit in Raw YAML — tree-editor arrives in stage 2.",
+      "tooltip": "Open the tree editor to modify AND/OR/NOT structure.",
       "match": "MATCH (catch-all)"
+    },
+    "tree": {
+      "title": "Edit logical rule",
+      "description": "Edit AND / OR / NOT groups and their predicates visually.",
+      "target_label": "Target",
+      "add_condition": "Add condition",
+      "add_and": "Add AND group",
+      "add_or": "Add OR group",
+      "add_not": "Add NOT group",
+      "remove_node": "Remove node",
+      "move_up": "Move up",
+      "move_down": "Move down",
+      "group_label": "{op} group, {count} child | {op} group, {count} children",
+      "max_depth": "Maximum nesting depth reached (5).",
+      "empty_group": "Group is empty — add a child or remove the group.",
+      "empty_not_child": "NOT requires exactly one child.",
+      "too_many_not_children": "NOT accepts only one child — remove the extra.",
+      "invalid_tree": "Fix the highlighted fields before saving.",
+      "no_children": "No conditions yet — add one below."
     },
     "validation": {
       "empty": "Value is required.",
@@ -144,6 +171,17 @@
       "cidr_v4": "Not a valid IPv4 CIDR (e.g. 10.0.0.0/8).",
       "cidr_v6": "Not a valid IPv6 CIDR.",
       "port": "Not a valid port or port range."
+    },
+    "placement": {
+      "suggested": "Suggested placement",
+      "after_rule": "after rule #{index}",
+      "override_checkbox": "Place at end instead",
+      "reason_ads": "Groups ad-blocking rules at the top",
+      "reason_private": "Groups private IPs and local domains",
+      "reason_ru": "Groups Russian domains and geo-rules",
+      "reason_services": "Groups service and proxy rules",
+      "reason_match": "MATCH is always the final rule",
+      "reason_empty": "First rule in an empty list"
     }
   },
   "proxies": {
@@ -198,7 +236,18 @@
     "read_only": "Read-only",
     "copy": "Copy",
     "copied": "Copied!",
-    "copy_failed": "Failed"
+    "copy_failed": "Failed",
+    "mode_view": "View",
+    "mode_edit": "Edit",
+    "apply": "Apply",
+    "dirty": "Unsaved",
+    "discard_confirm": "Discard unsaved YAML changes?",
+    "parse_error_title": "YAML parse error",
+    "parse_error_line": "Line {line}, col {col}:",
+    "parse_error_generic": "YAML could not be parsed.",
+    "invalid_banner_title": "Raw YAML invalid",
+    "invalid_banner_body": "Fix the YAML to re-enable structured editing.",
+    "invalid_banner_link": "Open Raw YAML"
   },
   "history": {
     "title": "History",
@@ -250,7 +299,50 @@
     "llm_title": "LLM keys",
     "llm_disabled_note": "LLM-assisted editing ships in v1.0 (Tasks 58–59).",
     "llm_anthropic_placeholder": "Anthropic API key (coming soon)",
-    "llm_openai_placeholder": "OpenAI API key (coming soon)"
+    "llm_openai_placeholder": "OpenAI API key (coming soon)",
+    "invariants_title": "User invariants",
+    "invariants_subtitle": "Custom lint rules on top of the universal catalogue. Stored in {path}.",
+    "invariants_add": "Add invariant",
+    "invariants_empty": "No user invariants yet.",
+    "invariants_save": "Save",
+    "invariants_cancel": "Cancel",
+    "invariants_edit": "Edit invariant",
+    "invariants_delete": "Delete",
+    "invariants_delete_aria": "Delete invariant {id}",
+    "invariants_edit_aria": "Edit invariant {id}",
+    "invariants_active_label": "Active",
+    "invariants_active_guardrail": "Disabling an invariant silences its violations in the lint run. Use with care — the check will not fire again until re-enabled.",
+    "invariants_saved": "Invariants saved.",
+    "invariants_save_failed": "Save failed: {error}",
+    "invariants_load_failed": "Failed to load invariants: {error}",
+    "invariants_parse_errors": "{count} entry had a schema error and was dropped. | {count} entries had schema errors and were dropped.",
+    "invariants_form_id": "ID",
+    "invariants_form_id_placeholder": "stable-kebab-id",
+    "invariants_form_id_hint": "Letters, digits, dot, underscore, hyphen. First char alphanumeric.",
+    "invariants_form_name": "Name",
+    "invariants_form_name_placeholder": "Short human-readable headline",
+    "invariants_form_level": "Level",
+    "invariants_form_level_error": "error",
+    "invariants_form_level_warning": "warning",
+    "invariants_form_level_info": "info",
+    "invariants_form_description": "Description",
+    "invariants_form_description_placeholder": "Why this invariant matters (optional).",
+    "invariants_form_rule_kind": "Rule kind",
+    "invariants_form_rule_path": "YAML path",
+    "invariants_form_rule_path_placeholder": "dns.listen",
+    "invariants_form_rule_value": "Expected value",
+    "invariants_form_rule_values": "Allowed values (one per line)",
+    "invariants_form_rule_values_placeholder": "127.0.0.1:1053",
+    "invariants_form_rule_required_values": "At least one value is required.",
+    "invariants_form_id_required": "ID is required.",
+    "invariants_form_name_required": "Name is required.",
+    "invariants_form_path_required": "YAML path is required.",
+    "invariants_form_id_bad_chars": "ID must match the pattern: letters, digits, dot, underscore, hyphen.",
+    "invariants_form_id_duplicate": "Another invariant already uses this ID.",
+    "invariants_kind_path_must_equal": "Value must equal",
+    "invariants_kind_path_must_not_equal": "Value must not equal",
+    "invariants_kind_path_must_be_in": "Value must be one of",
+    "invariants_kind_path_must_contain_all": "List must contain all of"
   },
   "onboarding": {
     "title": "Welcome to Miharbor",
@@ -282,23 +374,362 @@
     },
     "providers": {
       "title": "Rule providers",
-      "placeholder": "Rule-providers management ships in stage 2."
+      "subtitle": "External rule-sets (adblock lists, GeoSite, inline rules) referenced from `rules:` as `RULE-SET,<name>,…`.",
+      "add": "Add provider",
+      "list": {
+        "title": "Configured providers",
+        "empty": "No rule providers configured yet. Use \"Add provider\" to define one.",
+        "table_aria": "Configured rule providers",
+        "col_name": "Name",
+        "col_type": "Type",
+        "col_behavior": "Behavior",
+        "col_format": "Format",
+        "col_interval": "Interval (s)",
+        "col_updated": "Last updated",
+        "col_actions": "Actions",
+        "refresh": "Refresh provider {name} now",
+        "edit": "Edit provider {name}",
+        "delete": "Delete provider {name}",
+        "updating": "updating",
+        "never_updated": "—"
+      },
+      "types": {
+        "http": "http (remote URL)",
+        "file": "file (local path)",
+        "inline": "inline (embedded rules)"
+      },
+      "behaviors": {
+        "domain": "domain",
+        "ipcidr": "ipcidr",
+        "classical": "classical"
+      },
+      "form": {
+        "add_title": "New rule provider",
+        "edit_title": "Edit rule provider \"{name}\"",
+        "name": "Name",
+        "name_placeholder": "adblock",
+        "name_taken": "A provider with this name already exists.",
+        "type": "Type",
+        "behavior": "Behavior",
+        "format": "Format",
+        "url": "URL",
+        "url_placeholder": "https://example.com/adblock.yaml",
+        "interval": "Refresh interval (seconds)",
+        "interval_placeholder": "86400",
+        "interval_hint": "How often mihomo automatically re-fetches the ruleset. Manual refresh is always available.",
+        "proxy": "Fetch through proxy",
+        "proxy_placeholder": "PROXY",
+        "proxy_hint": "Optional: which proxy group mihomo routes the fetch through (for geo-blocked sources). Leave empty to fetch directly.",
+        "path": "Path",
+        "path_placeholder": "./rules/my-rules.txt",
+        "path_hint": "Relative to mihomo's config directory.",
+        "payload": "Payload rules",
+        "payload_hint": "One rule body per line — e.g. \"DOMAIN-SUFFIX,example.com\", \"IP-CIDR,10.0.0.0/8,no-resolve\". Do NOT include the \"RULE-SET,NAME,\" prefix (mihomo adds it automatically).",
+        "err_url_required": "URL is required for http providers.",
+        "err_interval_required": "A refresh interval greater than 0 is required for http providers.",
+        "err_path_required": "Path is required for file providers.",
+        "err_payload_required": "Inline providers need at least one rule."
+      },
+      "inline": {
+        "placeholder": "DOMAIN-SUFFIX,example.com",
+        "empty": "No inline rules yet.",
+        "add": "Add rule",
+        "remove": "Remove rule",
+        "aria_label": "Inline rule payload",
+        "entry_aria": "Inline rule {index}"
+      },
+      "toast": {
+        "refresh_ok": "Refresh triggered for \"{name}\".",
+        "refresh_err": "Refresh failed for \"{name}\": {msg}"
+      },
+      "extras": {
+        "title": "Preserved entries",
+        "note": "These entries couldn't be fully parsed but are preserved verbatim in the YAML — edit them in Raw YAML."
+      }
     },
     "dns": {
       "title": "DNS",
-      "placeholder": "DNS editor ships in stage 2."
+      "subtitle": "Mihomo DNS engine — fake-ip, resolvers, domain policies.",
+      "loading": "Loading DNS config…",
+      "save_failed": "Couldn't save DNS changes — check the YAML in Raw YAML.",
+      "sections": {
+        "general": "General",
+        "fake_ip": "Fake-IP",
+        "resolvers": "Resolvers",
+        "policy": "Domain policies",
+        "fallback": "Fallback filter",
+        "extras": "Unknown fields"
+      },
+      "fields": {
+        "enable": "Enable DNS engine",
+        "ipv6": "Resolve IPv6 (AAAA) records",
+        "listen": "Listen address",
+        "listen_placeholder": "127.0.0.1:1053",
+        "listen_hint": "Client-facing DNS is usually AdGuardHome/dnsmasq; mihomo listens on the loopback only.",
+        "enhanced_mode": "Enhanced mode",
+        "fake_ip_range": "Fake-IP CIDR",
+        "fake_ip_range_placeholder": "198.18.0.1/16",
+        "use_hosts": "Use /etc/hosts",
+        "use_system_hosts": "Follow system host records",
+        "respect_rules": "Respect rules (split-DNS)",
+        "direct_nameserver_follow_policy": "Follow nameserver-policy for direct queries",
+        "cache_algorithm": "Cache algorithm",
+        "fake_ip_filter_mode": "Fake-IP filter mode",
+        "fake_ip_filter": "Fake-IP filter (skip list)",
+        "default_nameserver": "Default (bootstrap) nameservers",
+        "nameserver": "Main nameservers",
+        "fallback": "Fallback nameservers",
+        "proxy_server_nameserver": "Proxy-server nameserver",
+        "direct_nameserver": "Direct nameservers"
+      },
+      "placeholders": {
+        "nameserver": "https://cloudflare-dns.com/dns-query",
+        "ip_nameserver": "1.1.1.1",
+        "domain_pattern": "+.example.com"
+      },
+      "enhanced_mode": {
+        "fake-ip": "fake-ip",
+        "redir-host": "redir-host",
+        "normal": "normal"
+      },
+      "cache_algorithm": {
+        "arc": "ARC",
+        "lru": "LRU"
+      },
+      "fake_ip_filter_mode": {
+        "blacklist": "blacklist (listed domains skip fake-ip)",
+        "whitelist": "whitelist (only listed domains use fake-ip)"
+      },
+      "guardrails": {
+        "listen_lan": "Binding to 0.0.0.0 exposes mihomo DNS on every interface.",
+        "listen_port_53": "Port 53 usually collides with AdGuardHome/systemd-resolved — use 1053 or another high port.",
+        "literal_ip_required": "This field MUST use literal IPs. Hostname-based resolvers cause DNS loops because mihomo can't resolve them before DNS is up.",
+        "listen_header": "Changing this alters the whole DNS chain on the host.",
+        "proxy_ns_header": "Resolves proxy server hostnames BEFORE DNS is up — literal IPs only.",
+        "default_ns_header": "Bootstrap resolvers used to look up DoH hostnames — literal IPs only."
+      },
+      "nameserver_policy": {
+        "title": "Nameserver policy",
+        "description": "Route specific domains to specific resolvers. Rows are evaluated top-down; first match wins.",
+        "domain": "Domain pattern",
+        "nameservers": "Nameservers (comma-separated for multi)",
+        "add": "Add policy",
+        "remove": "Remove",
+        "move_up": "Move up",
+        "move_down": "Move down",
+        "empty": "No policies yet."
+      },
+      "list": {
+        "add": "Add",
+        "empty": "Empty list.",
+        "remove": "Remove entry",
+        "placeholder": "value"
+      },
+      "extras": {
+        "note": "Unknown fields preserved verbatim from the YAML — edit them in Raw YAML."
+      }
     },
     "tun": {
       "title": "TUN",
-      "placeholder": "TUN editor ships in stage 2."
+      "subtitle": "Mihomo TUN interface — transparent interception + routing.",
+      "placeholder": "TUN editor ships in stage 2.",
+      "sections": {
+        "general": "General",
+        "dns_hijack": "DNS hijack",
+        "route_exclude": "Route exclude (prevent self-intercept)",
+        "route_address": "Route address (advanced)",
+        "addresses": "Addresses & interfaces",
+        "extras": "Unknown fields"
+      },
+      "fields": {
+        "enable": "Enable TUN",
+        "device": "Device name",
+        "device_placeholder": "mihomo-tun",
+        "device_hint": "The TUN interface name shown by `ip link`. Empty → mihomo picks an OS-specific default (utun* / tun*).",
+        "stack": "Stack",
+        "stack_hint": "`system` uses the OS TCP/IP stack (fastest). `gvisor` provides a user-space sandbox for hostile environments. `mixed` combines both.",
+        "mtu": "MTU",
+        "mtu_placeholder": "9000",
+        "auto_route": "auto-route (install default routes)",
+        "auto_redirect": "auto-redirect (transparent redirect rules)",
+        "auto_detect_interface": "auto-detect-interface",
+        "strict_route": "strict-route",
+        "endpoint_independent_nat": "endpoint-independent-nat",
+        "interface_name": "Interface name (explicit WAN binding)",
+        "interface_name_placeholder": "enp170s0",
+        "interface_name_hint": "Explicit WAN interface — preferred over auto-detect on multi-NIC hosts.",
+        "inet4_address": "IPv4 addresses",
+        "inet4_placeholder": "198.18.0.1/30",
+        "inet6_address": "IPv6 addresses",
+        "inet6_placeholder": "fd00::1/64",
+        "exclude_interface": "Exclude interface",
+        "exclude_interface_placeholder": "docker0"
+      },
+      "stack": {
+        "system": "system (OS stack, fastest)",
+        "gvisor": "gvisor (user-space sandbox)",
+        "mixed": "mixed"
+      },
+      "guardrails": {
+        "device_empty": "Device name is unset — mihomo will pick an OS-specific default (utun* on macOS, tun* on Linux). Set an explicit name (e.g. `mihomo-tun`) for easier debugging.",
+        "auto_detect": "`auto-detect-interface` usually works, but breaks on dual-NIC hosts (e.g. routers with WAN≠LAN). Prefer setting `interface-name` explicitly."
+      },
+      "dns_hijack": {
+        "hint": "List of host:port entries TUN intercepts for DNS. Leave empty to disable DNS takeover (recommended on first rollout).",
+        "placeholder": "any:53",
+        "aria_label": "DNS hijack entries"
+      },
+      "route_exclude": {
+        "description": "CIDRs that bypass TUN. Must include every proxy-server IP — without this, mihomo's own proxy traffic loops back through its TUN and the tunnel dies.",
+        "placeholder": "91.132.58.113/32",
+        "aria_label": "Route exclude entries",
+        "entry_aria": "Route exclude entry {index}",
+        "empty": "No exclusions yet — add every proxy-server IP as a /32.",
+        "add": "Add exclusion",
+        "remove": "Remove exclusion",
+        "badge": "proxy IP",
+        "badge_title": "Matches proxy-server IP {ip} — self-intercept prevented",
+        "missing_header": "Self-intercept loop risk",
+        "missing_hint": "Add these IPs to the exclusion list (as /32) so mihomo's proxy traffic doesn't recurse through its own TUN."
+      },
+      "route_address": {
+        "hint": "Additional CIDRs to route through TUN. Most setups don't need this — `auto-route: true` handles the defaults.",
+        "placeholder": "1.2.3.0/24",
+        "aria_label": "Route address entries"
+      },
+      "extras": {
+        "note": "Unknown fields preserved verbatim from the YAML — edit them in Raw YAML."
+      }
     },
     "sniffer": {
       "title": "Sniffer",
-      "placeholder": "Sniffer editor ships in stage 2."
+      "subtitle": "Mihomo protocol sniffer — HTTP/TLS/QUIC destination inference.",
+      "sections": {
+        "general": "General",
+        "protocols": "Per-protocol ports",
+        "domains": "Force / skip domains",
+        "port_whitelist": "Port whitelist",
+        "extras": "Unknown fields"
+      },
+      "fields": {
+        "enable": "Enable sniffer",
+        "override_destination": "Override destination (rewrite rule-match target to sniffed domain)",
+        "parse_pure_ip": "Parse pure-IP connections",
+        "force_dns_mapping": "Inject sniffed hostname into DNS cache",
+        "force_domain": "Force domain list",
+        "force_domain_hint": "Domains that always use the sniffed hostname, even when override-destination is off.",
+        "force_domain_placeholder": "+.netflix.com",
+        "skip_domain": "Skip domain list",
+        "skip_domain_hint": "Domains that skip sniffing entirely.",
+        "skip_domain_placeholder": "+.apple.com",
+        "port_whitelist": "Port whitelist",
+        "port_whitelist_hint": "If non-empty, ONLY these ports are ever sniffed — per-protocol configs are overridden. One range per entry (e.g. \"80\", \"8080-8090\").",
+        "port_whitelist_placeholder": "80"
+      },
+      "guardrails": {
+        "override_destination": "`override-destination` rewrites the rule-matching destination from IP to the sniffed domain. It's useful but surprising — domain-based rules will match traffic that CIDR rules would otherwise catch. Understand the consequences before enabling."
+      },
+      "protocols": {
+        "description": "Configure ports mihomo should monitor per protocol. Each entry is a single port (\"80\") or an inclusive range (\"80-90\"). Comma-separated lists are NOT valid — use multiple entries.",
+        "http": "HTTP",
+        "tls": "TLS",
+        "quic": "QUIC",
+        "placeholder": "80 or 8080-8090",
+        "add": "Add port range",
+        "remove": "Remove entry",
+        "empty": "No port ranges — this protocol is not sniffed.",
+        "aria_label": "{protocol} port ranges",
+        "entry_aria": "{protocol} port range {index}",
+        "override_destination": "{protocol}: per-protocol override-destination",
+        "extras_title": "Unknown protocols",
+        "extras_note": "Preserved verbatim from the YAML — edit in Raw YAML."
+      },
+      "extras": {
+        "note": "Unknown fields preserved verbatim from the YAML — edit them in Raw YAML."
+      }
     },
     "profile": {
       "title": "Profile",
-      "placeholder": "Profile editor ships in stage 2."
+      "subtitle": "Top-level mihomo config — mode, log-level, external-controller, secret, and related knobs.",
+      "sections": {
+        "general": "General",
+        "control_plane": "Control plane",
+        "behavior": "Behavior",
+        "geo": "Geodata",
+        "profile_nested": "Profile sub-section",
+        "authentication": "Authentication",
+        "extras": "Unknown fields"
+      },
+      "fields": {
+        "mode": "Mode",
+        "log_level": "Log level",
+        "mixed_port": "Mixed port (HTTP + SOCKS5)",
+        "mixed_port_placeholder": "7890",
+        "allow_lan": "allow-lan (listeners bind to LAN)",
+        "bind_address": "Bind address",
+        "bind_address_placeholder": "*",
+        "ipv6": "Enable IPv6",
+        "external_controller": "External controller",
+        "external_controller_placeholder": "127.0.0.1:9090",
+        "external_controller_hint": "host:port for mihomo's control API. Bind to 127.0.0.1 when possible; LAN/WAN binds REQUIRE a secret.",
+        "secret": "Secret (Bearer token)",
+        "secret_placeholder": "64 hex chars (use `openssl rand -hex 32`)",
+        "secret_show": "Show secret",
+        "secret_hide": "Hide secret",
+        "external_ui": "External UI path",
+        "external_ui_placeholder": "./zash",
+        "external_ui_name": "External UI name",
+        "external_ui_url": "External UI download URL",
+        "tcp_concurrent": "tcp-concurrent",
+        "unified_delay": "unified-delay",
+        "find_process_mode": "find-process-mode",
+        "global_client_fingerprint": "global-client-fingerprint",
+        "global_client_fingerprint_placeholder": "chrome",
+        "geodata_mode": "geodata-mode",
+        "geo_auto_update": "geo-auto-update",
+        "geo_update_interval": "geo-update-interval (hours)",
+        "geo_update_interval_hint": "How often mihomo refreshes the GeoIP / GeoSite databases.",
+        "keep_alive_interval": "keep-alive-interval (seconds)",
+        "store_selected": "Remember manually-selected proxy per service",
+        "store_fake_ip": "Persist fake-IP cache across restarts"
+      },
+      "mode": {
+        "rule": "rule (use rule engine)",
+        "global": "global (route everything through PROXY)",
+        "direct": "direct (no proxying)"
+      },
+      "nested": {
+        "description": "mihomo's nested `profile:` map. These are persisted runtime preferences, not routing policy."
+      },
+      "auth": {
+        "description": "HTTP proxy authentication entries (user:pass). Usernames are shown below; passwords are write-only — edit a row to set a new password, but previously-saved passwords are never echoed back in the UI.",
+        "list_aria": "Authentication entries",
+        "add": "Add user",
+        "empty": "No authentication entries.",
+        "has_password": "password set",
+        "no_password": "no password",
+        "edit_aria": "Edit password for {user}",
+        "remove_aria": "Remove user {user}",
+        "dialog_add_title": "Add authentication user",
+        "dialog_edit_title": "Change password",
+        "dialog_description": "Passwords are written directly into the mihomo config. Keep a copy of them in your own password manager — the UI will not display them again after save.",
+        "dialog_guardrail": "Passwords are never echoed back in the UI after save. If you forget one, remove the entry and re-add the user.",
+        "user_label": "Username",
+        "user_placeholder": "operator",
+        "password_label": "Password",
+        "password_placeholder": "set a strong password",
+        "user_taken": "A user with this name already exists.",
+        "user_colon_invalid": "Username cannot contain `:` (it's the delimiter)."
+      },
+      "guardrails": {
+        "ipv6": "IPv6 is enabled. The runbook keeps IPv6 disabled until extended burn-in — the NAT / rule plane has not been stressed for IPv6 yet.",
+        "external_controller": "External controller is bound to a non-loopback address without a secret. Any LAN host can control mihomo. Set a 64-char hex secret.",
+        "secret": "The secret is the Bearer token for mihomo's control API. Treat it like a password: never commit it, rotate after suspected leaks (`openssl rand -hex 32`, then restart mihomo and re-enter in your dashboard).",
+        "authentication": "Passwords are written verbatim to the mihomo config file. After save, the UI only shows usernames — if you forget a password, you must remove the entry and re-add the user."
+      },
+      "extras": {
+        "note": "Unknown fields preserved verbatim from the YAML — edit them in Raw YAML."
+      }
     },
     "raw_yaml": {
       "title": "Raw YAML",
@@ -311,6 +742,70 @@
     "settings": {
       "title": "Settings",
       "placeholder": "Password + runtime settings arrive in a later task."
+    }
+  },
+  "suggestion_unreachable_rule_after_match": "This rule can never execute because a MATCH rule above it will catch all traffic. Either remove this rule or move it before the MATCH rule at #{covered_by_index}.",
+  "suggestion_unreachable_rule_shadowed": "This rule is shadowed by rule #{covered_by_index} which covers a strictly wider set of inputs. Either remove this rule or reorder them.",
+  "suggestion_duplicate_rule": "This rule is a duplicate of rule #{duplicate_of_index}. Remove one of them.",
+  "suggestion_dangling_group_reference": "The target proxy-group '{target}' does not exist. Create it in the proxy-groups section, or change the target to an existing group or DIRECT/REJECT.",
+  "suggestion_dangling_node_reference": "The proxy node '{ref}' does not exist in the proxies section or as another group. Add it to the proxies section, or remove the reference from group '{group}'.",
+  "suggestion_dangling_ruleset_reference": "The rule-provider '{provider}' does not exist. Add it to the rule-providers section, or change the rule to reference an existing provider.",
+  "suggestion_intra_group_duplicate": "This rule is a duplicate of rule #{duplicate_of_index} (same type and value, both targeting '{group}'). Remove one of them.",
+  "suggestion_cross_group_duplicate": "This rule has the same type and value as rule #{firstAt}, but targets a different group ('{currentTarget}' vs '{firstTarget}'). This is sometimes intentional but often indicates an inconsistency.",
+  "suggestion_rule_parse_error": "Could not parse the rules section. The error was: {message}. Check the YAML syntax — rules should be a list of items in the format TYPE,VALUE,TARGET[,modifiers].",
+  "suggestion_universal_invariant": "This configuration violates a built-in invariant (id: {id}). Review the config requirements in your runbook or admin guide. For details, see the main error message.",
+  "suggestion_user_invariant": "This violates a custom invariant: {name}. {description}. Review your invariants configuration and make the necessary changes.",
+  "issues": {
+    "empty": "No issues.",
+    "severity_error": "Error",
+    "severity_warning": "Warning",
+    "severity_info": "Info",
+    "suggestion_prefix": "Suggestion",
+    "aria_item": "{severity}: {message}"
+  },
+  "linter": {
+    "issues": {
+      "LINTER_UNREACHABLE_RULE": {
+        "message": "Rule #{covered_by_index} at the same position makes this rule unreachable.",
+        "message_match_above": "A MATCH rule at #{covered_by_index} above catches all traffic — this rule is unreachable.",
+        "message_shadowed": "Rule #{covered_by_index} covers a strictly wider set of inputs, shadowing this one."
+      },
+      "LINTER_DUPLICATE_RULE": {
+        "message": "Duplicate of rule #{duplicate_of_index}."
+      },
+      "LINTER_DANGLING_GROUP_REFERENCE": {
+        "message": "Rule targets proxy-group '{target}' which is not defined."
+      },
+      "LINTER_DANGLING_NODE_REFERENCE": {
+        "message": "Proxy-group '{group}' references node '{ref}' which is not defined."
+      },
+      "LINTER_DANGLING_RULESET_REFERENCE": {
+        "message": "Rule references rule-provider '{provider}' which is not defined."
+      },
+      "LINTER_INTRA_GROUP_DUPLICATE": {
+        "message": "Duplicate within group '{group}' (matches rule #{duplicate_of_index})."
+      },
+      "LINTER_CROSS_GROUP_DUPLICATE": {
+        "message": "Same predicate as rule #{firstAt} but different target ('{currentTarget}' vs '{firstTarget}')."
+      },
+      "LINTER_RULE_PARSE_ERROR": {
+        "message": "Could not parse rule: {message}"
+      },
+      "INVARIANT_SECRET_TOO_SHORT": {
+        "message": "Secret must be at least {min} characters (current: {actual})."
+      },
+      "INVARIANT_DNS_LISTEN_ZERO53": {
+        "message": "DNS listen '{value}' exposes resolver on the wildcard address; use a specific interface."
+      },
+      "INVARIANT_TUN_NEEDS_INTERFACE": {
+        "message": "TUN is enabled but interface-name is not set — required for reliable route selection."
+      },
+      "INVARIANT_TUN_DNS_HIJACK_MUST_BE_ARRAY": {
+        "message": "tun.dns-hijack must be a list."
+      },
+      "USER_INVARIANT": {
+        "message": "Custom invariant violated: {name} ({reason})."
+      }
     }
   }
 }

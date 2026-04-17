@@ -1,0 +1,32 @@
+# User-defined invariants that guarantee the proxy-server IPs are in
+# tun.route-exclude-address — preventing mihomo's proxy traffic from looping
+# back through its own TUN. Edit the CIDRs to match your proxy endpoints.
+invariants:
+  - id: wg-proxy-ip-excluded
+    name: WG proxy IP must be excluded from TUN
+    level: error
+    active: true
+    description: |
+      Prevents self-intercept loop where proxy traffic routes back through
+      the proxy's own TUN. Update the IP list to match your upstream proxy
+      endpoints (e.g. 91.132.58.113/32 for the NL WG server).
+    rule:
+      kind: path-must-contain-all
+      path: tun.route-exclude-address
+      values:
+        - '91.132.58.113/32'
+
+  # Sniffer should stay enabled — it's how mihomo recovers the destination
+  # host for HTTPS connections that arrive as raw IPs after fake-ip.
+  - id: sniffer-enabled
+    name: Sniffer must be enabled
+    level: warning
+    active: true
+    description: |
+      With fake-ip on, rules that match by DOMAIN-SUFFIX only work if the
+      sniffer recovers the real host from TLS ClientHello. Turning it off
+      silently degrades routing for every ALPN/SNI-based rule.
+    rule:
+      kind: path-must-equal
+      path: sniffer.enable
+      value: true

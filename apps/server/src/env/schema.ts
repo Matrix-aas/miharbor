@@ -13,9 +13,17 @@ import { applyDeprecations } from './deprecations.ts'
 
 const EnvSchema = Type.Object({
   MIHARBOR_PORT: Type.Number({ default: 3000 }),
-  MIHARBOR_TRANSPORT: Type.Union([Type.Literal('local'), Type.Literal('ssh')], {
-    default: 'local',
-  }),
+  // `memory` is a test-only transport that swaps LocalFs/Ssh for
+  // InMemoryTransport. It is intentionally in the schema so tests can
+  // set the env var without TypeBox validation rejecting it, but it is
+  // NOT documented in README / docker-compose and is never selected by
+  // production code paths.
+  MIHARBOR_TRANSPORT: Type.Union(
+    [Type.Literal('local'), Type.Literal('ssh'), Type.Literal('memory')],
+    {
+      default: 'local',
+    },
+  ),
   MIHARBOR_CONFIG_PATH: Type.String({ default: '/config/config.yaml' }),
   MIHARBOR_DATA_DIR: Type.String({ default: '/app/data' }),
   /**
@@ -56,6 +64,62 @@ const EnvSchema = Type.Object({
   MIHOMO_CONTAINER_NAME: Type.String({ default: 'mihomo' }),
   ANTHROPIC_API_KEY: Type.String({ default: '' }),
   OPENAI_API_KEY: Type.String({ default: '' }),
+  /**
+   * Opt-out for Content-Security-Policy independent of MIHARBOR_PRODUCTION.
+   * Set to `true` when running the SPA behind a dev tunnel or some other
+   * setup where the strict CSP blocks legitimate resources. All other
+   * security headers stay on.
+   */
+  MIHARBOR_CSP_DISABLED: Type.Boolean({ default: false }),
+  /**
+   * Strict-Transport-Security max-age (seconds). Default 31536000 (1 year).
+   * Set to 0 to disable HSTS entirely (no header emitted).
+   */
+  MIHARBOR_HSTS_MAX_AGE: Type.Number({ default: 31536000 }),
+  /**
+   * Include the 'includeSubDomains' directive in HSTS header.
+   * Default false for safety in shared deployments (e.g. sibling subdomains
+   * on the same domain). Set to true only if you own the entire domain.
+   */
+  MIHARBOR_HSTS_INCLUDE_SUBDOMAINS: Type.Boolean({ default: false }),
+  /**
+   * Include the 'preload' directive in HSTS header (for HSTS preload-list
+   * eligibility). Only meaningful if MIHARBOR_HSTS_INCLUDE_SUBDOMAINS=true.
+   */
+  MIHARBOR_HSTS_PRELOAD: Type.Boolean({ default: false }),
+
+  // --- SSH transport (only read when MIHARBOR_TRANSPORT=ssh) ---
+  /** Remote host — required when MIHARBOR_TRANSPORT=ssh. */
+  MIHARBOR_SSH_HOST: Type.String({ default: '' }),
+  MIHARBOR_SSH_PORT: Type.Number({ default: 22 }),
+  /** Remote login user — required when MIHARBOR_TRANSPORT=ssh. */
+  MIHARBOR_SSH_USER: Type.String({ default: '' }),
+  /** Absolute path to a private key file on the Miharbor host. When empty,
+   *  falls back to `SSH_AUTH_SOCK` (ssh-agent). At least one must be set. */
+  MIHARBOR_SSH_KEY_PATH: Type.String({ default: '' }),
+  /** Passphrase for an encrypted key file. Ignored when the key is
+   *  unencrypted or when agent auth is used. */
+  MIHARBOR_SSH_KEY_PASSPHRASE: Type.String({ default: '' }),
+  /** Remote absolute path to mihomo's config.yaml. */
+  MIHARBOR_SSH_REMOTE_CONFIG_PATH: Type.String({ default: '/etc/mihomo/config.yaml' }),
+  /** Remote absolute path to the lock sidecar used by Miharbor to serialise
+   *  writes. Must be on the same filesystem as the config so `mv` is atomic. */
+  MIHARBOR_SSH_REMOTE_LOCK_PATH: Type.String({ default: '/etc/mihomo/.miharbor.lock' }),
+  MIHARBOR_SSH_CONNECT_TIMEOUT_MS: Type.Number({ default: 10_000 }),
+  MIHARBOR_SSH_KEEPALIVE_INTERVAL_MS: Type.Number({ default: 30_000 }),
+  /** Absolute path to an OpenSSH `known_hosts`-format file on the Miharbor
+   *  host. When non-empty, Miharbor pins the remote host key against this
+   *  file: connection is aborted on fingerprint mismatch. Generate with:
+   *    ssh-keyscan -t ed25519,rsa,ecdsa <host> > /path/to/known_hosts
+   *  (drop `-H` for unhashed lines — the parser doesn't support hashed
+   *  entries yet.) Mutually exclusive with `MIHARBOR_SSH_HOST_KEY_INSECURE`. */
+  MIHARBOR_SSH_KNOWN_HOSTS: Type.String({ default: '' }),
+  /** Explicit opt-in to accept any host key (equivalent to
+   *  `StrictHostKeyChecking=no`). Intended for first-contact exploration
+   *  or controlled lab setups where you have no other way to pin the
+   *  key. The server logs a WARN per connect in this mode. When
+   *  MIHARBOR_SSH_KNOWN_HOSTS is set this flag is ignored. */
+  MIHARBOR_SSH_HOST_KEY_INSECURE: Type.Boolean({ default: false }),
 })
 
 export type Env = Static<typeof EnvSchema>

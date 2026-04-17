@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-04-17",
+  "description": "Documented low-coverage files in apps/server/src/ with rationale",
+  "files": {
+    "apps/server/src/routes/auth.ts": {
+      "coverage": 48.65,
+      "rationale": "Password change route requires complex Elysia context + auth middleware setup. Core logic (status endpoint) is fully tested via direct service-level tests (auth/password.ts). Route integration can be tested end-to-end via the full app context, which is covered by integration tests.",
+      "gets_tested_via": [
+        "apps/server/tests/auth/password.test.ts",
+        "full app integration in bootstrap tests"
+      ]
+    },
+    "apps/server/src/routes/snapshots.ts": {
+      "coverage": 73.91,
+      "rationale": "Rollback error handling path (lines 69-86) requires orchestrating a pipeline failure. Happy-path rollback is fully tested. Error handling is integration-tested via pipeline tests.",
+      "gets_tested_via": [
+        "apps/server/tests/routes/snapshots.test.ts",
+        "apps/server/tests/deploy/rollback.test.ts"
+      ]
+    },
+    "apps/server/src/server-bootstrap.ts": {
+      "coverage": 63.66,
+      "rationale": "Bootstrap/wiring code for different transport modes (SSH, LocalFs, InMemory) and multi-step initialization. Tested indirectly via app context creation in route tests. Transport-specific paths (SSH setup, remote config validation) are covered by transport-layer tests. Hard to unit test in isolation because it's glue code with many conditional branches.",
+      "gets_tested_via": [
+        "apps/server/tests/routes/*.test.ts (all routes use wireApp())",
+        "apps/server/tests/transport/*.test.ts"
+      ]
+    },
+    "apps/server/src/transport/ssh-adapter.ts": {
+      "coverage": 17.37,
+      "rationale": "Low-level SSH primitives (ssh2.Client wrapping) with complex async lifecycle, socket management, and error states. Realistic testing requires a live SSH server or extensive mocking of the ssh2 library. High-level SSH transport tests cover the adapter indirectly. SSH deployment is manually tested in production.",
+      "gets_tested_via": ["apps/server/tests/transport/ssh.test.ts (integration with the adapter)"]
+    }
+  },
+  "overall_coverage": {
+    "apps_server_src": 91.17,
+    "all_files": 91.17,
+    "threshold": 80,
+    "status": "PASS"
+  },
+  "notes": [
+    "Threshold is ≥80% for overall apps/server/src/ coverage — achieved at 91.17%.",
+    "Low-coverage files are either integration/bootstrap code or infrastructure (SSH/transport) that are hard to isolate.",
+    "These files ARE tested, but via indirect paths (e.g., route tests use wireApp() which exercises server-bootstrap.ts).",
+    "SSH adapter and server-bootstrap are load-bearing infrastructure with high test leverage — improving isolated unit coverage has diminishing returns."
+  ]
+}

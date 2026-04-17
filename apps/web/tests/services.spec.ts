@@ -15,6 +15,7 @@ import type { Service, SimpleRule, Rule } from 'miharbor-shared'
 import en from '../src/i18n/en.json'
 import ru from '../src/i18n/ru.json'
 import ServiceList from '../src/components/services/ServiceList.vue'
+import ServiceDetail from '../src/components/services/ServiceDetail.vue'
 import RuleEditor from '../src/components/services/RuleEditor.vue'
 import RuleRow from '../src/components/services/RuleRow.vue'
 import { validateRuleValue } from '../src/lib/rule-validation'
@@ -87,6 +88,43 @@ describe('ServiceList', () => {
   })
 })
 
+describe('ServiceDetail', () => {
+  it('renders the IssueList block when the service has issues', () => {
+    const svc = makeService({
+      name: 'Streaming',
+      issues: [
+        {
+          level: 'error',
+          code: 'LINTER_DANGLING_GROUP_REFERENCE',
+          path: ['rules', 0],
+          params: { target: 'Ghost' },
+          suggestion: {
+            key: 'suggestion_dangling_group_reference',
+            params: { target: 'Ghost' },
+          },
+        },
+      ],
+    })
+    const wrapper = mount(ServiceDetail, {
+      props: { service: svc, liveState: {} },
+      global: { plugins: [makeI18n()] },
+    })
+    expect(wrapper.find('[data-testid="service-issues"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="issue-list"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain("Rule targets proxy-group 'Ghost' which is not defined.")
+    expect(wrapper.text()).toContain("The target proxy-group 'Ghost' does not exist.")
+  })
+
+  it('omits the IssueList block when the service has no issues', () => {
+    const svc = makeService({ name: 'Streaming' })
+    const wrapper = mount(ServiceDetail, {
+      props: { service: svc, liveState: {} },
+      global: { plugins: [makeI18n()] },
+    })
+    expect(wrapper.find('[data-testid="service-issues"]').exists()).toBe(false)
+  })
+})
+
 describe('RuleEditor', () => {
   it('rejects empty DOMAIN-SUFFIX values', () => {
     const r = validateRuleValue('DOMAIN-SUFFIX', '')
@@ -131,7 +169,9 @@ describe('RuleEditor', () => {
 })
 
 describe('RuleRow', () => {
-  it('shows complex-rule badge + disabled edit for logical rules', () => {
+  it('shows complex-rule badge + enabled edit that emits on click', async () => {
+    // Task 40 — the logical-rule pencil is no longer disabled. Clicking it
+    // opens the tree-editor modal via the parent (ServiceDetail).
     const logical: Rule = {
       kind: 'logical',
       op: 'AND',
@@ -151,12 +191,13 @@ describe('RuleRow', () => {
       global: { plugins: [makeI18n()] },
     })
     expect(wrapper.text()).toContain('Complex rule')
-    // Find the pencil button (there will be one disabled edit button).
     const editButtons = wrapper
       .findAll('button')
       .filter((b) => b.attributes('aria-label') === 'Edit rule')
     expect(editButtons.length).toBe(1)
-    expect((editButtons[0]!.element as HTMLButtonElement).disabled).toBe(true)
+    expect((editButtons[0]!.element as HTMLButtonElement).disabled).toBe(false)
+    await editButtons[0]!.trigger('click')
+    expect(wrapper.emitted('edit')).toBeTruthy()
   })
 })
 

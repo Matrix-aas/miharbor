@@ -8,6 +8,7 @@ import { useI18n } from 'vue-i18n'
 import PasswordChange from '@/components/settings/PasswordChange.vue'
 import EnvReadonly from '@/components/settings/EnvReadonly.vue'
 import LlmKeys from '@/components/settings/LlmKeys.vue'
+import InvariantsList from '@/components/settings/InvariantsList.vue'
 
 const { t } = useI18n()
 </script>
@@ -18,6 +19,7 @@ const { t } = useI18n()
       <h1 class="text-2xl font-semibold tracking-tight">{{ t('settings.title') }}</h1>
     </header>
     <PasswordChange />
+    <InvariantsList />
     <EnvReadonly />
     <LlmKeys />
   </section>

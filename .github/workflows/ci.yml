@@ -41,6 +41,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: i18n parity check (RU ↔ EN)
+        run: bun run i18n:check
+
       - name: Lint
         run: bun run --filter='*' lint
 
@@ -50,6 +53,9 @@ jobs:
       - name: Server + shared unit tests
         run: bun test
 
+      - name: Coverage check (≥80% for apps/server/src)
+        run: bun run scripts/check-coverage.ts
+
       - name: Web (Vitest) tests
         run: bun run --filter miharbor-web test
 
@@ -57,15 +63,25 @@ jobs:
         run: bun run --filter miharbor-web build
 
   e2e:
-    name: e2e smoke (Playwright)
+    name: e2e smoke (Playwright) — mihomo ${{ matrix.mihomo-version }}
     # Only run after merge to main — not on every feature-branch PR. E2E
     # setup (Playwright download, compose spin-up) is heavier than unit
     # tests, and a broken e2e on PR is rare enough that blocking every PR
     # on it isn't worth the wait.
+    #
+    # Matrix note: we test against mock-mihomo with different version strings
+    # to ensure Miharbor's API contract stays compatible across mihomo releases.
+    # The mock returns the specified version in GET /version, and we verify the
+    # UI loads and health checks pass. Real mihomo integration is out of scope
+    # for CI smoke tests; see `docs/TESTING.md` for the manual test procedure.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: check
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        mihomo-version: ['1.18.10', '1.19.11', '1.19.23']
     steps:
       - uses: actions/checkout@v4
 
@@ -83,13 +99,15 @@ jobs:
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
 
-      - name: Run e2e
+      - name: Run e2e (mock-mihomo version ${{ matrix.mihomo-version }})
         run: bun run e2e
+        env:
+          MOCK_MIHOMO_VERSION: ${{ matrix.mihomo-version }}
 
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-mihomo-${{ matrix.mihomo-version }}
           path: apps/web/playwright-report/
           retention-days: 7

@@ -37,6 +37,8 @@ function makeApi(): MihomoApi {
     getProxyDelay: async () => ({ delay: 1 }),
     listProviders: async () => ({}),
     refreshProvider: async () => {},
+    listRuleProviders: async () => ({}),
+    refreshRuleProvider: async () => {},
     listRules: async () => [],
   }
 }

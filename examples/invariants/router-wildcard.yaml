@@ -1,0 +1,31 @@
+# User-defined invariants for a mihomo host that acts as the apartment router
+# (see CLAUDE.md for the reference architecture — mini-PC serving as WAN edge
+# + Wi-Fi controller). Copy into $MIHARBOR_DATA_DIR/invariants.yaml and edit.
+invariants:
+  # mihomo MUST bind its DNS to 127.0.0.1:1053 on a router so the client-facing
+  # stub (AdGuardHome) is the only :53 listener.
+  - id: dns-listen-is-1053
+    name: DNS listener must be 127.0.0.1:1053
+    level: error
+    active: true
+    description: |
+      On a router host, mihomo is behind AdGuardHome. Binding mihomo to
+      :53 competes with AGH for the port and breaks LAN DNS immediately.
+    rule:
+      kind: path-must-equal
+      path: dns.listen
+      value: '127.0.0.1:1053'
+
+  # TUN needs an explicit interface-name when the host is multi-NIC so mihomo
+  # does not pick the wrong uplink (auto-detect-interface is unsafe here).
+  - id: tun-interface-explicit
+    name: tun.interface-name must be set explicitly
+    level: error
+    active: true
+    description: |
+      On a router with a WAN + LAN NIC, auto-detect-interface has bitten us
+      repeatedly — mihomo occasionally picks the LAN side, breaking egress.
+    rule:
+      kind: path-must-be-in
+      path: interface-name
+      values: ['enp170s0', 'eth0', 'eth1']

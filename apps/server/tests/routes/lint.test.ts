@@ -9,7 +9,7 @@ import { Elysia } from 'elysia'
 import { lintRoutes } from '../../src/routes/lint.ts'
 import type { Issue } from 'miharbor-shared'
 
-const newApp = () => new Elysia().use(lintRoutes)
+const newApp = () => new Elysia().use(lintRoutes())
 
 // Small helper — POST {yaml} to /api/lint and return the parsed JSON body
 // plus the response status so tests can assert on both.

@@ -18,14 +18,17 @@ import { Elysia } from 'elysia'
 import { bootstrap, type AppContext } from './bootstrap.ts'
 import { LocalFsTransport } from './transport/local-fs.ts'
 import { InMemoryTransport } from './transport/in-memory.ts'
+import { createSshTransport, type SshTransport } from './transport/ssh.ts'
 import type { Transport } from './transport/transport.ts'
 import { createVault, type Vault } from './vault/vault.ts'
 import { createSnapshotManager, type SnapshotManager } from './deploy/snapshot.ts'
 import { createMihomoApi, type MihomoApi } from './mihomo/api-client.ts'
 import { createAuthStore, type AuthStore } from './auth/password.ts'
-import { createRateLimiter, type RateLimiter } from './auth/rate-limit.ts'
+import { createRateLimiterAsync, type RateLimiter } from './auth/rate-limit.ts'
+import { createFileStore } from './auth/rate-limit-store.ts'
 import { createTrustProxyEvaluator, type TrustProxyEvaluator } from './auth/trust-proxy.ts'
 import { basicAuth } from './auth/basic-auth.ts'
+import { securityHeaders } from './middleware/security-headers.ts'
 import { createDraftStore, type DraftStore } from './draft-store.ts'
 import { startHealthMonitor, type HealthMonitor } from './health-monitor.ts'
 import { loadConfig } from './config/loader.ts'
@@ -39,8 +42,11 @@ import { healthRoutes } from './routes/health.ts'
 import { authRoutes } from './routes/auth.ts'
 import { lintRoutes } from './routes/lint.ts'
 import { mihomoRoutes } from './routes/mihomo.ts'
+import { providersRoutes } from './routes/providers.ts'
 import { settingsRoutes } from './routes/settings.ts'
 import { onboardingRoutes } from './routes/onboarding.ts'
+import { invariantsRoutes, loadUserInvariants } from './routes/invariants.ts'
+import type { UserInvariant } from 'miharbor-shared'
 import { join, normalize, resolve } from 'node:path'
 import type { AuditLog } from './observability/audit-log.ts'
 import type { Logger } from './observability/logger.ts'
@@ -61,8 +67,13 @@ export interface ServerAppContext extends AppContext {
   /** Shared DeployContext factory — fresh copy per request so we can set
    *  per-request identity (user/user_ip/user_agent) without leaking. */
   deployCtx: (user?: string, user_ip?: string, user_agent?: string) => DeployContext
-  /** Stop background tasks (health monitor). Tests MUST call this. */
+  /** Stop background tasks (health monitor). Tests MUST call this.
+   *  Also fires rate-limiter disposal (fire-and-forget for tests that
+   *  don't await). Production shutdown should prefer `dispose()` below. */
   stop: () => void
+  /** Async graceful shutdown — awaits pending rate-limiter saves so a
+   *  SIGTERM doesn't lose the final burst of failure counts. */
+  dispose: () => Promise<void>
 }
 
 /** Build the app + dependencies WITHOUT starting the HTTP server. Pure
@@ -74,20 +85,64 @@ export async function wireApp(
   const { env, logger, audit } = app0
 
   // ---------- transport ----------
-  const transport: Transport =
-    env.MIHARBOR_TRANSPORT === 'local'
-      ? new LocalFsTransport({
-          configPath: env.MIHARBOR_CONFIG_PATH,
-          dataDir: env.MIHARBOR_DATA_DIR,
-          mihomoApiUrl: env.MIHOMO_API_URL,
-          mihomoApiSecret: env.MIHOMO_API_SECRET,
-          validationMode: env.MIHOMO_API_VALIDATION_MODE,
-          logger,
-        })
-      : new InMemoryTransport({
-          mihomoApiUrl: env.MIHOMO_API_URL,
-          mihomoApiSecret: env.MIHOMO_API_SECRET,
-        })
+  let transport: Transport
+  let sshTransport: SshTransport | null = null
+  if (env.MIHARBOR_TRANSPORT === 'local') {
+    transport = new LocalFsTransport({
+      configPath: env.MIHARBOR_CONFIG_PATH,
+      dataDir: env.MIHARBOR_DATA_DIR,
+      mihomoApiUrl: env.MIHOMO_API_URL,
+      mihomoApiSecret: env.MIHOMO_API_SECRET,
+      validationMode: env.MIHOMO_API_VALIDATION_MODE,
+      logger,
+    })
+  } else if (env.MIHARBOR_TRANSPORT === 'ssh') {
+    if (!env.MIHARBOR_SSH_HOST || !env.MIHARBOR_SSH_USER) {
+      throw new Error(
+        'MIHARBOR_TRANSPORT=ssh requires MIHARBOR_SSH_HOST and MIHARBOR_SSH_USER to be set',
+      )
+    }
+    // At least one auth source must exist. We surface the misconfiguration
+    // at bootstrap rather than failing on the first deploy.
+    const agentSocket = rawEnv.SSH_AUTH_SOCK ?? ''
+    if (!env.MIHARBOR_SSH_KEY_PATH && !agentSocket) {
+      throw new Error(
+        'MIHARBOR_TRANSPORT=ssh requires either MIHARBOR_SSH_KEY_PATH or SSH_AUTH_SOCK (ssh-agent) to be set',
+      )
+    }
+    // Host-key verification: refuse-by-default. Operator must either point
+    // us at a known_hosts file (preferred) or explicitly set the insecure
+    // opt-in. See createSshTransport for the policy wiring.
+    if (!env.MIHARBOR_SSH_KNOWN_HOSTS && !env.MIHARBOR_SSH_HOST_KEY_INSECURE) {
+      throw new Error(
+        'MIHARBOR_TRANSPORT=ssh requires host-key verification: set MIHARBOR_SSH_KNOWN_HOSTS to a known_hosts-format file path (preferred) or MIHARBOR_SSH_HOST_KEY_INSECURE=true to explicitly accept any host key. See docs/SSH_SETUP.md.',
+      )
+    }
+    sshTransport = await createSshTransport({
+      host: env.MIHARBOR_SSH_HOST,
+      port: env.MIHARBOR_SSH_PORT,
+      username: env.MIHARBOR_SSH_USER,
+      keyPath: env.MIHARBOR_SSH_KEY_PATH || undefined,
+      passphrase: env.MIHARBOR_SSH_KEY_PASSPHRASE || undefined,
+      agentSocket: agentSocket || undefined,
+      remoteConfigPath: env.MIHARBOR_SSH_REMOTE_CONFIG_PATH,
+      remoteLockPath: env.MIHARBOR_SSH_REMOTE_LOCK_PATH,
+      dataDir: env.MIHARBOR_DATA_DIR,
+      mihomoApiUrl: env.MIHOMO_API_URL,
+      mihomoApiSecret: env.MIHOMO_API_SECRET,
+      connectTimeoutMs: env.MIHARBOR_SSH_CONNECT_TIMEOUT_MS,
+      keepaliveIntervalMs: env.MIHARBOR_SSH_KEEPALIVE_INTERVAL_MS,
+      knownHostsPath: env.MIHARBOR_SSH_KNOWN_HOSTS || undefined,
+      hostKeyInsecure: env.MIHARBOR_SSH_HOST_KEY_INSECURE,
+      logger,
+    })
+    transport = sshTransport
+  } else {
+    transport = new InMemoryTransport({
+      mihomoApiUrl: env.MIHOMO_API_URL,
+      mihomoApiSecret: env.MIHOMO_API_SECRET,
+    })
+  }
 
   // ---------- vault ----------
   const vault = await createVault({
@@ -119,7 +174,22 @@ export async function wireApp(
     defaultUser: env.MIHARBOR_AUTH_USER,
     envPassHash: env.MIHARBOR_AUTH_PASS_HASH,
   })
-  const rateLimiter = createRateLimiter()
+  // Rate-limit state persists to $MIHARBOR_DATA_DIR/rate-limit.state.json
+  // regardless of transport — auth gate is local to this Miharbor process
+  // even when mihomo config is over SSH. This survives container restart
+  // and prevents attackers from bypassing lockout by restarting the container.
+  const rlStore = createFileStore({
+    path: join(env.MIHARBOR_DATA_DIR, 'rate-limit.state.json'),
+    logger,
+    pruneBefore: {
+      // Match the limiter's runtime defaults — keeps load-time pruning
+      // consistent with what currentState() would decide on the first
+      // check() call anyway.
+      failWindowMs: 5 * 60 * 1000,
+      lockoutMs: 15 * 60 * 1000,
+    },
+  })
+  const rateLimiter = await createRateLimiterAsync({ store: rlStore })
   const trustProxy = createTrustProxyEvaluator(env.MIHARBOR_TRUSTED_PROXY_CIDRS, (raw, reason) => {
     logger.warn({
       msg: 'ignored invalid CIDR in MIHARBOR_TRUSTED_PROXY_CIDRS',
@@ -127,6 +197,34 @@ export async function wireApp(
       reason,
     })
   })
+
+  // ---------- user invariants ----------
+  // Load the operator's custom invariants once at boot. The linter route
+  // (and anything else that wants the current list) reads from `userInvariantsState`
+  // — PUT /api/invariants mutates `.current` in place so subsequent lints
+  // pick up the new list without a server restart.
+  const userInvariantsState: { current: UserInvariant[] } = { current: [] }
+  try {
+    const loaded = await loadUserInvariants(env.MIHARBOR_DATA_DIR, logger)
+    userInvariantsState.current = loaded.invariants
+    if (loaded.errors.length > 0) {
+      logger.warn({
+        msg: 'invariants.yaml: some entries were dropped during boot',
+        count_valid: loaded.invariants.length,
+        errors: loaded.errors,
+      })
+    } else {
+      logger.info({
+        msg: 'invariants.yaml: loaded',
+        count: loaded.invariants.length,
+      })
+    }
+  } catch (e) {
+    logger.warn({
+      msg: 'invariants.yaml: load failed — continuing with empty list',
+      error: (e as Error).message,
+    })
+  }
 
   // ---------- draft store + health monitor ----------
   const draftStore = createDraftStore()
@@ -179,7 +277,39 @@ export async function wireApp(
   }
 
   // ---------- app ----------
+  // `securityHeaders` is mounted FIRST so its onRequest hook fires before
+  // any other middleware or route handler — this way security headers end
+  // up on every response including auth 401s and router-synthesised 404s.
+  // CSP is skipped in dev (MIHARBOR_PRODUCTION=false) or when the operator
+  // explicitly sets MIHARBOR_CSP_DISABLED=true; other headers stay on.
+  const cspDisabled = !env.MIHARBOR_PRODUCTION || env.MIHARBOR_CSP_DISABLED
+  const hstsFlags: string[] = []
+  if (env.MIHARBOR_HSTS_MAX_AGE === 0) {
+    hstsFlags.push('disabled')
+  } else {
+    if (env.MIHARBOR_HSTS_INCLUDE_SUBDOMAINS) hstsFlags.push('includeSubDomains')
+    if (env.MIHARBOR_HSTS_PRELOAD) hstsFlags.push('preload')
+    if (hstsFlags.length === 0) hstsFlags.push('basic')
+  }
+  logger.info({
+    msg: 'security-headers initialized',
+    csp_enabled: !cspDisabled,
+    production: env.MIHARBOR_PRODUCTION,
+    hsts_max_age: env.MIHARBOR_HSTS_MAX_AGE,
+    hsts_flags: hstsFlags,
+  })
   const app = new Elysia()
+    .use(
+      securityHeaders({
+        cspDisabled,
+        trustProxy,
+        hsts: {
+          maxAge: env.MIHARBOR_HSTS_MAX_AGE,
+          includeSubdomains: env.MIHARBOR_HSTS_INCLUDE_SUBDOMAINS,
+          preload: env.MIHARBOR_HSTS_PRELOAD,
+        },
+      }),
+    )
     .use(
       basicAuth({
         authStore,
@@ -191,14 +321,22 @@ export async function wireApp(
       }),
     )
     .get('/health', () => ({ status: 'ok' }))
-    .use(lintRoutes)
+    .use(lintRoutes({ userInvariants: () => userInvariantsState.current }))
     .use(configRoutes({ transport, draftStore, vault }))
     .use(snapshotRoutes({ snapshots, deployCtx }))
     .use(deployRoutes({ draftStore, deployCtx }))
     .use(healthRoutes({ monitor }))
     .use(authRoutes({ authStore, audit }))
     .use(mihomoRoutes({ mihomoApi }))
+    .use(providersRoutes({ mihomoApi, transport }))
     .use(settingsRoutes({ env, rawEnv }))
+    .use(
+      invariantsRoutes({
+        dataDir: env.MIHARBOR_DATA_DIR,
+        logger,
+        state: userInvariantsState,
+      }),
+    )
     .use(
       onboardingRoutes({
         transport,
@@ -288,6 +426,13 @@ export async function wireApp(
     deployCtx,
     stop(): void {
       monitor.stop()
+      // Fire-and-forget: synchronous callers (most tests) don't await,
+      // and the debounced save is at most a few KB of JSON — quick flush.
+      void rateLimiter.dispose()
+    },
+    async dispose(): Promise<void> {
+      monitor.stop()
+      await rateLimiter.dispose()
     },
   }
 }

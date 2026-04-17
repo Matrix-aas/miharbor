@@ -1,0 +1,271 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://miharbor.local/schemas/mihomo.schema.json",
+  "title": "mihomo configuration",
+  "description": "JSON Schema for mihomo YAML configuration. Actively consumed by monaco-yaml in the Raw YAML edit mode (hover + autocomplete + schema validation). Permissive: known fields get type/enum hints, but `additionalProperties: true` at the root keeps hand-rolled or forward-compatible keys valid.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["rule", "global", "direct"],
+      "description": "Routing mode: rule = respect `rules:`, global = send everything to the default proxy group, direct = bypass proxies."
+    },
+    "log-level": {
+      "type": "string",
+      "enum": ["silent", "error", "warning", "info", "debug"],
+      "description": "mihomo log verbosity."
+    },
+    "mixed-port": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "HTTP + SOCKS proxy listener port (0 = disabled)."
+    },
+    "port": { "type": "integer", "minimum": 0, "maximum": 65535 },
+    "socks-port": { "type": "integer", "minimum": 0, "maximum": 65535 },
+    "redir-port": { "type": "integer", "minimum": 0, "maximum": 65535 },
+    "tproxy-port": { "type": "integer", "minimum": 0, "maximum": 65535 },
+    "allow-lan": {
+      "type": "boolean",
+      "description": "Allow inbound proxy connections from LAN (only listen on loopback if false)."
+    },
+    "bind-address": {
+      "type": "string",
+      "description": "Interface or address the proxy listens on. `*` = all interfaces."
+    },
+    "ipv6": {
+      "type": "boolean",
+      "description": "Enable IPv6 routing. Miharbor's runbook recommends false during first rollout."
+    },
+    "external-controller": {
+      "type": "string",
+      "description": "host:port for the RESTful control API (zashboard, etc.). Binding on LAN without `secret` is strongly discouraged."
+    },
+    "secret": {
+      "type": "string",
+      "description": "Bearer token required by clients hitting external-controller."
+    },
+    "external-ui": {
+      "type": "string",
+      "description": "Filesystem path (relative to config dir) containing a dashboard SPA."
+    },
+    "tcp-concurrent": { "type": "boolean" },
+    "unified-delay": { "type": "boolean" },
+    "find-process-mode": {
+      "type": "string",
+      "enum": ["always", "strict", "off"]
+    },
+    "geodata-mode": { "type": "boolean" },
+    "geo-auto-update": { "type": "boolean" },
+    "geo-update-interval": { "type": "integer", "minimum": 0 },
+    "keep-alive-interval": { "type": "integer", "minimum": 0 },
+    "global-client-fingerprint": {
+      "type": "string",
+      "enum": ["chrome", "firefox", "safari", "ios", "android", "edge", "random"]
+    },
+    "authentication": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "user:password entry granting access to the proxy ports."
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "store-selected": { "type": "boolean" },
+        "store-fake-ip": { "type": "boolean" }
+      }
+    },
+    "dns": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enable": { "type": "boolean" },
+        "listen": { "type": "string", "description": "host:port for the DNS server." },
+        "ipv6": { "type": "boolean" },
+        "enhanced-mode": { "type": "string", "enum": ["fake-ip", "redir-host", "normal"] },
+        "fake-ip-range": { "type": "string" },
+        "fake-ip-filter": { "type": "array", "items": { "type": "string" } },
+        "respect-rules": { "type": "boolean" },
+        "use-hosts": { "type": "boolean" },
+        "use-system-hosts": { "type": "boolean" },
+        "default-nameserver": { "type": "array", "items": { "type": "string" } },
+        "nameserver": { "type": "array", "items": { "type": "string" } },
+        "fallback": { "type": "array", "items": { "type": "string" } },
+        "direct-nameserver": { "type": "array", "items": { "type": "string" } },
+        "direct-nameserver-follow-policy": { "type": "boolean" },
+        "proxy-server-nameserver": { "type": "array", "items": { "type": "string" } },
+        "nameserver-policy": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }]
+          }
+        },
+        "fallback-filter": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "geoip": { "type": "boolean" },
+            "geoip-code": { "type": "string" },
+            "ipcidr": { "type": "array", "items": { "type": "string" } },
+            "domain": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "tun": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enable": { "type": "boolean" },
+        "stack": { "type": "string", "enum": ["system", "gvisor", "mixed", "lwip"] },
+        "device": { "type": "string" },
+        "dns-hijack": { "type": "array", "items": { "type": "string" } },
+        "auto-route": { "type": "boolean" },
+        "auto-redirect": { "type": "boolean" },
+        "auto-detect-interface": { "type": "boolean" },
+        "strict-route": { "type": "boolean" },
+        "mtu": { "type": "integer", "minimum": 576, "maximum": 65535 },
+        "gso": { "type": "boolean" },
+        "inet4-address": { "type": "array", "items": { "type": "string" } },
+        "inet6-address": { "type": "array", "items": { "type": "string" } },
+        "route-address": { "type": "array", "items": { "type": "string" } },
+        "route-exclude-address": { "type": "array", "items": { "type": "string" } },
+        "endpoint-independent-nat": { "type": "boolean" },
+        "include-interface": { "type": "array", "items": { "type": "string" } },
+        "exclude-interface": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "sniffer": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enable": { "type": "boolean" },
+        "force-dns-mapping": { "type": "boolean" },
+        "parse-pure-ip": { "type": "boolean" },
+        "override-destination": { "type": "boolean" },
+        "sniff": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "ports": { "type": "array", "items": { "type": ["integer", "string"] } },
+              "override-destination": { "type": "boolean" }
+            }
+          }
+        },
+        "force-domain": { "type": "array", "items": { "type": "string" } },
+        "skip-domain": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "rule-providers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "type": { "type": "string", "enum": ["http", "file", "inline"] },
+          "behavior": { "type": "string", "enum": ["domain", "ipcidr", "classical"] },
+          "format": { "type": "string", "enum": ["yaml", "text", "mrs"] },
+          "url": { "type": "string" },
+          "path": { "type": "string" },
+          "interval": { "type": "integer", "minimum": 0 },
+          "proxy": { "type": "string" },
+          "payload": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "proxies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["name", "type", "server", "port"],
+        "properties": {
+          "name": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": [
+              "ss",
+              "ssr",
+              "socks5",
+              "http",
+              "vmess",
+              "vless",
+              "trojan",
+              "hysteria",
+              "hysteria2",
+              "tuic",
+              "wireguard",
+              "snell"
+            ]
+          },
+          "server": { "type": "string" },
+          "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+          "udp": { "type": "boolean" },
+          "password": { "type": "string" },
+          "cipher": { "type": "string" },
+          "uuid": { "type": "string" },
+          "alterId": { "type": "integer", "minimum": 0 },
+          "sni": { "type": "string" },
+          "skip-cert-verify": { "type": "boolean" },
+          "private-key": { "type": "string" },
+          "public-key": { "type": "string" },
+          "preshared-key": { "type": "string" },
+          "ip": { "type": "string" },
+          "ipv6": { "type": "string" },
+          "mtu": { "type": "integer" },
+          "reserved": {
+            "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "integer" } }]
+          }
+        }
+      }
+    },
+    "proxy-groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["name", "type"],
+        "properties": {
+          "name": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["select", "url-test", "fallback", "load-balance", "relay"]
+          },
+          "proxies": { "type": "array", "items": { "type": "string" } },
+          "use": { "type": "array", "items": { "type": "string" } },
+          "url": { "type": "string" },
+          "interval": { "type": "integer", "minimum": 0 },
+          "timeout": { "type": "integer", "minimum": 0 },
+          "lazy": { "type": "boolean" },
+          "hidden": { "type": "boolean" },
+          "tolerance": { "type": "integer", "minimum": 0 },
+          "strategy": {
+            "type": "string",
+            "enum": ["round-robin", "consistent-hashing", "sticky-sessions"]
+          },
+          "disable-udp": { "type": "boolean" },
+          "filter": { "type": "string" }
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "A mihomo rule, e.g. `DOMAIN-SUFFIX,google.com,PROXY` or `MATCH,DIRECT`. Strict parsing is not expressible in JSON Schema; validation is delegated to the server-side linter."
+      }
+    },
+    "hosts": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }]
+      }
+    }
+  }
+}

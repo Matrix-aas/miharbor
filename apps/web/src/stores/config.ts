@@ -15,8 +15,18 @@
 
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import type { Document } from 'yaml'
-import type { Issue, ProxyNode, Rule, Service } from 'miharbor-shared'
+import { parseDocument, type Document } from 'yaml'
+import type {
+  DnsConfig,
+  Issue,
+  ProfileConfig,
+  ProxyNode,
+  Rule,
+  RuleProvidersConfig,
+  Service,
+  SnifferConfig,
+  TunConfig,
+} from 'miharbor-shared'
 import { endpoints, ApiError } from '@/api/client'
 import type { DraftResponse } from '@/api/client'
 import {
@@ -30,12 +40,22 @@ import {
   removeRule,
   replaceRule,
   serializeDraft,
+  setDnsConfig,
   setGroupDirection,
+  setProfileConfig,
+  setProvidersConfig,
+  setSnifferConfig,
+  setTunConfig,
   upsertProxyNode,
   YAMLMap,
   isMap,
   isSeq,
 } from '@/lib/yaml-mutator'
+import { getDnsConfig } from '@/lib/dns-view'
+import { getTunConfig } from '@/lib/tun-view'
+import { getSnifferConfig } from '@/lib/sniffer-view'
+import { getProfileConfig } from '@/lib/profile-view'
+import { getProvidersConfig } from '@/lib/providers-view'
 import type { Node, YAMLSeq } from 'yaml'
 import { parseRulesFromDoc } from 'miharbor-shared'
 
@@ -155,6 +175,40 @@ export const useConfigStore = defineStore('config', () => {
     return draftText.value === rawLive.value ? 0 : 1
   })
 
+  /** Parse-time diagnostic for the current `draftText`. `null` when the draft
+   *  is empty (no edits yet) or parses cleanly; otherwise contains the first
+   *  error message plus line/col so the editor can highlight it.
+   *
+   *  We use `yaml.parseDocument` directly (not the throwing `parseDraft`
+   *  helper) so we can read all errors without try/catch noise. */
+  const draftParseError = computed<{
+    message: string
+    line?: number
+    col?: number
+  } | null>(() => {
+    const text = draftText.value
+    if (!text) return null
+    // Fast empty-doc check: pure whitespace is a valid (empty) YAML document.
+    if (text.trim() === '') return null
+    const doc = parseDocument(text)
+    if (doc.errors.length === 0) return null
+    const err = doc.errors[0]!
+    // yaml's `YAMLError` carries `linePos` with {line, col}; older versions
+    // exposed `pos`. We handle both shapes defensively.
+    const linePos = (err as unknown as { linePos?: Array<{ line: number; col: number }> }).linePos
+    const firstPos = linePos?.[0]
+    return {
+      message: err.message,
+      line: firstPos?.line,
+      col: firstPos?.col,
+    }
+  })
+
+  /** `true` when the draft parses cleanly or is empty/absent (the app shows
+   *  live config in that case). `false` blocks structural routes so operators
+   *  can't edit a DNS/TUN/Sniffer view that's based on unparseable YAML. */
+  const draftValid = computed<boolean>(() => draftParseError.value === null)
+
   // Derived services/proxies — recomputed on every draftText change.
   const draftServices = computed<Service[]>(() => {
     if (!draftText.value) return servicesLive.value
@@ -193,6 +247,64 @@ export const useConfigStore = defineStore('config', () => {
       return listProxyNodeNames(parseDraft(draftText.value))
     } catch {
       return []
+    }
+  })
+
+  /** Typed view of the `dns:` section from the draft. Recomputes on every
+   *  draft change; empty object when the section is absent or the doc is
+   *  unparseable (the editor surfaces parse errors elsewhere). */
+  const dnsConfig = computed<DnsConfig>(() => {
+    if (!draftText.value) return {}
+    try {
+      return getDnsConfig(parseDraft(draftText.value))
+    } catch {
+      return {}
+    }
+  })
+
+  /** Typed view of the `tun:` section from the draft. Same contract as
+   *  `dnsConfig` — recomputes on every draft change; empty object on missing
+   *  section or parse error. */
+  const tunConfig = computed<TunConfig>(() => {
+    if (!draftText.value) return {}
+    try {
+      return getTunConfig(parseDraft(draftText.value))
+    } catch {
+      return {}
+    }
+  })
+
+  /** Typed view of the `sniffer:` section from the draft. Same contract as
+   *  the other structured views. */
+  const snifferConfig = computed<SnifferConfig>(() => {
+    if (!draftText.value) return {}
+    try {
+      return getSnifferConfig(parseDraft(draftText.value))
+    } catch {
+      return {}
+    }
+  })
+
+  /** Typed view of the top-level profile fields (mode, log-level,
+   *  external-controller, secret, authentication, ...). Same contract as the
+   *  other structured views. */
+  const profileConfig = computed<ProfileConfig>(() => {
+    if (!draftText.value) return {}
+    try {
+      return getProfileConfig(parseDraft(draftText.value))
+    } catch {
+      return {}
+    }
+  })
+
+  /** Typed view of the `rule-providers:` section from the draft. Same
+   *  contract as the other structured views. */
+  const providersConfig = computed<RuleProvidersConfig>(() => {
+    if (!draftText.value) return {}
+    try {
+      return getProvidersConfig(parseDraft(draftText.value))
+    } catch {
+      return {}
     }
   })
 
@@ -260,6 +372,26 @@ export const useConfigStore = defineStore('config', () => {
   async function commitDoc(doc: Document): Promise<void> {
     const text = serializeDraft(doc)
     await putDraft(text)
+  }
+
+  /** High-level entry used by the Raw YAML full-edit mode. The text comes
+   *  straight from the Monaco buffer; we set it locally so the `draftValid`
+   *  computed re-runs and the structural-route guard flips before we even
+   *  attempt the PUT. If the text doesn't parse, we short-circuit and return
+   *  `false` — the Raw YAML page keeps editing but the PUT is skipped so the
+   *  server never has to reject invalid YAML. Valid YAML is persisted via
+   *  `putDraft`, which handles lint + server error surfacing. */
+  async function applyRawYaml(text: string): Promise<boolean> {
+    draftText.value = text
+    // Trigger the computed eagerly — the caller may want to act on the result
+    // even before the microtask queue drains.
+    const parseError = draftParseError.value
+    if (parseError) {
+      // Don't push broken YAML to the server; let the editor show markers.
+      return false
+    }
+    await putDraft(text)
+    return true
   }
 
   async function clearDraft(): Promise<void> {
@@ -393,6 +525,69 @@ export const useConfigStore = defineStore('config', () => {
     await commitDoc(doc)
   }
 
+  /** Replace the entire `dns:` section in the draft with `config`. The Dns
+   *  screen calls this on every structured edit; the PUT is debounced by the
+   *  store's lint pipeline. Passes `extras` through unchanged. */
+  async function setDnsConfigDraft(config: DnsConfig): Promise<void> {
+    if (!draftText.value) {
+      if (rawLive.value === null) throw new Error('no live config to bootstrap draft from')
+      draftText.value = rawLive.value
+    }
+    const doc = parseDraft(draftText.value)
+    setDnsConfig(doc, config)
+    await commitDoc(doc)
+  }
+
+  /** Replace the entire `tun:` section in the draft with `config`. Same
+   *  contract as `setDnsConfigDraft`. */
+  async function setTunConfigDraft(config: TunConfig): Promise<void> {
+    if (!draftText.value) {
+      if (rawLive.value === null) throw new Error('no live config to bootstrap draft from')
+      draftText.value = rawLive.value
+    }
+    const doc = parseDraft(draftText.value)
+    setTunConfig(doc, config)
+    await commitDoc(doc)
+  }
+
+  /** Replace the entire `sniffer:` section in the draft with `config`. Same
+   *  contract as `setDnsConfigDraft` / `setTunConfigDraft`. */
+  async function setSnifferConfigDraft(config: SnifferConfig): Promise<void> {
+    if (!draftText.value) {
+      if (rawLive.value === null) throw new Error('no live config to bootstrap draft from')
+      draftText.value = rawLive.value
+    }
+    const doc = parseDraft(draftText.value)
+    setSnifferConfig(doc, config)
+    await commitDoc(doc)
+  }
+
+  /** Rewrite the top-level profile fields in the draft (mode, log-level,
+   *  external-controller, secret, authentication, ...). Reserved sections
+   *  (dns/tun/sniffer/rules/proxies/…) are preserved verbatim. Same contract
+   *  as the nested-section draft setters. */
+  async function setProfileConfigDraft(config: ProfileConfig): Promise<void> {
+    if (!draftText.value) {
+      if (rawLive.value === null) throw new Error('no live config to bootstrap draft from')
+      draftText.value = rawLive.value
+    }
+    const doc = parseDraft(draftText.value)
+    setProfileConfig(doc, config)
+    await commitDoc(doc)
+  }
+
+  /** Replace the entire `rule-providers:` section in the draft. Same
+   *  contract as the other section draft setters. */
+  async function setProvidersConfigDraft(config: RuleProvidersConfig): Promise<void> {
+    if (!draftText.value) {
+      if (rawLive.value === null) throw new Error('no live config to bootstrap draft from')
+      draftText.value = rawLive.value
+    }
+    const doc = parseDraft(draftText.value)
+    setProvidersConfig(doc, config)
+    await commitDoc(doc)
+  }
+
   // Initial lint on first load.
   watch(
     () => draftText.value,
@@ -414,6 +609,8 @@ export const useConfigStore = defineStore('config', () => {
     error,
     hasDraft,
     dirtyCount,
+    draftParseError,
+    draftValid,
     issuesByService,
     liveProxyState,
     // derived
@@ -421,10 +618,16 @@ export const useConfigStore = defineStore('config', () => {
     proxies: draftProxies,
     existingGroupNames,
     existingProxyNodeNames,
+    dnsConfig,
+    tunConfig,
+    snifferConfig,
+    profileConfig,
+    providersConfig,
     // lifecycle
     loadAll,
     fetchLiveProxyState,
     putDraft,
+    applyRawYaml,
     clearDraft,
     // structured mutators
     addRuleToService,
@@ -435,5 +638,10 @@ export const useConfigStore = defineStore('config', () => {
     deleteServiceDraft,
     upsertProxyNodeDraft,
     removeProxyNodeDraft,
+    setDnsConfigDraft,
+    setTunConfigDraft,
+    setSnifferConfigDraft,
+    setProfileConfigDraft,
+    setProvidersConfigDraft,
   }
 })

@@ -13,12 +13,14 @@
     "lint": "bun run --filter='*' lint",
     "test": "bun test",
     "e2e": "bun --filter miharbor-web e2e",
+    "i18n:check": "bun run scripts/i18n-validator.ts",
     "prepare": "husky"
   },
   "devDependencies": {
     "@types/bun": "~1.3.12",
     "eslint": "~9.19.0",
     "eslint-plugin-vue": "~9.32.0",
+    "eslint-plugin-vuejs-accessibility": "~2.4.1",
     "husky": "~9.1.7",
     "lint-staged": "~15.4.3",
     "prettier": "~3.4.2",

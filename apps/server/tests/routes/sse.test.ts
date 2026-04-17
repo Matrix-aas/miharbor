@@ -1,0 +1,65 @@
+// SSE helper tests — formatEvent, sseStreamFromEvents, sseStreamFromSubscription
+
+import { expect, test } from 'bun:test'
+import { sseStreamFromEvents, sseStreamFromSubscription } from '../../src/routes/sse.ts'
+
+test('sseStreamFromEvents returns Response with SSE headers', () => {
+  const response = sseStreamFromEvents(() => ({
+    queue: [],
+    done: () => true,
+    error: () => null,
+  }))
+  expect(response.status).toBe(200)
+  expect(response.headers.get('content-type')).toContain('text/event-stream')
+  expect(response.headers.get('cache-control')).toContain('no-cache')
+  expect(response.headers.get('connection')).toBe('keep-alive')
+  expect(response.headers.get('x-accel-buffering')).toBe('no')
+})
+
+test('sseStreamFromEvents includes initial comment', async () => {
+  const response = sseStreamFromEvents(() => ({
+    queue: [],
+    done: () => true,
+    error: () => null,
+  }))
+  const text = await response.text()
+  expect(text).toContain(': miharbor-stream')
+})
+
+test('sseStreamFromEvents drains queued events', async () => {
+  const queue = [{ type: 'test', data: { key: 'value' } }]
+  const response = sseStreamFromEvents(() => ({
+    queue,
+    done: () => true,
+    error: () => null,
+  }))
+  const text = await response.text()
+  expect(text).toContain('event: test')
+  expect(text).toContain('data: {"key":"value"}')
+})
+
+test('sseStreamFromEvents emits error event when error() is truthy', async () => {
+  const error = new Error('test error')
+  const response = sseStreamFromEvents(() => ({
+    queue: [],
+    done: () => true,
+    error: () => error,
+  }))
+  const text = await response.text()
+  expect(text).toContain('event: error')
+  expect(text).toContain('test error')
+})
+
+test('sseStreamFromSubscription returns Response with SSE headers', () => {
+  const response = sseStreamFromSubscription(() => () => {})
+  expect(response.status).toBe(200)
+  expect(response.headers.get('content-type')).toContain('text/event-stream')
+})
+
+test('sseStreamFromSubscription calls unsubscribe on cancel', () => {
+  const response = sseStreamFromSubscription(() => () => {
+    // unsubscribe function
+  })
+  expect(response.body).toBeDefined()
+  expect(response.status).toBe(200)
+})

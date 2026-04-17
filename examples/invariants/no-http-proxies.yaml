@@ -1,0 +1,36 @@
+# User-defined invariants for a hardened mihomo instance that refuses any
+# HTTP/SOCKS listener other than the TUN transparent proxy. Copy into
+# $MIHARBOR_DATA_DIR/invariants.yaml and edit.
+invariants:
+  # Explicit HTTP/SOCKS/MIXED proxy ports bind 0.0.0.0 by default and become
+  # an open relay if the host firewall ever regresses. If you don't need them
+  # — don't ship them.
+  - id: no-http-proxy-port
+    name: '`port:` must not be set'
+    level: error
+    active: true
+    description: Explicit HTTP proxy listener is forbidden — use TUN.
+    rule:
+      kind: path-must-equal
+      path: port
+      value: null
+
+  - id: no-socks-port
+    name: '`socks-port:` must not be set'
+    level: error
+    active: true
+    description: Explicit SOCKS5 listener is forbidden — use TUN.
+    rule:
+      kind: path-must-equal
+      path: socks-port
+      value: null
+
+  - id: no-mixed-port
+    name: '`mixed-port:` must not be set'
+    level: error
+    active: true
+    description: Explicit mixed HTTP+SOCKS listener is forbidden — use TUN.
+    rule:
+      kind: path-must-equal
+      path: mixed-port
+      value: null

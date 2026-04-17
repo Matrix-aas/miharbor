@@ -13,11 +13,19 @@ import type { Document } from 'yaml'
 import type { Issue } from '../types/issue.ts'
 import { detectUnreachable } from './unreachable.ts'
 import { checkUniversalInvariants } from './invariants-universal.ts'
+import { checkUserInvariants, type UserInvariant } from './invariants-user.ts'
 import { detectDuplicates } from './duplicates.ts'
 import { parseRulesFromDoc } from '../parser/rule-parser.ts'
 import type { Rule } from '../types/rule.ts'
 
-export function runSharedLinters(doc: Document): Issue[] {
+export interface SharedLinterOptions {
+  /** User-defined invariants merged with universal ones. Inactive entries
+   *  are skipped by the engine. Defaults to an empty list — server boot
+   *  passes the loaded invariants.yaml here. */
+  userInvariants?: UserInvariant[]
+}
+
+export function runSharedLinters(doc: Document, opts: SharedLinterOptions = {}): Issue[] {
   const issues: Issue[] = []
 
   // Parse rules once up front. A malformed rule aborts `parseRulesFromDoc`
@@ -34,6 +42,10 @@ export function runSharedLinters(doc: Document): Issue[] {
       code: 'LINTER_RULE_PARSE_ERROR',
       path: ['rules'],
       params: { message: err instanceof Error ? err.message : String(err) },
+      suggestion: {
+        key: 'suggestion_rule_parse_error',
+        params: { message: err instanceof Error ? err.message : String(err) },
+      },
     })
   }
 
@@ -41,6 +53,9 @@ export function runSharedLinters(doc: Document): Issue[] {
     issues.push(...detectUnreachable(rules))
   }
   issues.push(...checkUniversalInvariants(doc))
+  if (opts.userInvariants && opts.userInvariants.length > 0) {
+    issues.push(...checkUserInvariants(doc, opts.userInvariants))
+  }
   if (rulesParsed) {
     issues.push(...detectDuplicates(doc, rules))
   }

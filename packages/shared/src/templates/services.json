@@ -1,0 +1,867 @@
+{
+  "services": [
+    {
+      "id": "spotify",
+      "name": "Spotify",
+      "aliases": ["spotify music", "спотифай", "спотифаи"],
+      "category": "streaming-audio",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "spotify.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "scdn.co" },
+        { "type": "DOMAIN-SUFFIX", "value": "spotifycdn.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "pscdn.co" }
+      ]
+    },
+    {
+      "id": "youtube",
+      "name": "YouTube",
+      "aliases": ["youtube music", "ютуб", "ютюб", "yt"],
+      "category": "streaming-video",
+      "rules": [
+        { "type": "GEOSITE", "value": "youtube" },
+        { "type": "DOMAIN-SUFFIX", "value": "youtube.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "youtu.be" },
+        { "type": "DOMAIN-SUFFIX", "value": "ytimg.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "ggpht.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "googlevideo.com" }
+      ]
+    },
+    {
+      "id": "netflix",
+      "name": "Netflix",
+      "aliases": ["нетфликс", "нетфлекс"],
+      "category": "streaming-video",
+      "rules": [
+        { "type": "GEOSITE", "value": "netflix" },
+        { "type": "DOMAIN-SUFFIX", "value": "netflix.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "nflxvideo.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "nflximg.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "nflxso.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "nflxext.com" }
+      ]
+    },
+    {
+      "id": "amazon-prime",
+      "name": "Amazon Prime Video",
+      "aliases": ["prime video", "амазон прайм", "amazon video"],
+      "category": "streaming-video",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "primevideo.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "aiv-cdn.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "aiv-delivery.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "media-amazon.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "amazonvideo.com" }
+      ]
+    },
+    {
+      "id": "disney-plus",
+      "name": "Disney+",
+      "aliases": ["disneyplus", "дисней+", "disney"],
+      "category": "streaming-video",
+      "rules": [
+        { "type": "GEOSITE", "value": "disney" },
+        { "type": "DOMAIN-SUFFIX", "value": "disneyplus.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "disney-plus.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "bamgrid.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "dssott.com" }
+      ]
+    },
+    {
+      "id": "apple-tv",
+      "name": "Apple TV+",
+      "aliases": ["appletv", "apple tv plus"],
+      "category": "streaming-video",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "tv.apple.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "itunes.apple.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "apple-tv.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "mzstatic.com" }
+      ]
+    },
+    {
+      "id": "hbo-max",
+      "name": "HBO Max",
+      "aliases": ["hbomax", "max", "хбо"],
+      "category": "streaming-video",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "hbomax.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "hbo.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "max.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "hbomaxcdn.com" }
+      ]
+    },
+    {
+      "id": "twitch",
+      "name": "Twitch",
+      "aliases": ["твич", "twitch tv"],
+      "category": "streaming-video",
+      "rules": [
+        { "type": "GEOSITE", "value": "twitch" },
+        { "type": "DOMAIN-SUFFIX", "value": "twitch.tv" },
+        { "type": "DOMAIN-SUFFIX", "value": "ttvnw.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "jtvnw.net" }
+      ]
+    },
+    {
+      "id": "vimeo",
+      "name": "Vimeo",
+      "aliases": ["вимео"],
+      "category": "streaming-video",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "vimeo.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "vimeocdn.com" }
+      ]
+    },
+    {
+      "id": "deezer",
+      "name": "Deezer",
+      "aliases": ["дизер"],
+      "category": "streaming-audio",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "deezer.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "dzcdn.net" }
+      ]
+    },
+    {
+      "id": "apple-music",
+      "name": "Apple Music",
+      "aliases": ["эппл мьюзик", "эпл мьюзик"],
+      "category": "streaming-audio",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "music.apple.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "mzstatic.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "apple-cloudkit.com" }
+      ]
+    },
+    {
+      "id": "tidal",
+      "name": "Tidal",
+      "aliases": ["тайдал"],
+      "category": "streaming-audio",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "tidal.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "tidalhifi.com" }
+      ]
+    },
+    {
+      "id": "soundcloud",
+      "name": "SoundCloud",
+      "aliases": ["саундклауд"],
+      "category": "streaming-audio",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "soundcloud.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "sndcdn.com" }
+      ]
+    },
+    {
+      "id": "pandora",
+      "name": "Pandora",
+      "aliases": ["пандора"],
+      "category": "streaming-audio",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "pandora.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "p-cdn.com" }
+      ]
+    },
+    {
+      "id": "telegram",
+      "name": "Telegram",
+      "aliases": ["телеграм", "tg"],
+      "category": "messaging",
+      "rules": [
+        { "type": "GEOSITE", "value": "telegram" },
+        { "type": "DOMAIN-SUFFIX", "value": "telegram.org" },
+        { "type": "DOMAIN-SUFFIX", "value": "t.me" },
+        { "type": "DOMAIN-SUFFIX", "value": "telegram.me" },
+        { "type": "DOMAIN-SUFFIX", "value": "cdn-telegram.org" }
+      ]
+    },
+    {
+      "id": "whatsapp",
+      "name": "WhatsApp",
+      "aliases": ["вотсап", "вацап"],
+      "category": "messaging",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "whatsapp.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "whatsapp.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "wa.me" }
+      ]
+    },
+    {
+      "id": "signal",
+      "name": "Signal",
+      "aliases": ["сигнал"],
+      "category": "messaging",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "signal.org" },
+        { "type": "DOMAIN-SUFFIX", "value": "signalusers.org" },
+        { "type": "DOMAIN-SUFFIX", "value": "signal-chat.com" }
+      ]
+    },
+    {
+      "id": "messenger",
+      "name": "Facebook Messenger",
+      "aliases": ["мессенджер", "fb messenger"],
+      "category": "messaging",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "messenger.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "m.me" }
+      ]
+    },
+    {
+      "id": "discord",
+      "name": "Discord",
+      "aliases": ["дискорд"],
+      "category": "messaging",
+      "rules": [
+        { "type": "GEOSITE", "value": "discord" },
+        { "type": "DOMAIN-SUFFIX", "value": "discord.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "discord.gg" },
+        { "type": "DOMAIN-SUFFIX", "value": "discordapp.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "discordapp.net" }
+      ]
+    },
+    {
+      "id": "slack",
+      "name": "Slack",
+      "aliases": ["слак"],
+      "category": "collaboration",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "slack.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "slack-edge.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "slack-imgs.com" }
+      ]
+    },
+    {
+      "id": "microsoft-teams",
+      "name": "Microsoft Teams",
+      "aliases": ["teams", "тимс", "ms teams"],
+      "category": "collaboration",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "teams.microsoft.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "teams.live.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "skype.com" }
+      ]
+    },
+    {
+      "id": "zoom",
+      "name": "Zoom",
+      "aliases": ["зум"],
+      "category": "collaboration",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "zoom.us" },
+        { "type": "DOMAIN-SUFFIX", "value": "zoomgov.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "zoomcdn.com" }
+      ]
+    },
+    {
+      "id": "google-meet",
+      "name": "Google Meet",
+      "aliases": ["meet", "гугл мит"],
+      "category": "collaboration",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "meet.google.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "meetings.googleapis.com" }
+      ]
+    },
+    {
+      "id": "chatgpt",
+      "name": "ChatGPT",
+      "aliases": ["чатгпт", "openai chat", "чатжпт"],
+      "category": "ai",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "chatgpt.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "openai.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "oaistatic.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "oaiusercontent.com" }
+      ]
+    },
+    {
+      "id": "openai-api",
+      "name": "OpenAI API",
+      "aliases": ["openai platform"],
+      "category": "ai",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "api.openai.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "platform.openai.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "openai.com" }
+      ]
+    },
+    {
+      "id": "claude",
+      "name": "Claude (Anthropic)",
+      "aliases": ["anthropic", "клод", "клауд"],
+      "category": "ai",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "claude.ai" },
+        { "type": "DOMAIN-SUFFIX", "value": "anthropic.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "api.anthropic.com" }
+      ]
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini",
+      "aliases": ["google bard", "bard", "джемини"],
+      "category": "ai",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "gemini.google.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "bard.google.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "generativelanguage.googleapis.com" }
+      ]
+    },
+    {
+      "id": "google",
+      "name": "Google Search",
+      "aliases": ["гугл", "google search"],
+      "category": "productivity",
+      "rules": [
+        { "type": "GEOSITE", "value": "google" },
+        { "type": "DOMAIN-SUFFIX", "value": "google.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "gstatic.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "googleapis.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "googleusercontent.com" }
+      ]
+    },
+    {
+      "id": "google-docs",
+      "name": "Google Docs",
+      "aliases": ["docs.google", "гугл докс"],
+      "category": "productivity",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "docs.google.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "googleusercontent.com" }
+      ]
+    },
+    {
+      "id": "google-drive",
+      "name": "Google Drive",
+      "aliases": ["drive.google", "гугл драйв"],
+      "category": "storage",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "drive.google.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "googleusercontent.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "googleapis.com" }
+      ]
+    },
+    {
+      "id": "google-photos",
+      "name": "Google Photos",
+      "aliases": ["photos.google", "гугл фото"],
+      "category": "storage",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "photos.google.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "googleusercontent.com" }
+      ]
+    },
+    {
+      "id": "google-maps",
+      "name": "Google Maps",
+      "aliases": ["maps.google", "гугл карты"],
+      "category": "productivity",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "maps.google.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "maps.googleapis.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "gstatic.com" }
+      ]
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "aliases": ["гитхаб"],
+      "category": "development",
+      "rules": [
+        { "type": "GEOSITE", "value": "github" },
+        { "type": "DOMAIN-SUFFIX", "value": "github.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "githubusercontent.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "githubassets.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "ghcr.io" }
+      ]
+    },
+    {
+      "id": "gitlab",
+      "name": "GitLab",
+      "aliases": ["гитлаб"],
+      "category": "development",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "gitlab.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "gitlab-static.net" }
+      ]
+    },
+    {
+      "id": "bitbucket",
+      "name": "Bitbucket",
+      "aliases": ["битбакет"],
+      "category": "development",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "bitbucket.org" },
+        { "type": "DOMAIN-SUFFIX", "value": "bitbucket.io" }
+      ]
+    },
+    {
+      "id": "notion",
+      "name": "Notion",
+      "aliases": ["ноушн", "ношен"],
+      "category": "productivity",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "notion.so" },
+        { "type": "DOMAIN-SUFFIX", "value": "notion.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "notion.site" }
+      ]
+    },
+    {
+      "id": "linear",
+      "name": "Linear",
+      "aliases": ["линеар"],
+      "category": "productivity",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "linear.app" },
+        { "type": "DOMAIN-SUFFIX", "value": "linearusercontent.com" }
+      ]
+    },
+    {
+      "id": "jira",
+      "name": "Jira",
+      "aliases": ["джира"],
+      "category": "productivity",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "atlassian.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "atlassian.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "jira.com" }
+      ]
+    },
+    {
+      "id": "confluence",
+      "name": "Confluence",
+      "aliases": ["конфлюенс"],
+      "category": "productivity",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "atlassian.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "atlassian.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "confluence.com" }
+      ]
+    },
+    {
+      "id": "trello",
+      "name": "Trello",
+      "aliases": ["трелло"],
+      "category": "productivity",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "trello.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "trellocdn.com" }
+      ]
+    },
+    {
+      "id": "asana",
+      "name": "Asana",
+      "aliases": ["асана"],
+      "category": "productivity",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "asana.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "asana-user-content.com" }
+      ]
+    },
+    {
+      "id": "figma",
+      "name": "Figma",
+      "aliases": ["фигма"],
+      "category": "development",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "figma.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "fig.io" }
+      ]
+    },
+    {
+      "id": "adobe",
+      "name": "Adobe Creative Cloud",
+      "aliases": ["adobe cc", "адоуб"],
+      "category": "development",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "adobe.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "adobe.io" },
+        { "type": "DOMAIN-SUFFIX", "value": "adobesc.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "creativecloud.com" }
+      ]
+    },
+    {
+      "id": "dropbox",
+      "name": "Dropbox",
+      "aliases": ["дропбокс"],
+      "category": "storage",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "dropbox.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "dropboxusercontent.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "dropboxstatic.com" }
+      ]
+    },
+    {
+      "id": "icloud",
+      "name": "iCloud",
+      "aliases": ["айклауд"],
+      "category": "storage",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "icloud.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "icloud-content.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "apple-cloudkit.com" }
+      ]
+    },
+    {
+      "id": "instagram",
+      "name": "Instagram",
+      "aliases": ["инстаграм", "insta", "ig"],
+      "category": "social",
+      "rules": [
+        { "type": "GEOSITE", "value": "instagram" },
+        { "type": "DOMAIN-SUFFIX", "value": "instagram.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "cdninstagram.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "fbcdn.net" }
+      ]
+    },
+    {
+      "id": "twitter",
+      "name": "Twitter / X",
+      "aliases": ["twitter", "x", "твиттер", "икс"],
+      "category": "social",
+      "rules": [
+        { "type": "GEOSITE", "value": "twitter" },
+        { "type": "DOMAIN-SUFFIX", "value": "twitter.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "x.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "twimg.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "t.co" }
+      ]
+    },
+    {
+      "id": "tiktok",
+      "name": "TikTok",
+      "aliases": ["тикток"],
+      "category": "social",
+      "rules": [
+        { "type": "GEOSITE", "value": "tiktok" },
+        { "type": "DOMAIN-SUFFIX", "value": "tiktok.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "tiktokcdn.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "musical.ly" },
+        { "type": "DOMAIN-SUFFIX", "value": "byteoversea.com" }
+      ]
+    },
+    {
+      "id": "facebook",
+      "name": "Facebook",
+      "aliases": ["фейсбук", "fb", "meta"],
+      "category": "social",
+      "rules": [
+        { "type": "GEOSITE", "value": "facebook" },
+        { "type": "DOMAIN-SUFFIX", "value": "facebook.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "fbcdn.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "fb.com" }
+      ]
+    },
+    {
+      "id": "reddit",
+      "name": "Reddit",
+      "aliases": ["реддит"],
+      "category": "social",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "reddit.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "redd.it" },
+        { "type": "DOMAIN-SUFFIX", "value": "redditmedia.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "redditstatic.com" }
+      ]
+    },
+    {
+      "id": "linkedin",
+      "name": "LinkedIn",
+      "aliases": ["линкедин", "линкдин"],
+      "category": "social",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "linkedin.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "licdn.com" }
+      ]
+    },
+    {
+      "id": "snapchat",
+      "name": "Snapchat",
+      "aliases": ["снапчат"],
+      "category": "social",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "snapchat.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "sc-cdn.net" }
+      ]
+    },
+    {
+      "id": "pinterest",
+      "name": "Pinterest",
+      "aliases": ["пинтерест"],
+      "category": "social",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "pinterest.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "pinimg.com" }
+      ]
+    },
+    {
+      "id": "threads",
+      "name": "Threads",
+      "aliases": ["тредс", "threads meta"],
+      "category": "social",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "threads.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "threads.com" }
+      ]
+    },
+    {
+      "id": "mastodon",
+      "name": "Mastodon",
+      "aliases": ["мастодон"],
+      "category": "social",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "mastodon.social" },
+        { "type": "DOMAIN-SUFFIX", "value": "mastodon.online" },
+        { "type": "DOMAIN-SUFFIX", "value": "joinmastodon.org" }
+      ]
+    },
+    {
+      "id": "steam",
+      "name": "Steam",
+      "aliases": ["стим"],
+      "category": "gaming",
+      "rules": [
+        { "type": "GEOSITE", "value": "steam" },
+        { "type": "DOMAIN-SUFFIX", "value": "steampowered.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "steamcommunity.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "steamstatic.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "steamcontent.com" }
+      ]
+    },
+    {
+      "id": "epic-games",
+      "name": "Epic Games",
+      "aliases": ["эпик геймс", "epic"],
+      "category": "gaming",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "epicgames.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "unrealengine.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "epicgames.dev" }
+      ]
+    },
+    {
+      "id": "xbox-live",
+      "name": "Xbox Live",
+      "aliases": ["xbox", "иксбокс"],
+      "category": "gaming",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "xbox.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "xboxlive.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "xboxlive.cn" }
+      ]
+    },
+    {
+      "id": "psn",
+      "name": "PlayStation Network",
+      "aliases": ["psn", "плейстешн", "playstation"],
+      "category": "gaming",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "playstation.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "playstation.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "sony.net" }
+      ]
+    },
+    {
+      "id": "nintendo",
+      "name": "Nintendo Online",
+      "aliases": ["nintendo switch", "нинтендо"],
+      "category": "gaming",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "nintendo.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "nintendo.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "nintendoswitch.com" }
+      ]
+    },
+    {
+      "id": "stripe",
+      "name": "Stripe",
+      "aliases": ["страйп"],
+      "category": "finance",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "stripe.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "stripe.network" }
+      ]
+    },
+    {
+      "id": "paypal",
+      "name": "PayPal",
+      "aliases": ["пайпал"],
+      "category": "finance",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "paypal.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "paypalobjects.com" }
+      ]
+    },
+    {
+      "id": "cloudflare",
+      "name": "Cloudflare",
+      "aliases": ["клаудфлер"],
+      "category": "cloud",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "cloudflare.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "cf-ipfs.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "workers.dev" },
+        { "type": "DOMAIN-SUFFIX", "value": "pages.dev" }
+      ]
+    },
+    {
+      "id": "fastly",
+      "name": "Fastly",
+      "aliases": ["фастли"],
+      "category": "cloud",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "fastly.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "fastly.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "fastlylb.net" }
+      ]
+    },
+    {
+      "id": "aws",
+      "name": "AWS",
+      "aliases": ["amazon web services", "амазон"],
+      "category": "cloud",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "aws.amazon.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "amazonaws.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "cloudfront.net" }
+      ]
+    },
+    {
+      "id": "azure",
+      "name": "Azure",
+      "aliases": ["microsoft azure", "ажур"],
+      "category": "cloud",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "azure.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "azurewebsites.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "azureedge.net" },
+        { "type": "DOMAIN-SUFFIX", "value": "windows.net" }
+      ]
+    },
+    {
+      "id": "gcp",
+      "name": "Google Cloud Platform",
+      "aliases": ["gcp", "google cloud"],
+      "category": "cloud",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "cloud.google.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "googleapis.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "appspot.com" }
+      ]
+    },
+    {
+      "id": "vercel",
+      "name": "Vercel",
+      "aliases": ["верцел", "версел"],
+      "category": "cloud",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "vercel.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "vercel.app" },
+        { "type": "DOMAIN-SUFFIX", "value": "vercel-scripts.com" }
+      ]
+    },
+    {
+      "id": "netlify",
+      "name": "Netlify",
+      "aliases": ["нетлифай"],
+      "category": "cloud",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "netlify.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "netlify.app" }
+      ]
+    },
+    {
+      "id": "digitalocean",
+      "name": "DigitalOcean",
+      "aliases": ["диджиталошен", "do"],
+      "category": "cloud",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "digitalocean.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "digitaloceanspaces.com" }
+      ]
+    },
+    {
+      "id": "binance",
+      "name": "Binance",
+      "aliases": ["бинанс"],
+      "category": "finance",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "binance.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "binance.net" }
+      ]
+    },
+    {
+      "id": "coinbase",
+      "name": "Coinbase",
+      "aliases": ["койнбейс"],
+      "category": "finance",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "coinbase.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "coinbase.pro" }
+      ]
+    },
+    {
+      "id": "kraken",
+      "name": "Kraken",
+      "aliases": ["кракен"],
+      "category": "finance",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "kraken.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "krakenfx.com" }
+      ]
+    },
+    {
+      "id": "bbc",
+      "name": "BBC",
+      "aliases": ["бибиси"],
+      "category": "news",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "bbc.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "bbc.co.uk" },
+        { "type": "DOMAIN-SUFFIX", "value": "bbci.co.uk" }
+      ]
+    },
+    {
+      "id": "cnn",
+      "name": "CNN",
+      "aliases": ["сиэнэн"],
+      "category": "news",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "cnn.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "cnn.io" }
+      ]
+    },
+    {
+      "id": "reuters",
+      "name": "Reuters",
+      "aliases": ["рейтерс"],
+      "category": "news",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "reuters.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "reutersagency.com" }
+      ]
+    },
+    {
+      "id": "deepl",
+      "name": "DeepL",
+      "aliases": ["дипл"],
+      "category": "productivity",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "deepl.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "deepl-api.com" }
+      ]
+    },
+    {
+      "id": "grammarly",
+      "name": "Grammarly",
+      "aliases": ["грамматли"],
+      "category": "productivity",
+      "rules": [
+        { "type": "DOMAIN-SUFFIX", "value": "grammarly.com" },
+        { "type": "DOMAIN-SUFFIX", "value": "grammarly.io" }
+      ]
+    }
+  ]
+}

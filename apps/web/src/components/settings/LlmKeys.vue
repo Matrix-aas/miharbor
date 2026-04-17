@@ -23,12 +23,20 @@ const { t } = useI18n()
     </p>
     <div class="space-y-3 opacity-60">
       <div>
-        <label class="mb-1 block text-xs font-medium text-muted-foreground">Anthropic</label>
-        <Input disabled :placeholder="t('settings.llm_anthropic_placeholder')" />
+        <label for="llm-key-anthropic" class="mb-1 block text-xs font-medium text-muted-foreground"
+          >Anthropic</label
+        >
+        <Input
+          id="llm-key-anthropic"
+          disabled
+          :placeholder="t('settings.llm_anthropic_placeholder')"
+        />
       </div>
       <div>
-        <label class="mb-1 block text-xs font-medium text-muted-foreground">OpenAI</label>
-        <Input disabled :placeholder="t('settings.llm_openai_placeholder')" />
+        <label for="llm-key-openai" class="mb-1 block text-xs font-medium text-muted-foreground"
+          >OpenAI</label
+        >
+        <Input id="llm-key-openai" disabled :placeholder="t('settings.llm_openai_placeholder')" />
       </div>
     </div>
   </section>

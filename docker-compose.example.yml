@@ -60,3 +60,29 @@ services:
 
 volumes:
   miharbor_data:
+# ---------------------------------------------------------------------------
+# Alternative: SSH transport
+# ---------------------------------------------------------------------------
+# If Miharbor runs elsewhere than the mihomo host, set MIHARBOR_TRANSPORT=ssh
+# and point it at the remote. See docs/SSH_SETUP.md for the full setup and
+# troubleshooting guide. Minimal overrides (replacing the `environment:` block
+# above):
+#
+#   MIHARBOR_TRANSPORT: ssh
+#   MIHARBOR_SSH_HOST: router.lan
+#   MIHARBOR_SSH_USER: matrix
+#   MIHARBOR_SSH_KEY_PATH: /ssh/key         # bind-mount the private key
+#   MIHARBOR_SSH_REMOTE_CONFIG_PATH: /etc/mihomo/config.yaml
+#   MIHARBOR_SSH_REMOTE_LOCK_PATH: /etc/mihomo/.miharbor.lock
+#   MIHOMO_API_URL: http://router.lan:9090
+#
+#   # Host-key verification — pick ONE. Miharbor refuses to start otherwise.
+#   # (A) Preferred: pin against a known_hosts file, generated once with
+#   #     `ssh-keyscan -t ed25519,rsa,ecdsa router.lan > known_hosts`.
+#   MIHARBOR_SSH_KNOWN_HOSTS: /ssh/known_hosts
+#   # (B) First-contact / lab: accept any host key (NOT SAFE on hostile nets).
+#   # MIHARBOR_SSH_HOST_KEY_INSECURE: 'true'
+#
+# Plus read-only mounts (the key file AND, for option A, the known_hosts file):
+#   - /home/matrix/.ssh/miharbor_ed25519:/ssh/key:ro
+#   - /etc/miharbor/known_hosts:/ssh/known_hosts:ro

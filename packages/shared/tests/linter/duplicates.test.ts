@@ -174,3 +174,55 @@ test('dangling target on logical rule is flagged', () => {
   expect(iss).toBeDefined()
   expect((iss!.params as { target: string }).target).toBe('Ghost')
 })
+
+// --- Suggestions (Task 49) ---
+
+test('dangling group reference includes suggestion', () => {
+  const issues = run(
+    [
+      'proxy-groups:',
+      '  - {name: Real, type: select, proxies: [DIRECT]}',
+      'rules:',
+      '  - DOMAIN-SUFFIX,example.com,NotExistsGroup',
+    ].join('\n'),
+  )
+  const iss = issues.find((i) => i.code === 'LINTER_DANGLING_GROUP_REFERENCE')
+  expect(iss).toBeDefined()
+  expect(iss!.suggestion).toBeDefined()
+  expect(iss!.suggestion?.key).toBe('suggestion_dangling_group_reference')
+  expect(iss!.suggestion?.params).toEqual({ target: 'NotExistsGroup' })
+})
+
+test('dangling node reference includes suggestion', () => {
+  const issues = run(
+    [
+      'proxies: []',
+      'proxy-groups:',
+      '  - {name: G, type: select, proxies: [NonexistentNode, DIRECT]}',
+      'rules:',
+      '  - MATCH,G',
+    ].join('\n'),
+  )
+  const iss = issues.find((i) => i.code === 'LINTER_DANGLING_NODE_REFERENCE')
+  expect(iss).toBeDefined()
+  expect(iss!.suggestion).toBeDefined()
+  expect(iss!.suggestion?.key).toBe('suggestion_dangling_node_reference')
+  expect(iss!.suggestion?.params).toEqual({ ref: 'NonexistentNode', group: 'G' })
+})
+
+test('intra-group duplicate includes suggestion', () => {
+  const issues = run(
+    [
+      'proxy-groups:',
+      '  - {name: G, type: select, proxies: [DIRECT]}',
+      'rules:',
+      '  - DOMAIN-SUFFIX,example.com,G',
+      '  - DOMAIN-SUFFIX,example.com,G',
+    ].join('\n'),
+  )
+  const iss = issues.find((i) => i.code === 'LINTER_INTRA_GROUP_DUPLICATE')
+  expect(iss).toBeDefined()
+  expect(iss!.suggestion).toBeDefined()
+  expect(iss!.suggestion?.key).toBe('suggestion_intra_group_duplicate')
+  expect(iss!.suggestion?.params).toEqual({ group: 'G', duplicate_of_index: 0 })
+})

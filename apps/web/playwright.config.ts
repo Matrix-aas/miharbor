@@ -65,9 +65,11 @@ export default defineConfig({
       url: `http://127.0.0.1:${MOCK_MIHOMO_PORT}/mock/ping`,
       env: {
         MOCK_MIHOMO_PORT: String(MOCK_MIHOMO_PORT),
+        MOCK_MIHOMO_VERSION: process.env.MOCK_MIHOMO_VERSION || '1.19.23',
       },
       reuseExistingServer: !process.env.CI,
-      timeout: 15_000,
+      // Cold-start of bun can exceed 15s on CI runners under contention; bumped to 60s.
+      timeout: 60_000,
       stdout: 'pipe',
       stderr: 'pipe',
     },
@@ -88,7 +90,9 @@ export default defineConfig({
         MIHOMO_API_SECRET: '',
       },
       reuseExistingServer: !process.env.CI,
-      timeout: 20_000,
+      // Cold-start of bun imports (Elysia + ssh2 + yaml + argon2 + ...) can exceed 20s
+      // on GitHub Actions runners under contention. Bumped to 60s for stability.
+      timeout: 60_000,
       stdout: 'pipe',
       stderr: 'pipe',
     },

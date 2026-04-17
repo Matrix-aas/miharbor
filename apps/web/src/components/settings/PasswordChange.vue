@@ -64,25 +64,35 @@ async function submit(): Promise<void> {
 
     <form class="space-y-3" @submit.prevent="submit">
       <div>
-        <label class="mb-1 block text-xs font-medium text-muted-foreground">
+        <label for="password-current" class="mb-1 block text-xs font-medium text-muted-foreground">
           {{ t('settings.password_current') }}
         </label>
-        <Input v-model="current" type="password" autocomplete="current-password" />
+        <Input
+          id="password-current"
+          v-model="current"
+          type="password"
+          autocomplete="current-password"
+        />
       </div>
       <div>
-        <label class="mb-1 block text-xs font-medium text-muted-foreground">
+        <label for="password-new" class="mb-1 block text-xs font-medium text-muted-foreground">
           {{ t('settings.password_new') }}
         </label>
-        <Input v-model="next" type="password" autocomplete="new-password" />
+        <Input id="password-new" v-model="next" type="password" autocomplete="new-password" />
         <p v-if="tooShort" class="mt-1 text-xs text-destructive">
           {{ t('settings.password_too_short') }}
         </p>
       </div>
       <div>
-        <label class="mb-1 block text-xs font-medium text-muted-foreground">
+        <label for="password-confirm" class="mb-1 block text-xs font-medium text-muted-foreground">
           {{ t('settings.password_confirm') }}
         </label>
-        <Input v-model="confirm" type="password" autocomplete="new-password" />
+        <Input
+          id="password-confirm"
+          v-model="confirm"
+          type="password"
+          autocomplete="new-password"
+        />
         <p v-if="mismatch" class="mt-1 text-xs text-destructive">
           {{ t('settings.password_mismatch') }}
         </p>
