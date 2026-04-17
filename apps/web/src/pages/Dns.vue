@@ -18,7 +18,6 @@
 
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { AlertTriangle } from 'lucide-vue-next'
 import type {
   DnsCacheAlgorithm,
   DnsConfig,
@@ -28,6 +27,7 @@ import type {
 import { validateDnsListen, validateLiteralIp } from 'miharbor-shared'
 import { useConfigStore } from '@/stores/config'
 import { Input } from '@/components/ui/input'
+import GuardrailPlate from '@/components/ui/GuardrailPlate.vue'
 import NameserverList from '@/components/dns/NameserverList.vue'
 import FakeIpFilterList from '@/components/dns/FakeIpFilterList.vue'
 import NameserverPolicy from '@/components/dns/NameserverPolicy.vue'
@@ -178,18 +178,14 @@ const extras = computed<Record<string, unknown> | null>(() => {
         <p class="text-xs text-muted-foreground">
           {{ t('pages.dns.fields.listen_hint') }}
         </p>
-        <p
-          class="flex items-start gap-2 rounded-md bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400"
+        <GuardrailPlate
+          :message="t('pages.dns.guardrails.listen_header')"
           data-testid="listen-guardrail"
         >
-          <AlertTriangle class="h-4 w-4 shrink-0" />
-          <span>
-            {{ t('pages.dns.guardrails.listen_header') }}
-            <template v-if="listenWarning">
-              <span class="block font-medium">{{ listenWarning }}</span>
-            </template>
-          </span>
-        </p>
+          <template v-if="listenWarning">
+            <span class="block font-medium">{{ listenWarning }}</span>
+          </template>
+        </GuardrailPlate>
       </div>
 
       <div class="space-y-1">
@@ -320,13 +316,10 @@ const extras = computed<Record<string, unknown> | null>(() => {
         <label class="block text-xs font-medium uppercase text-muted-foreground">
           {{ t('pages.dns.fields.default_nameserver') }}
         </label>
-        <p
-          class="flex items-start gap-2 rounded-md bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400"
+        <GuardrailPlate
+          :message="t('pages.dns.guardrails.default_ns_header')"
           data-testid="default-ns-guardrail"
-        >
-          <AlertTriangle class="h-4 w-4 shrink-0" />
-          {{ t('pages.dns.guardrails.default_ns_header') }}
-        </p>
+        />
         <NameserverList
           :model-value="dns['default-nameserver'] ?? []"
           :placeholder="t('pages.dns.placeholders.ip_nameserver')"
@@ -364,13 +357,10 @@ const extras = computed<Record<string, unknown> | null>(() => {
         <label class="block text-xs font-medium uppercase text-muted-foreground">
           {{ t('pages.dns.fields.proxy_server_nameserver') }}
         </label>
-        <p
-          class="flex items-start gap-2 rounded-md bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400"
+        <GuardrailPlate
+          :message="t('pages.dns.guardrails.proxy_ns_header')"
           data-testid="proxy-ns-guardrail"
-        >
-          <AlertTriangle class="h-4 w-4 shrink-0" />
-          {{ t('pages.dns.guardrails.proxy_ns_header') }}
-        </p>
+        />
         <NameserverList
           :model-value="dns['proxy-server-nameserver'] ?? []"
           :placeholder="t('pages.dns.placeholders.ip_nameserver')"
