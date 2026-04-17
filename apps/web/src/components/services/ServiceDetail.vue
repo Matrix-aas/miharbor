@@ -29,7 +29,7 @@ interface Props {
 const props = defineProps<Props>()
 const emit = defineEmits<{
   'change-direction': [name: string, direction: 'VPN' | 'DIRECT' | 'REJECT']
-  'add-rule': [serviceName: string, rule: SimpleRule]
+  'add-rule': [serviceName: string, rule: SimpleRule, suggestedIndex?: number]
   'replace-rule': [index: number, rule: Rule]
   'remove-rule': [index: number]
   'delete-service': [name: string]
@@ -100,8 +100,8 @@ function cancelEdit(): void {
   adderOpen.value = false
 }
 
-function onSaveNew(rule: SimpleRule): void {
-  emit('add-rule', props.service.name, rule)
+function onSaveNew(rule: SimpleRule, suggestedIndex?: number): void {
+  emit('add-rule', props.service.name, rule, suggestedIndex)
   adderOpen.value = false
 }
 
@@ -218,7 +218,13 @@ function ruleKey(pair: { index: number; rule: Rule }): string {
         />
       </template>
 
-      <RuleEditor v-if="adderOpen" :target="service.name" @save="onSaveNew" @cancel="cancelEdit" />
+      <RuleEditor
+        v-if="adderOpen"
+        :target="service.name"
+        :existing-rules="service.rules.map((r) => r.rule)"
+        @save="onSaveNew"
+        @cancel="cancelEdit"
+      />
 
       <Button
         v-if="!adderOpen"

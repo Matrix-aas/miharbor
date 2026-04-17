@@ -170,6 +170,17 @@
       "cidr_v4": "Not a valid IPv4 CIDR (e.g. 10.0.0.0/8).",
       "cidr_v6": "Not a valid IPv6 CIDR.",
       "port": "Not a valid port or port range."
+    },
+    "placement": {
+      "suggested": "Suggested placement",
+      "after_rule": "after rule #{index}",
+      "override_checkbox": "Place at end instead",
+      "reason_ads": "Groups ad-blocking rules at the top",
+      "reason_private": "Groups private IPs and local domains",
+      "reason_ru": "Groups Russian domains and geo-rules",
+      "reason_services": "Groups service and proxy rules",
+      "reason_match": "MATCH is always the final rule",
+      "reason_empty": "First rule in an empty list"
     }
   },
   "proxies": {
