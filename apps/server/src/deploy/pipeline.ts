@@ -33,10 +33,19 @@ import type { Vault } from '../vault/vault.ts'
 import type { MihomoApi } from '../mihomo/api-client.ts'
 import { DUMP_OPTS } from '../config/canonicalize.ts'
 import { unifiedDiff } from './diff.ts'
+import type { HealthcheckOptions, HealthcheckResult } from './healthcheck.ts'
 
 /** Possible step IDs for `onStep` callbacks. UI renders a stepper keyed on
- *  these. Healthcheck (step 6) is emitted by Task 16 via the same callback. */
-export type StepId = 'diff' | 'lint' | 'snapshot' | 'preflight' | 'write-reload' | 'healthcheck'
+ *  these. `healthcheck` is step 6 (post-reload) and `rollback` is emitted
+ *  only when auto-rollback engages after a failed healthcheck. */
+export type StepId =
+  | 'diff'
+  | 'lint'
+  | 'snapshot'
+  | 'preflight'
+  | 'write-reload'
+  | 'healthcheck'
+  | 'rollback'
 
 export type StepStatus = 'running' | 'completed' | 'failed'
 
@@ -55,13 +64,26 @@ export interface DeployContext {
   /** Lock file path passed through to `transport.writeConfig`. LocalFs
    *  honours this via `proper-lockfile`; InMemory ignores it. */
   lockFile: string
-  /** Optional — if provided, pipeline runs phase-1..4 healthcheck (Task 16)
-   *  after step 5. Wired from Task 18's bootstrap. */
-  runHealthcheck?: (mihomoApi: MihomoApi) => Promise<{
-    ok: boolean
-    failedPhase?: 1 | 2 | 3
-    diagnostics?: Record<string, unknown>
-  }>
+  /** Optional — if provided, pipeline runs phase-1..4 healthcheck after
+   *  step 5 (`write-reload`). Wired from `server-bootstrap.deployCtx()`.
+   *  `opts.onPhase` is forwarded so UI can render per-phase progress on the
+   *  healthcheck step. */
+  runHealthcheck?: (mihomoApi: MihomoApi, opts?: HealthcheckOptions) => Promise<HealthcheckResult>
+  /**
+   * Apply a rollback by re-running the pipeline against a previous snapshot.
+   * Called by the auto-rollback branch after a failed healthcheck (phase 1
+   * always, phase 3 when `autoRollback === true`). Wired in server-bootstrap
+   * from `deploy/rollback.ts::applyRollback`.
+   */
+  applyRollback?: (args: {
+    targetSnapshotId: string
+    onStep?: StepEvent
+  }) => Promise<{ snapshot_id: string }>
+  /** Mirrors `MIHARBOR_AUTO_ROLLBACK`. When `true`, a healthcheck failure
+   *  in phase 3 also triggers `applyRollback`. Phase 1 failure always
+   *  triggers rollback regardless of this flag (a dead mihomo is always
+   *  worse than a rolled-back config). */
+  autoRollback?: boolean
   /** Identity fields for audit + snapshot meta. */
   user?: string
   user_ip?: string
@@ -121,6 +143,46 @@ export class DeployWriteError extends Error {
     super(msg)
     this.name = 'DeployWriteError'
     this.cause = cause
+  }
+}
+
+/** Thrown by step 6 when the post-deploy healthcheck reports an
+ *  unrecoverable failure. Phase 1 always fails the deploy; phase 3 fails
+ *  only when `autoRollback` is enabled, in which case both the rollback
+ *  attempt and its outcome are reported via `onStep('rollback', ...)`. */
+export class DeployHealthcheckError extends Error {
+  public readonly code = 'HEALTHCHECK_FAILED'
+  public readonly failedPhase?: 1 | 2 | 3
+  public readonly diagnostics?: Record<string, unknown>
+  /** Set when auto-rollback was triggered; contains the new snapshot id
+   *  from the rollback pipeline run if it succeeded. */
+  public readonly rolledBackToSnapshotId?: string
+  /** Set when auto-rollback was attempted but itself failed. */
+  public readonly rollbackError?: string
+  constructor(init: {
+    failedPhase?: 1 | 2 | 3
+    diagnostics?: Record<string, unknown>
+    rolledBackToSnapshotId?: string
+    rollbackError?: string
+  }) {
+    const suffix =
+      init.rollbackError !== undefined
+        ? ` (auto-rollback failed: ${init.rollbackError})`
+        : init.rolledBackToSnapshotId
+          ? ` (rolled back to ${init.rolledBackToSnapshotId})`
+          : ''
+    super(
+      `deploy: post-reload healthcheck failed${
+        init.failedPhase ? ` in phase ${init.failedPhase}` : ''
+      }${suffix}`,
+    )
+    this.name = 'DeployHealthcheckError'
+    if (init.failedPhase !== undefined) this.failedPhase = init.failedPhase
+    if (init.diagnostics !== undefined) this.diagnostics = init.diagnostics
+    if (init.rolledBackToSnapshotId !== undefined) {
+      this.rolledBackToSnapshotId = init.rolledBackToSnapshotId
+    }
+    if (init.rollbackError !== undefined) this.rollbackError = init.rollbackError
   }
 }
 
@@ -345,12 +407,87 @@ export async function runPipeline(opts: RunPipelineOptions): Promise<RunPipeline
     }
     onStep('write-reload', 'completed')
   } catch (e) {
-    if (!(e instanceof DeployWriteError)) {
-      onStep('write-reload', 'failed', { error: (e as Error).message })
-    } else {
-      onStep('write-reload', 'failed', { error: e.message })
-    }
+    const errCode = (e as { code?: string }).code
+    const errMsg = (e as Error).message
+    onStep('write-reload', 'failed', {
+      error: errMsg,
+      ...(errCode ? { code: errCode } : {}),
+    })
     throw e
+  }
+
+  // =========================================================================
+  // Step 6: post-deploy healthcheck (+ auto-rollback on failure)
+  // =========================================================================
+  // Rollback is suppressed for `rollback` / `auto-rollback` / `canonicalization`
+  // entries: rolling back a rollback re-introduces the regression we just
+  // escaped, and rolling back a canonicalization snapshot is nonsensical (the
+  // "before" state is a whitespace-only difference from the "after"). The
+  // `rollback.ts` recursion guard handles the auto-rollback path; this
+  // gate covers the manual ones.
+  if (ctx.runHealthcheck) {
+    onStep('healthcheck', 'running')
+    let hcResult: HealthcheckResult
+    try {
+      hcResult = await ctx.runHealthcheck(ctx.mihomoApi, {
+        onPhase: (phase, status, data) => {
+          onStep('healthcheck', 'running', { phase, phaseStatus: status, ...(data ?? {}) })
+        },
+      })
+    } catch (hcErr) {
+      // Healthcheck runner itself threw — treat as a phase-1 failure
+      // (API is unreachable). Fall through to the failure path below.
+      hcResult = {
+        ok: false,
+        failedPhase: 1,
+        diagnostics: { error: (hcErr as Error).message, reason: 'healthcheck-runner-threw' },
+      }
+    }
+    if (hcResult.ok) {
+      onStep('healthcheck', 'completed', {
+        ...(hcResult.diagnostics ? { diagnostics: hcResult.diagnostics } : {}),
+      })
+    } else {
+      onStep('healthcheck', 'failed', {
+        ...(hcResult.failedPhase !== undefined ? { failedPhase: hcResult.failedPhase } : {}),
+        ...(hcResult.diagnostics ? { diagnostics: hcResult.diagnostics } : {}),
+      })
+      // Auto-rollback trigger: phase 1 always rolls back (mihomo dead →
+      // previous config is always safer); phase 3 rolls back only when
+      // MIHARBOR_AUTO_ROLLBACK is enabled. Phase 2 is warn-only in the
+      // healthcheck module so never reaches this branch.
+      const isRollbackPath =
+        appliedBy === 'rollback' ||
+        appliedBy === 'auto-rollback' ||
+        appliedBy === 'canonicalization'
+      const shouldRollback =
+        !isRollbackPath &&
+        ctx.applyRollback !== undefined &&
+        (hcResult.failedPhase === 1 || (hcResult.failedPhase === 3 && ctx.autoRollback === true))
+
+      let rolledBackToSnapshotId: string | undefined
+      let rollbackError: string | undefined
+      if (shouldRollback && ctx.applyRollback) {
+        onStep('rollback', 'running', { targetSnapshotId: snapshotMeta.id })
+        try {
+          const rbResult = await ctx.applyRollback({
+            targetSnapshotId: snapshotMeta.id,
+            onStep,
+          })
+          rolledBackToSnapshotId = rbResult.snapshot_id
+          onStep('rollback', 'completed', { newSnapshotId: rbResult.snapshot_id })
+        } catch (rbErr) {
+          rollbackError = (rbErr as Error).message
+          onStep('rollback', 'failed', { error: rollbackError })
+        }
+      }
+      throw new DeployHealthcheckError({
+        ...(hcResult.failedPhase !== undefined ? { failedPhase: hcResult.failedPhase } : {}),
+        ...(hcResult.diagnostics ? { diagnostics: hcResult.diagnostics } : {}),
+        ...(rolledBackToSnapshotId !== undefined ? { rolledBackToSnapshotId } : {}),
+        ...(rollbackError !== undefined ? { rollbackError } : {}),
+      })
+    }
   }
 
   // =========================================================================
@@ -380,9 +517,7 @@ export async function runPipeline(opts: RunPipelineOptions): Promise<RunPipeline
 }
 
 /** Type guard: does this Transport expose `verifyAndWrite` (TOCTOU-safe)? */
-function hasVerifyAndWrite(
-  t: Transport,
-): t is Transport & {
+function hasVerifyAndWrite(t: Transport): t is Transport & {
   verifyAndWrite: (c: string, lock: string, expected: string) => Promise<void>
 } {
   return typeof (t as { verifyAndWrite?: unknown }).verifyAndWrite === 'function'

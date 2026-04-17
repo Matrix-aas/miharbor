@@ -17,6 +17,25 @@
 // Each implementation decides how to honour it — InMemory runs lock-free,
 // LocalFs uses `proper-lockfile`, Ssh will use remote `flock(1)`.
 
+/** Thrown by `LocalFsTransport.verifyAndWrite` when the on-disk config
+ *  changed between the caller's read and the hash-guarded write. The deploy
+ *  pipeline catches this and emits an SSE `error` with `code` so the UI
+ *  can render a dedicated "reload and retry" banner rather than a generic
+ *  write error. */
+export class ConfigChangedExternallyError extends Error {
+  public readonly code = 'CONFIG_CHANGED_EXTERNALLY'
+  public readonly expectedHash: string
+  public readonly actualHash: string
+  constructor(expectedHash: string, actualHash: string) {
+    super(
+      `writeConfig aborted: config changed on disk (expected ${expectedHash.slice(0, 12)}…, actual ${actualHash.slice(0, 12)}…). Reload and retry.`,
+    )
+    this.name = 'ConfigChangedExternallyError'
+    this.expectedHash = expectedHash
+    this.actualHash = actualHash
+  }
+}
+
 /** Persisted metadata that ships alongside every snapshot directory. All
  *  fields match the on-disk `meta.json` schema. `id` is the snapshot
  *  directory name (`<ISO8601>-<sha256-prefix>`). */

@@ -15,8 +15,6 @@
 #   /app/data    — Miharbor's own state: encrypted snapshot history, vault
 #                  key, auth.json, audit log. BACK THIS UP (see docs/BACKUP.md).
 
-version: '3.8'
-
 services:
   miharbor:
     image: ghcr.io/matrix-aas/miharbor:latest

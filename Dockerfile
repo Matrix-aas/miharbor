@@ -53,21 +53,19 @@ FROM oven/bun:1.3.11-alpine
 WORKDIR /app
 
 # Runtime stage installs ONLY server + shared workspace deps. We bypass the
-# web workspace entirely here because its runtime artefacts are pre-built
-# into apps/web/dist (static files — no JS runtime needed). Keeping web out
-# of `bun install` saves ~100 MB (vue, monaco-editor, radix-vue, etc.).
-#
-# We stub apps/web with a minimal package.json so the "apps/*" workspace
-# glob still matches, but without any runtime deps. The lockfile thus no
-# longer matches exactly, so we install without --frozen-lockfile; stage 1
-# already proved the lockfile is resolvable against the real manifest.
+# web workspace's runtime install because its artefacts are pre-built into
+# apps/web/dist (static files — no JS runtime needed). `bun install --filter`
+# narrows install to the listed workspaces; other workspaces still participate
+# in resolution so the lockfile stays in sync. This keeps `--frozen-lockfile`
+# meaningful and avoids pulling vue, monaco-editor, radix-vue, etc. into the
+# runtime image.
 COPY package.json bun.lock ./
 COPY apps/server/package.json apps/server/package.json
+COPY apps/web/package.json apps/web/package.json
 COPY packages/shared/package.json packages/shared/package.json
 
-RUN mkdir -p apps/web && printf '{"name":"miharbor-web","private":true}\n' > apps/web/package.json \
- && rm -f bun.lock \
- && bun install --production --ignore-scripts
+RUN bun install --frozen-lockfile --production --ignore-scripts \
+    --filter miharbor-server --filter miharbor-shared
 
 # Source — server + shared (Bun runs .ts directly).
 COPY tsconfig.base.json tsconfig.base.json

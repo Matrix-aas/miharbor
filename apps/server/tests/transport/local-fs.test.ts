@@ -107,6 +107,29 @@ test('verifyAndWrite fails when file changed between read and write (TOCTOU)', a
   expect(readFileSync(configPath, 'utf8')).toBe('mode: direct\n')
 })
 
+test('verifyAndWrite throws ConfigChangedExternallyError with code + hash fields (H3)', async () => {
+  const { ConfigChangedExternallyError } = await import('../../src/transport/transport.ts')
+  const t = new LocalFsTransport({
+    configPath,
+    dataDir,
+    mihomoApiUrl: 'http://x',
+    mihomoApiSecret: 's',
+  })
+  const before = await t.readConfig()
+  writeFileSync(configPath, 'mode: somethingelse\n')
+  let thrown: unknown = null
+  try {
+    await t.verifyAndWrite('mode: global\n', lockFile, before.hash)
+  } catch (e) {
+    thrown = e
+  }
+  expect(thrown).toBeInstanceOf(ConfigChangedExternallyError)
+  const err = thrown as InstanceType<typeof ConfigChangedExternallyError>
+  expect(err.code).toBe('CONFIG_CHANGED_EXTERNALLY')
+  expect(err.expectedHash).toBe(before.hash)
+  expect(err.actualHash).not.toBe(before.hash)
+})
+
 test('verifyAndWrite succeeds when hash still matches', async () => {
   const t = new LocalFsTransport({
     configPath,

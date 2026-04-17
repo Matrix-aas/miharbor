@@ -7,6 +7,7 @@ import { Elysia, t } from 'elysia'
 import { parseDocument } from 'yaml'
 import type { Transport } from '../transport/transport.ts'
 import type { DraftStore } from '../draft-store.ts'
+import type { Vault } from '../vault/vault.ts'
 import { getServices } from '../config/views/services.ts'
 import { getProxies } from '../config/views/proxies.ts'
 import { getMeta } from '../config/views/meta.ts'
@@ -15,6 +16,7 @@ import { getAuthUser } from '../auth/basic-auth.ts'
 export interface ConfigRoutesDeps {
   transport: Transport
   draftStore: DraftStore
+  vault: Vault
 }
 
 export function configRoutes(deps: ConfigRoutesDeps) {
@@ -35,11 +37,19 @@ export function configRoutes(deps: ConfigRoutesDeps) {
       return getMeta(doc)
     })
     .get('/raw', async () => {
-      // Raw live config (unmasked). Callers should be authenticated — the
-      // Basic-Auth middleware guards /api/*. Returns as plain text.
+      // Raw live config, MASKED for display. The vault pass replaces every
+      // secret scalar with a `$MIHARBOR_VAULT:<uuid>` sentinel so operators
+      // can copy the YAML (e.g. for diffing, support tickets) without
+      // accidentally exfiltrating credentials. The `x-miharbor-masked`
+      // response header flags this for the UI.
       const { content } = await deps.transport.readConfig()
-      return new Response(content, {
-        headers: { 'content-type': 'text/plain; charset=utf-8' },
+      const doc = parseDocument(content)
+      await deps.vault.maskDoc(doc)
+      return new Response(doc.toString(), {
+        headers: {
+          'content-type': 'text/plain; charset=utf-8',
+          'x-miharbor-masked': 'true',
+        },
       })
     })
     .get('/draft', async ({ request }) => {

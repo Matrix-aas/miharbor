@@ -21,7 +21,8 @@ import type { Issue } from 'miharbor-shared'
 export type StepStatus = 'pending' | 'running' | 'ok' | 'failed' | 'skipped'
 
 /** Step id as emitted by the server. Frontend maps 'write-reload' ↔
- *  'write_reload' for i18n key compatibility. */
+ *  'write_reload' for i18n key compatibility. `rollback` is an optional
+ *  step appended when auto-rollback is triggered by a failing healthcheck. */
 export type ServerStepId =
   | 'diff'
   | 'lint'
@@ -29,13 +30,23 @@ export type ServerStepId =
   | 'preflight'
   | 'write-reload'
   | 'healthcheck'
-export type UiStepId = 'diff' | 'lint' | 'snapshot' | 'preflight' | 'write_reload' | 'healthcheck'
+  | 'rollback'
+export type UiStepId =
+  | 'diff'
+  | 'lint'
+  | 'snapshot'
+  | 'preflight'
+  | 'write_reload'
+  | 'healthcheck'
+  | 'rollback'
 
 export interface DeployStep {
   id: UiStepId
   status: StepStatus
   message?: string
   durationMs?: number
+  /** Free-form payload keyed by step — e.g. healthcheck phase/diagnostics. */
+  meta?: Record<string, unknown>
 }
 
 const INITIAL_STEPS: DeployStep[] = [
@@ -66,6 +77,14 @@ export interface DeployError {
   message: string
   issues?: Issue[]
   validation?: unknown
+  /** Populated by DeployHealthcheckError (step 6 failure). */
+  failedPhase?: 1 | 2 | 3
+  diagnostics?: Record<string, unknown>
+  /** Populated when auto-rollback triggered by the healthcheck failure
+   *  succeeded — carries the new snapshot id created by the rollback. */
+  rolledBackToSnapshotId?: string
+  /** Populated when the auto-rollback attempt itself failed. */
+  rollbackError?: string
 }
 
 export const useDeployStore = defineStore('deploy', () => {
@@ -100,11 +119,28 @@ export const useDeployStore = defineStore('deploy', () => {
     }
   }
 
-  function setStep(id: UiStepId, status: StepStatus, message?: string): void {
-    const step = steps.value.find((s) => s.id === id)
-    if (!step) return
+  function setStep(
+    id: UiStepId,
+    status: StepStatus,
+    message?: string,
+    meta?: Record<string, unknown>,
+  ): void {
+    let step = steps.value.find((s) => s.id === id)
+    if (!step) {
+      // Rollback step is optional — append it on demand so the stepper
+      // only shows it when auto-rollback actually engages.
+      if (id === 'rollback') {
+        step = { id, status: 'pending' }
+        steps.value.push(step)
+      } else {
+        return
+      }
+    }
     step.status = status
     if (message !== undefined) step.message = message
+    if (meta !== undefined) {
+      step.meta = { ...(step.meta ?? {}), ...meta }
+    }
   }
 
   function handleStepEvent(payload: unknown): void {
@@ -113,13 +149,22 @@ export const useDeployStore = defineStore('deploy', () => {
       stepId,
       status,
       error: stepErr,
+      ...rest
     } = payload as {
       stepId?: ServerStepId
       status?: 'running' | 'completed' | 'failed'
       error?: string
+      [k: string]: unknown
     }
     if (!stepId || !status) return
-    setStep(serverToUiStepId(stepId), serverToUiStatus(status), stepErr)
+    // Pass through any extra keys (phase, diagnostics, failedPhase, …) as
+    // step meta so UI widgets (e.g. healthcheck phase pill) can render them.
+    setStep(
+      serverToUiStepId(stepId),
+      serverToUiStatus(status),
+      stepErr,
+      Object.keys(rest).length > 0 ? rest : undefined,
+    )
   }
 
   function handleDoneEvent(payload: unknown): void {
@@ -128,8 +173,9 @@ export const useDeployStore = defineStore('deploy', () => {
     }
     completed.value = true
     running.value = false
-    // Mark remaining pending steps as skipped so the UI doesn't show a ◌
-    // spinner forever on a step the server skipped (e.g. no-op snapshot).
+    // Any step still in `pending` after a `done` event is a genuine
+    // no-op / not-run case (e.g. the optional `rollback` step when no
+    // auto-rollback fired). Mark skipped so the spinner stops.
     for (const step of steps.value) {
       if (step.status === 'pending') step.status = 'skipped'
     }
@@ -142,6 +188,10 @@ export const useDeployStore = defineStore('deploy', () => {
       message: p.message ?? 'deploy failed',
       issues: p.issues,
       validation: p.validation,
+      failedPhase: p.failedPhase,
+      diagnostics: p.diagnostics,
+      rolledBackToSnapshotId: p.rolledBackToSnapshotId,
+      rollbackError: p.rollbackError,
     }
     running.value = false
     // Mark the currently-running step as failed if any.

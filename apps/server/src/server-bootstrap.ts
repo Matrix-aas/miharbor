@@ -29,7 +29,9 @@ import { basicAuth } from './auth/basic-auth.ts'
 import { createDraftStore, type DraftStore } from './draft-store.ts'
 import { startHealthMonitor, type HealthMonitor } from './health-monitor.ts'
 import { loadConfig } from './config/loader.ts'
-import { runPipeline, type DeployContext } from './deploy/pipeline.ts'
+import { runPipeline, type DeployContext, type StepEvent } from './deploy/pipeline.ts'
+import { runHealthcheck } from './deploy/healthcheck.ts'
+import { applyRollback } from './deploy/rollback.ts'
 import { configRoutes } from './routes/config.ts'
 import { snapshotRoutes } from './routes/snapshots.ts'
 import { deployRoutes } from './routes/deploy.ts'
@@ -58,7 +60,7 @@ export interface ServerAppContext extends AppContext {
   app: Elysia
   /** Shared DeployContext factory — fresh copy per request so we can set
    *  per-request identity (user/user_ip/user_agent) without leaking. */
-  deployCtx: () => DeployContext
+  deployCtx: (user?: string, user_ip?: string, user_agent?: string) => DeployContext
   /** Stop background tasks (health monitor). Tests MUST call this. */
   stop: () => void
 }
@@ -135,15 +137,46 @@ export async function wireApp(
 
   // ---------- deploy context factory ----------
   const lockFile = join(env.MIHARBOR_DATA_DIR, 'config.yaml.lock')
-  const deployCtx = (): DeployContext => ({
-    transport,
-    vault,
-    snapshots,
-    mihomoApi,
-    logger,
-    audit,
-    lockFile,
-  })
+  // `deployCtx` is called once per deploy / rollback request; it wires the
+  // healthcheck + auto-rollback hooks so `runPipeline` runs step 6 in
+  // production. The inner `applyRollback` shares the SAME base context but
+  // marks `auto: true` so the recursion guard in `deploy/rollback.ts` fires
+  // if the healthcheck also fails on the restored config.
+  const deployCtx = (user?: string, user_ip?: string, user_agent?: string): DeployContext => {
+    const ctx: DeployContext = {
+      transport,
+      vault,
+      snapshots,
+      mihomoApi,
+      logger,
+      audit,
+      lockFile,
+      autoRollback: env.MIHARBOR_AUTO_ROLLBACK,
+      runHealthcheck: (api, hcOpts) => runHealthcheck(api, hcOpts ?? {}),
+      applyRollback: async ({ targetSnapshotId, onStep }) => {
+        // Build a sibling deployCtx scoped to the auto-rollback actor so
+        // the audit log / snapshot meta records "system" as the user.
+        const sysCtx = deployCtx('auto-rollback', user_ip, user_agent)
+        const rbArgs: Parameters<typeof applyRollback>[0] = {
+          snapshotId: targetSnapshotId,
+          deployCtx: sysCtx,
+          snapshots,
+          vault,
+          logger,
+          auto: true,
+        }
+        if (onStep) {
+          ;(rbArgs as { onStep?: StepEvent }).onStep = onStep
+        }
+        const result = await applyRollback(rbArgs)
+        return { snapshot_id: result.snapshot_id }
+      },
+    }
+    if (user !== undefined) ctx.user = user
+    if (user_ip !== undefined) ctx.user_ip = user_ip
+    if (user_agent !== undefined) ctx.user_agent = user_agent
+    return ctx
+  }
 
   // ---------- app ----------
   const app = new Elysia()
@@ -159,7 +192,7 @@ export async function wireApp(
     )
     .get('/health', () => ({ status: 'ok' }))
     .use(lintRoutes)
-    .use(configRoutes({ transport, draftStore }))
+    .use(configRoutes({ transport, draftStore, vault }))
     .use(snapshotRoutes({ snapshots, deployCtx }))
     .use(deployRoutes({ draftStore, deployCtx }))
     .use(healthRoutes({ monitor }))

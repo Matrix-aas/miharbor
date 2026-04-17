@@ -132,6 +132,10 @@ export interface Vault {
   unmaskDoc(doc: Document): Promise<void>
   /** Drop every uuid not in `referencedUuids`. Returns the count removed. */
   gc(referencedUuids: Set<string>): Promise<number>
+  /** Drop ONLY the uuids listed in `uuidsToRemove`. Use for the dedupe-path
+   *  in snapshot manager where we know exactly which just-minted uuids are
+   *  orphaned and must NOT touch any other entries. Returns count removed. */
+  gcSet(uuidsToRemove: Set<string>): Promise<number>
   /** Rewrite the `referenced_by` list for a given snapshot id, adding the
    *  supplied uuid set. Useful for the snapshot manager to bookkeep which
    *  snapshots touched which secrets. */
@@ -269,6 +273,20 @@ export async function createVault(opts: VaultOptions): Promise<Vault> {
       let removed = 0
       for (const uuid of Object.keys(payload.entries)) {
         if (!referencedUuids.has(uuid)) {
+          delete payload.entries[uuid]
+          removed += 1
+        }
+      }
+      if (removed > 0) await writePayload(payload)
+      return removed
+    },
+
+    async gcSet(uuidsToRemove) {
+      if (uuidsToRemove.size === 0) return 0
+      const payload = await readPayload()
+      let removed = 0
+      for (const uuid of uuidsToRemove) {
+        if (uuid in payload.entries) {
           delete payload.entries[uuid]
           removed += 1
         }

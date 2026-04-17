@@ -18,7 +18,7 @@ import type { StepEvent } from '../deploy/pipeline.ts'
 
 export interface SnapshotRoutesDeps {
   snapshots: SnapshotManager
-  deployCtx: () => DeployContext
+  deployCtx: (user?: string, user_ip?: string, user_agent?: string) => DeployContext
 }
 
 export function snapshotRoutes(deps: SnapshotRoutesDeps) {
@@ -34,12 +34,19 @@ export function snapshotRoutes(deps: SnapshotRoutesDeps) {
     )
     .post(
       '/:id/rollback',
-      async ({ params, request }) => {
+      async ({ params, request, server }) => {
         const user = getAuthUser(request) ?? 'anonymous'
+        let socketIp: string | undefined
+        try {
+          const addr = server?.requestIP(request)
+          if (addr && typeof addr.address === 'string') socketIp = addr.address
+        } catch {
+          /* ignore */
+        }
+        const userAgent = request.headers.get('user-agent') ?? undefined
         // Build an event queue drained by the SSE generator. The rollback
         // itself kicks off the standard pipeline which emits onStep.
-        const ctx = deps.deployCtx()
-        ctx.user = user
+        const ctx = deps.deployCtx(user, socketIp, userAgent)
         const queue: Array<{ type: string; data: unknown }> = []
         let done = false
         let error: Error | null = null
@@ -61,12 +68,21 @@ export function snapshotRoutes(deps: SnapshotRoutesDeps) {
           })
           .catch((e: Error) => {
             error = e
-            const anyErr = e as unknown as { code?: string; issues?: unknown }
+            const anyErr = e as unknown as {
+              code?: string
+              issues?: unknown
+              validation?: unknown
+              failedPhase?: number
+              diagnostics?: Record<string, unknown>
+            }
             const payload: Record<string, unknown> = {
               code: anyErr.code ?? 'ROLLBACK_FAILED',
               message: e.message,
             }
             if (anyErr.issues !== undefined) payload.issues = anyErr.issues
+            if (anyErr.validation !== undefined) payload.validation = anyErr.validation
+            if (anyErr.failedPhase !== undefined) payload.failedPhase = anyErr.failedPhase
+            if (anyErr.diagnostics !== undefined) payload.diagnostics = anyErr.diagnostics
             queue.push({ type: 'error', data: payload })
             done = true
           })

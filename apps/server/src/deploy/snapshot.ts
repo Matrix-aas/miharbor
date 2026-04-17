@@ -151,8 +151,11 @@ export function createSnapshotManager(opts: SnapshotManagerOptions): SnapshotMan
         const prev = existing[0]
         if (prev && prev.sha256_masked === sha256_masked) {
           // Roll back the vault entries we just minted — they're not
-          // referenced anywhere.
-          await opts.vault.gc(new Set())
+          // referenced anywhere. CRITICAL: pass the minted-uuid set to gc,
+          // not an empty set. Passing `new Set()` here would cause gc to
+          // purge ALL vault entries (including those referenced by other
+          // snapshots) because gc removes everything NOT in its allowlist.
+          await opts.vault.gcSet(new Set(mintedUuids))
           logger.info({
             msg: 'snapshot dedupe: auto-rollback content matches previous snapshot; skipping',
             prev_id: prev.id,

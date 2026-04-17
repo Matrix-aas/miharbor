@@ -15,6 +15,7 @@ import {
   DeployLintError,
   DeployPreflightError,
   DeployWriteError,
+  DeployHealthcheckError,
   type DeployContext,
   type StepEvent,
 } from '../../src/deploy/pipeline.ts'
@@ -364,4 +365,179 @@ test('canonicalization snapshot is audited as canonicalization action', async ()
     appliedBy: 'canonicalization',
   })
   expect(audit.records[0]!.action).toBe('canonicalization')
+})
+
+// ---------------------------------------------------------------------------
+// Step 6 — healthcheck + auto-rollback (B1)
+// ---------------------------------------------------------------------------
+
+test('healthcheck happy path: step 6 runs + completes when runHealthcheck ok', async () => {
+  const { ctx, mihomoApi } = await buildCtx({ initialConfig: 'mode: rule\n' })
+  ctx.runHealthcheck = async () => ({ ok: true, diagnostics: { note: 'all good' } })
+  const events: Array<{ id: string; status: string }> = []
+  const onStep: StepEvent = (id, status) => events.push({ id, status })
+  await runPipeline({ draft: 'mode: global\n', ctx, onStep })
+  // Healthcheck emitted running + completed (plus intermediate "running"
+  // repeats per phase which share status "running" — we assert presence).
+  const running = events.filter((e) => e.id === 'healthcheck' && e.status === 'running')
+  const completed = events.filter((e) => e.id === 'healthcheck' && e.status === 'completed')
+  expect(running.length).toBeGreaterThanOrEqual(1)
+  expect(completed.length).toBe(1)
+  expect(mihomoApi.reloadCount).toBe(1)
+})
+
+test('healthcheck phase-1 failure: throws DeployHealthcheckError + triggers auto-rollback', async () => {
+  const { ctx } = await buildCtx({ initialConfig: 'mode: rule\n' })
+  // Seed a prior snapshot so there's something to roll back to.
+  await ctx.snapshots.createSnapshot('mode: rule\n', { applied_by: 'user' })
+  ctx.runHealthcheck = async () => ({
+    ok: false,
+    failedPhase: 1,
+    diagnostics: { reason: 'api-never-alive' },
+  })
+  let rollbackCalls: Array<{ targetSnapshotId: string }> = []
+  ctx.applyRollback = async (args) => {
+    rollbackCalls.push({ targetSnapshotId: args.targetSnapshotId })
+    args.onStep?.('rollback', 'running')
+    args.onStep?.('rollback', 'completed')
+    return { snapshot_id: 'rollback-snapshot-id' }
+  }
+  // autoRollback disabled on purpose — phase 1 should STILL trigger rollback
+  // (a dead mihomo always warrants rollback).
+  ctx.autoRollback = false
+
+  const events: Array<{ id: string; status: string; data?: unknown }> = []
+  const onStep: StepEvent = (id, status, data) => events.push({ id, status, data })
+  let thrown: unknown = null
+  try {
+    await runPipeline({ draft: 'mode: global\n', ctx, onStep })
+  } catch (e) {
+    thrown = e
+  }
+  expect(thrown).toBeInstanceOf(DeployHealthcheckError)
+  const err = thrown as DeployHealthcheckError
+  expect(err.code).toBe('HEALTHCHECK_FAILED')
+  expect(err.failedPhase).toBe(1)
+  expect(err.rolledBackToSnapshotId).toBe('rollback-snapshot-id')
+  expect(rollbackCalls.length).toBe(1)
+  // Rollback events emitted to stream.
+  expect(events.some((e) => e.id === 'rollback' && e.status === 'running')).toBe(true)
+  expect(events.some((e) => e.id === 'rollback' && e.status === 'completed')).toBe(true)
+})
+
+test('healthcheck phase-3 failure with autoRollback=false: no rollback, error surfaces', async () => {
+  const { ctx } = await buildCtx({ initialConfig: 'mode: rule\n' })
+  ctx.runHealthcheck = async () => ({
+    ok: false,
+    failedPhase: 3,
+    diagnostics: { reason: 'delay-check-failed' },
+  })
+  let rollbackCalled = false
+  ctx.applyRollback = async () => {
+    rollbackCalled = true
+    return { snapshot_id: 'nope' }
+  }
+  ctx.autoRollback = false
+  let thrown: unknown = null
+  try {
+    await runPipeline({ draft: 'mode: global\n', ctx })
+  } catch (e) {
+    thrown = e
+  }
+  expect(thrown).toBeInstanceOf(DeployHealthcheckError)
+  expect((thrown as DeployHealthcheckError).failedPhase).toBe(3)
+  expect(rollbackCalled).toBe(false)
+})
+
+test('healthcheck phase-3 failure with autoRollback=true: triggers rollback', async () => {
+  const { ctx } = await buildCtx({ initialConfig: 'mode: rule\n' })
+  ctx.runHealthcheck = async () => ({
+    ok: false,
+    failedPhase: 3,
+    diagnostics: { reason: 'delay-check-failed' },
+  })
+  let rollbackCalled = false
+  ctx.applyRollback = async () => {
+    rollbackCalled = true
+    return { snapshot_id: 'rb-3-id' }
+  }
+  ctx.autoRollback = true
+  let thrown: unknown = null
+  try {
+    await runPipeline({ draft: 'mode: global\n', ctx })
+  } catch (e) {
+    thrown = e
+  }
+  expect(thrown).toBeInstanceOf(DeployHealthcheckError)
+  expect(rollbackCalled).toBe(true)
+  expect((thrown as DeployHealthcheckError).rolledBackToSnapshotId).toBe('rb-3-id')
+})
+
+test('healthcheck failure during rollback appliedBy does NOT trigger recursive rollback', async () => {
+  // When the pipeline is invoked with appliedBy='rollback' and the
+  // healthcheck fails, we MUST NOT call applyRollback again — that would
+  // just re-apply the same broken rollback target.
+  const { ctx } = await buildCtx({ initialConfig: 'mode: rule\n' })
+  ctx.runHealthcheck = async () => ({ ok: false, failedPhase: 1 })
+  let rollbackCalled = false
+  ctx.applyRollback = async () => {
+    rollbackCalled = true
+    return { snapshot_id: 'x' }
+  }
+  let thrown: unknown = null
+  try {
+    await runPipeline({ draft: 'mode: global\n', ctx, appliedBy: 'rollback' })
+  } catch (e) {
+    thrown = e
+  }
+  expect(thrown).toBeInstanceOf(DeployHealthcheckError)
+  expect(rollbackCalled).toBe(false)
+})
+
+test('healthcheck runner throws → treated as phase-1 failure', async () => {
+  const { ctx } = await buildCtx({ initialConfig: 'mode: rule\n' })
+  ctx.runHealthcheck = async () => {
+    throw new Error('network explosion')
+  }
+  let rollbackCalled = false
+  ctx.applyRollback = async () => {
+    rollbackCalled = true
+    return { snapshot_id: 'rb' }
+  }
+  let thrown: unknown = null
+  try {
+    await runPipeline({ draft: 'mode: global\n', ctx })
+  } catch (e) {
+    thrown = e
+  }
+  expect(thrown).toBeInstanceOf(DeployHealthcheckError)
+  expect((thrown as DeployHealthcheckError).failedPhase).toBe(1)
+  expect(rollbackCalled).toBe(true)
+})
+
+test('auto-rollback path: when applyRollback itself throws, error carries rollbackError', async () => {
+  const { ctx } = await buildCtx({ initialConfig: 'mode: rule\n' })
+  ctx.runHealthcheck = async () => ({ ok: false, failedPhase: 1 })
+  ctx.applyRollback = async () => {
+    throw new Error('rollback pipeline exploded')
+  }
+  let thrown: unknown = null
+  try {
+    await runPipeline({ draft: 'mode: global\n', ctx })
+  } catch (e) {
+    thrown = e
+  }
+  expect(thrown).toBeInstanceOf(DeployHealthcheckError)
+  expect((thrown as DeployHealthcheckError).rollbackError).toContain('rollback pipeline exploded')
+})
+
+test('no runHealthcheck provided: pipeline skips step 6 cleanly', async () => {
+  const { ctx } = await buildCtx({ initialConfig: 'mode: rule\n' })
+  // ctx.runHealthcheck intentionally NOT set
+  const events: Array<{ id: string; status: string }> = []
+  const onStep: StepEvent = (id, status) => events.push({ id, status })
+  const result = await runPipeline({ draft: 'mode: global\n', ctx, onStep })
+  expect(result.snapshot_id).toBeTruthy()
+  // No healthcheck events emitted.
+  expect(events.some((e) => e.id === 'healthcheck')).toBe(false)
 })

@@ -186,6 +186,42 @@ test('gc with full set removes nothing', async () => {
   expect(removed).toBe(0)
 })
 
+test('gcSet removes ONLY the listed uuids + leaves the rest intact (dedupe-path bug)', async () => {
+  // Regression test for the snapshot.ts dedupe bug where `vault.gc(new Set())`
+  // was nuking the whole vault. `gcSet(minted)` must touch only the minted
+  // set and leave other references untouched.
+  const v = await createVault({ dataDir, vaultKeyEnv: TEST_KEY })
+  const existing1 = await v.store('keep-me-1')
+  const existing2 = await v.store('keep-me-2')
+  const mintedA = await v.store('orphan-A')
+  const mintedB = await v.store('orphan-B')
+  const removed = await v.gcSet(new Set([mintedA, mintedB]))
+  expect(removed).toBe(2)
+  // Existing entries survived.
+  expect(await v.resolve(existing1)).toBe('keep-me-1')
+  expect(await v.resolve(existing2)).toBe('keep-me-2')
+  // Minted entries are gone.
+  expect(await v.resolve(mintedA)).toBeNull()
+  expect(await v.resolve(mintedB)).toBeNull()
+})
+
+test('gcSet on empty set is a no-op (short-circuit, no write)', async () => {
+  const v = await createVault({ dataDir, vaultKeyEnv: TEST_KEY })
+  const a = await v.store('A')
+  const removed = await v.gcSet(new Set())
+  expect(removed).toBe(0)
+  // Nothing touched.
+  expect(await v.resolve(a)).toBe('A')
+})
+
+test('gcSet is safe when a uuid is not in the vault (silently skips)', async () => {
+  const v = await createVault({ dataDir, vaultKeyEnv: TEST_KEY })
+  const a = await v.store('A')
+  const removed = await v.gcSet(new Set(['nonexistent-uuid', a]))
+  expect(removed).toBe(1)
+  expect(await v.resolve(a)).toBeNull()
+})
+
 test('addReferences / dropSnapshotReferences bookkeep referenced_by', async () => {
   const v = await createVault({ dataDir, vaultKeyEnv: TEST_KEY })
   const u = await v.store('ref-me')

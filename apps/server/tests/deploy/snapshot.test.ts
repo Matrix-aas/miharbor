@@ -97,6 +97,40 @@ test('auto-rollback dedupes when masked content matches previous', async () => {
   expect(await transport.readSnapshotsDir()).toHaveLength(1)
 })
 
+test('auto-rollback dedupe does NOT nuke vault entries from OTHER snapshots (regression)', async () => {
+  // Regression for the data-loss bug where snapshot.ts dedupe path called
+  // `vault.gc(new Set())` which purged every uuid in the vault, including
+  // those referenced by the original snapshot we were deduping against.
+  //
+  // We construct the dedupe trigger with a config whose masked form is
+  // hash-stable (no secret fields mean masking is a no-op). Meanwhile we
+  // pre-seed the vault with unrelated secret entries that must survive.
+  const { transport, vault, mgr } = await makeManager()
+
+  // Pre-seed vault with entries from a REAL WG config — these are what
+  // would normally be referenced by live snapshots (or by past snapshots
+  // that have since been read for rollback).
+  const wgSnap = await mgr.createSnapshot(WG_FIXTURE_SIMPLE, { applied_by: 'user' })
+  expect(wgSnap).not.toBeNull()
+  const { parseDocument } = await import('yaml')
+  const { extractSentinelUuids } = await import('../../src/deploy/snapshot.ts')
+  const wgBundle = await transport.readSnapshot(wgSnap!.id)
+  const wgUuids = extractSentinelUuids(parseDocument(wgBundle['config.yaml']))
+  expect(wgUuids.length).toBeGreaterThan(0)
+  expect(await vault.resolve(wgUuids[0]!)).toBe(REAL_LOOKING_KEY)
+
+  // Now create a snapshot of a secret-less config — its masked form is
+  // hash-stable across `maskDoc` runs (because there's nothing to mask).
+  await mgr.createSnapshot('mode: rule\n', { applied_by: 'user' })
+  // Dedupe trigger: re-create the same content as auto-rollback.
+  const dup = await mgr.createSnapshot('mode: rule\n', { applied_by: 'auto-rollback' })
+  expect(dup).toBeNull()
+
+  // CRITICAL: WG snapshot's uuids must still resolve after the dedupe.
+  // Pre-fix, `vault.gc(new Set())` would have deleted every uuid.
+  expect(await vault.resolve(wgUuids[0]!)).toBe(REAL_LOOKING_KEY)
+})
+
 test('auto-rollback NOT deduped when content differs', async () => {
   const { transport, mgr } = await makeManager()
   await mgr.createSnapshot('mode: rule\n', { applied_by: 'user' })

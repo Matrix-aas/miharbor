@@ -225,3 +225,66 @@ test('Basic without colon separator → 401', async () => {
   )
   expect(r.status).toBe(401)
 })
+
+// ---------------------------------------------------------------------------
+// B2 — /health bypasses auth
+// ---------------------------------------------------------------------------
+
+test('/health is accessible without Authorization header (Docker HEALTHCHECK)', async () => {
+  // Build an app that includes /health AS REGISTERED IN server-bootstrap.
+  const authStore = await createAuthStore({
+    dataDir,
+    defaultUser: 'admin',
+    envPassHash: `fake$s3cret`,
+    hash: fakeHash,
+    verify: fakeVerify,
+  })
+  const rateLimiter = createRateLimiter({ now: () => 0 })
+  const trustProxy = createTrustProxyEvaluator('')
+
+  const app = new Elysia()
+    .use(basicAuth({ authStore, rateLimiter, trustProxy, trustProxyHeader: '', disabled: false }))
+    .get('/health', () => ({ status: 'ok' }))
+    .get('/api/me', () => ({ ok: true }))
+
+  const h = await app.handle(new Request('http://localhost/health'))
+  expect(h.status).toBe(200)
+  // Sanity: /api/me still requires auth.
+  const me = await app.handle(new Request('http://localhost/api/me'))
+  expect(me.status).toBe(401)
+})
+
+// ---------------------------------------------------------------------------
+// B3 — trust-proxy gate on x-real-ip
+// ---------------------------------------------------------------------------
+
+test('x-real-ip from UNtrusted source is ignored (B3)', async () => {
+  // extractClientIp (exported) is the unit under test. When no CIDR evaluator
+  // says the socket-IP is trusted, x-real-ip must be dropped.
+  const { extractClientIp } = await import('../../src/auth/basic-auth.ts')
+  const trustProxy = createTrustProxyEvaluator('10.0.0.0/8')
+  const req = new Request('http://localhost/api/me', {
+    headers: { 'x-real-ip': '8.8.8.8' },
+  })
+  // Socket IP outside trusted range — header ignored.
+  expect(extractClientIp(req, '203.0.113.5', trustProxy)).toBe('203.0.113.5')
+  // Socket IP inside trusted range — header honoured.
+  expect(extractClientIp(req, '10.1.2.3', trustProxy)).toBe('8.8.8.8')
+})
+
+test('x-forwarded-for from trusted source picks first hop', async () => {
+  const { extractClientIp } = await import('../../src/auth/basic-auth.ts')
+  const trustProxy = createTrustProxyEvaluator('127.0.0.0/8')
+  const req = new Request('http://localhost/api/me', {
+    headers: { 'x-forwarded-for': '1.2.3.4, 10.0.0.1, 10.0.0.2' },
+  })
+  expect(extractClientIp(req, '127.0.0.1', trustProxy)).toBe('1.2.3.4')
+})
+
+test('no trustProxy evaluator → always returns socket IP', async () => {
+  const { extractClientIp } = await import('../../src/auth/basic-auth.ts')
+  const req = new Request('http://localhost/api/me', {
+    headers: { 'x-real-ip': '9.9.9.9', 'x-forwarded-for': '8.8.8.8' },
+  })
+  expect(extractClientIp(req, '1.1.1.1')).toBe('1.1.1.1')
+})

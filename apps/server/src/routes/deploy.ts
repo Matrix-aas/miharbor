@@ -1,4 +1,4 @@
-// POST /api/deploy → SSE stream emitting step events from the 5-step pipeline
+// POST /api/deploy → SSE stream emitting step events from the 6-step pipeline
 // plus a final `done` event (with snapshot_id) or an `error` event (with
 // typed code). The draft used is the one currently stored in DraftStore for
 // the caller; a 400 is returned if no draft has been PUT yet.
@@ -13,11 +13,11 @@ import type { StepEvent } from '../deploy/pipeline.ts'
 
 export interface DeployRoutesDeps {
   draftStore: DraftStore
-  deployCtx: () => DeployContext
+  deployCtx: (user?: string, user_ip?: string, user_agent?: string) => DeployContext
 }
 
 export function deployRoutes(deps: DeployRoutesDeps) {
-  return new Elysia({ prefix: '/api' }).post('/deploy', async ({ request, set }) => {
+  return new Elysia({ prefix: '/api' }).post('/deploy', async ({ request, set, server }) => {
     const user = getAuthUser(request) ?? 'anonymous'
     const draft = deps.draftStore.get(user)
     if (!draft) {
@@ -28,8 +28,18 @@ export function deployRoutes(deps: DeployRoutesDeps) {
       }
     }
 
-    const ctx = deps.deployCtx()
-    ctx.user = user
+    // Populate identity from the live request. user_ip is the socket IP
+    // (trust-proxy headers are NOT used for audit-log — we want ground truth,
+    // and the Basic-Auth middleware already rejected untrusted spoofing).
+    let socketIp: string | undefined
+    try {
+      const addr = server?.requestIP(request)
+      if (addr && typeof addr.address === 'string') socketIp = addr.address
+    } catch {
+      /* ignore */
+    }
+    const userAgent = request.headers.get('user-agent') ?? undefined
+    const ctx = deps.deployCtx(user, socketIp, userAgent)
 
     const queue: Array<{ type: string; data: unknown }> = []
     let done = false
@@ -51,18 +61,28 @@ export function deployRoutes(deps: DeployRoutesDeps) {
       })
       .catch((e: Error) => {
         error = e
-        const code = (e as { code?: string }).code ?? 'DEPLOY_FAILED'
-        const issues = (e as { issues?: unknown }).issues
-        const validation = (e as { validation?: unknown }).validation
-        queue.push({
-          type: 'error',
-          data: {
-            code,
-            message: e.message,
-            ...(issues !== undefined ? { issues } : {}),
-            ...(validation !== undefined ? { validation } : {}),
-          },
-        })
+        const anyErr = e as unknown as {
+          code?: string
+          issues?: unknown
+          validation?: unknown
+          failedPhase?: number
+          diagnostics?: Record<string, unknown>
+          rolledBackToSnapshotId?: string
+          rollbackError?: string
+        }
+        const payload: Record<string, unknown> = {
+          code: anyErr.code ?? 'DEPLOY_FAILED',
+          message: e.message,
+        }
+        if (anyErr.issues !== undefined) payload.issues = anyErr.issues
+        if (anyErr.validation !== undefined) payload.validation = anyErr.validation
+        if (anyErr.failedPhase !== undefined) payload.failedPhase = anyErr.failedPhase
+        if (anyErr.diagnostics !== undefined) payload.diagnostics = anyErr.diagnostics
+        if (anyErr.rolledBackToSnapshotId !== undefined) {
+          payload.rolledBackToSnapshotId = anyErr.rolledBackToSnapshotId
+        }
+        if (anyErr.rollbackError !== undefined) payload.rollbackError = anyErr.rollbackError
+        queue.push({ type: 'error', data: payload })
         done = true
       })
 

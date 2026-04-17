@@ -34,18 +34,33 @@ export interface BasicAuthOptions {
   realm?: string
 }
 
-/** Derive the caller's IP from an Elysia request. Order of precedence:
- *  `request.headers.get('x-real-ip')` (from our OWN nginx), else the
- *  socket remote address, else '0.0.0.0' as a last resort. We intentionally
- *  do NOT consult `X-Forwarded-For` here — that's a separate
- *  `trustProxy.contains()` decision made inside the middleware. */
-export function extractClientIp(request: Request, fallback = '0.0.0.0'): string {
-  // bun provides `request.requesterAddr` in some builds, Elysia surfaces
-  // it via the server context, but at the middleware level we rely on
-  // what the handler passes us. In doubt, return fallback.
-  const forwarded = request.headers.get('x-real-ip') ?? ''
-  if (forwarded) return forwarded.trim()
-  return fallback
+/** Derive the caller's IP from an Elysia request.
+ *
+ * Trust-proxy gated: `x-real-ip` / `x-forwarded-for` are ONLY honoured when
+ * the socket-level remote address is inside a configured
+ * `MIHARBOR_TRUSTED_PROXY_CIDRS` entry. Without this guard an external
+ * attacker can spoof `x-real-ip` to evade per-IP rate-limiting or impersonate
+ * a trusted operator network.
+ *
+ * Precedence when trusted:
+ *   1. `x-real-ip`
+ *   2. first entry of `x-forwarded-for`
+ * Otherwise: return the socket IP unchanged. */
+export function extractClientIp(
+  request: Request,
+  socketIp: string,
+  trustProxy?: TrustProxyEvaluator,
+): string {
+  if (trustProxy && socketIp && trustProxy.contains(socketIp)) {
+    const realIp = request.headers.get('x-real-ip')
+    if (realIp && realIp.trim().length > 0) return realIp.trim()
+    const xff = request.headers.get('x-forwarded-for')
+    if (xff) {
+      const first = xff.split(',')[0]
+      if (first && first.trim().length > 0) return first.trim()
+    }
+  }
+  return socketIp || '0.0.0.0'
 }
 
 /** Build an Elysia plugin that enforces Basic Auth on every route mounted
@@ -63,16 +78,23 @@ export function basicAuth(opts: BasicAuthOptions): Elysia {
     async ({ request, set, server }) => {
       if (opts.disabled) return undefined
 
+      // Public liveness probe — always unauthenticated so Docker HEALTHCHECK
+      // and external monitors (e.g. uptime kuma) can reach it without
+      // credentials. This path is registered by server-bootstrap.ts BEFORE
+      // any /api/* routes; everything else still goes through auth.
+      const url = new URL(request.url)
+      if (url.pathname === '/health') return undefined
+
       // Extract IP — prefer Bun server's live address when available (the
-      // socket remote), else fall back to header-derived.
-      let ip = '0.0.0.0'
+      // socket remote), then apply trust-proxy header evaluation.
+      let socketIp = ''
       try {
         const addr = server?.requestIP(request)
-        if (addr && typeof addr.address === 'string') ip = addr.address
+        if (addr && typeof addr.address === 'string') socketIp = addr.address
       } catch {
         /* ignore */
       }
-      if (ip === '0.0.0.0') ip = extractClientIp(request, ip)
+      const ip = extractClientIp(request, socketIp || '0.0.0.0', opts.trustProxy)
 
       // Rate-limit check first — even trusted proxies are subject to lockout
       // if they spam the endpoint, but typically trusted-proxy CIDRs are

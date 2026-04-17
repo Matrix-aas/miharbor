@@ -27,12 +27,13 @@ import { constants as FS, promises as fsp } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import type { Logger } from '../observability/logger.ts'
 import { withLock } from '../lock/proper-lock.ts'
-import type {
-  SnapshotBundle,
-  SnapshotFiles,
-  SnapshotMeta,
-  Transport,
-  ValidationResult,
+import {
+  ConfigChangedExternallyError,
+  type SnapshotBundle,
+  type SnapshotFiles,
+  type SnapshotMeta,
+  type Transport,
+  type ValidationResult,
 } from './transport.ts'
 
 export type MihomoValidationMode = 'shared-only' | 'api' | 'ssh-exec' | 'docker-exec'
@@ -184,12 +185,7 @@ export class LocalFsTransport implements Transport {
       const on_disk = await fsp.readFile(this.#configPath, 'utf8')
       const current = sha256(on_disk)
       if (current !== expectedPriorHash) {
-        throw new Error(
-          `writeConfig aborted: config changed on disk (expected ${expectedPriorHash.slice(
-            0,
-            12,
-          )}…, actual ${current.slice(0, 12)}…). Reload and retry.`,
-        )
+        throw new ConfigChangedExternallyError(expectedPriorHash, current)
       }
       await atomicWrite(this.#configPath, content, 0o600)
     })
