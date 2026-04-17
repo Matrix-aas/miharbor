@@ -97,7 +97,10 @@ jobs:
         run: bun run --filter miharbor-web build
 
       - name: Install Playwright browsers
-        run: bunx playwright install --with-deps chromium
+        # chromium-headless-shell is a separate binary in Playwright ≥1.49 used
+        # for `headless: true` (default in CI). Install both so tests work in
+        # either mode.
+        run: bunx playwright install --with-deps chromium chromium-headless-shell
 
       - name: Run e2e (mock-mihomo version ${{ matrix.mihomo-version }})
         run: bun run e2e
