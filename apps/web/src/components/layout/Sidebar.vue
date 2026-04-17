@@ -43,16 +43,16 @@ const groups = computed<SidebarGroup[]>(() => [
     items: [
       { key: 'sidebar.services', to: '/services', icon: Home, available: true },
       { key: 'sidebar.proxies', to: '/proxies', icon: Globe, available: true },
-      { key: 'sidebar.providers', to: '/providers', icon: ListChecks, available: false },
+      { key: 'sidebar.providers', to: '/providers', icon: ListChecks, available: true },
     ],
   },
   {
     key: 'sidebar.infra',
     items: [
-      { key: 'sidebar.dns', to: '/dns', icon: Radio, available: false },
-      { key: 'sidebar.tun', to: '/tun', icon: Cable, available: false },
-      { key: 'sidebar.sniffer', to: '/sniffer', icon: Search, available: false },
-      { key: 'sidebar.profile', to: '/profile', icon: SlidersHorizontal, available: false },
+      { key: 'sidebar.dns', to: '/dns', icon: Radio, available: true },
+      { key: 'sidebar.tun', to: '/tun', icon: Cable, available: true },
+      { key: 'sidebar.sniffer', to: '/sniffer', icon: Search, available: true },
+      { key: 'sidebar.profile', to: '/profile', icon: SlidersHorizontal, available: true },
     ],
   },
   {
