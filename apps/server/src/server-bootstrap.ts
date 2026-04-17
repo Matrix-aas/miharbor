@@ -23,7 +23,8 @@ import { createVault, type Vault } from './vault/vault.ts'
 import { createSnapshotManager, type SnapshotManager } from './deploy/snapshot.ts'
 import { createMihomoApi, type MihomoApi } from './mihomo/api-client.ts'
 import { createAuthStore, type AuthStore } from './auth/password.ts'
-import { createRateLimiter, type RateLimiter } from './auth/rate-limit.ts'
+import { createRateLimiterAsync, type RateLimiter } from './auth/rate-limit.ts'
+import { createFileStore, createNullStore } from './auth/rate-limit-store.ts'
 import { createTrustProxyEvaluator, type TrustProxyEvaluator } from './auth/trust-proxy.ts'
 import { basicAuth } from './auth/basic-auth.ts'
 import { securityHeaders } from './middleware/security-headers.ts'
@@ -62,8 +63,13 @@ export interface ServerAppContext extends AppContext {
   /** Shared DeployContext factory — fresh copy per request so we can set
    *  per-request identity (user/user_ip/user_agent) without leaking. */
   deployCtx: (user?: string, user_ip?: string, user_agent?: string) => DeployContext
-  /** Stop background tasks (health monitor). Tests MUST call this. */
+  /** Stop background tasks (health monitor). Tests MUST call this.
+   *  Also fires rate-limiter disposal (fire-and-forget for tests that
+   *  don't await). Production shutdown should prefer `dispose()` below. */
   stop: () => void
+  /** Async graceful shutdown — awaits pending rate-limiter saves so a
+   *  SIGTERM doesn't lose the final burst of failure counts. */
+  dispose: () => Promise<void>
 }
 
 /** Build the app + dependencies WITHOUT starting the HTTP server. Pure
@@ -120,7 +126,26 @@ export async function wireApp(
     defaultUser: env.MIHARBOR_AUTH_USER,
     envPassHash: env.MIHARBOR_AUTH_PASS_HASH,
   })
-  const rateLimiter = createRateLimiter()
+  // Rate limiter with disk-backed persistence so lockouts survive container
+  // restart. Under the LocalFs transport we persist to
+  // `$MIHARBOR_DATA_DIR/rate-limit.state.json`; other transports (SSH /
+  // in-memory test harness) use the null store so behaviour stays the same
+  // as before HF4.
+  const rlStore =
+    env.MIHARBOR_TRANSPORT === 'local'
+      ? createFileStore({
+          path: join(env.MIHARBOR_DATA_DIR, 'rate-limit.state.json'),
+          logger,
+          pruneBefore: {
+            // Match the limiter's runtime defaults — keeps load-time pruning
+            // consistent with what currentState() would decide on the first
+            // check() call anyway.
+            failWindowMs: 5 * 60 * 1000,
+            lockoutMs: 15 * 60 * 1000,
+          },
+        })
+      : createNullStore()
+  const rateLimiter = await createRateLimiterAsync({ store: rlStore })
   const trustProxy = createTrustProxyEvaluator(env.MIHARBOR_TRUSTED_PROXY_CIDRS, (raw, reason) => {
     logger.warn({
       msg: 'ignored invalid CIDR in MIHARBOR_TRUSTED_PROXY_CIDRS',
@@ -301,6 +326,13 @@ export async function wireApp(
     deployCtx,
     stop(): void {
       monitor.stop()
+      // Fire-and-forget: synchronous callers (most tests) don't await,
+      // and the debounced save is at most a few KB of JSON — quick flush.
+      void rateLimiter.dispose()
+    },
+    async dispose(): Promise<void> {
+      monitor.stop()
+      await rateLimiter.dispose()
     },
   }
 }

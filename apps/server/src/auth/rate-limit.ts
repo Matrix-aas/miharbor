@@ -1,15 +1,21 @@
 // In-memory token-bucket-ish rate limiter for auth brute-force protection.
 //
 // Policy: 5 failed auth attempts within 5 minutes from the same IP locks
-// that IP out for 15 minutes. Successful auth resets the counter. All
-// state is per-IP in a Map; on restart everything resets (acceptable for
-// single-node MVP — Stage 2 could swap to Redis if multiple Miharbor
-// replicas ever share an LB).
+// that IP out for 15 minutes. Successful auth resets the counter.
+//
+// Persistence (HF4): when a `RateLimitStore` is injected, every state
+// mutation (`fail` / `success` / `reset`) is queued to the store which
+// debounces + atomically writes to disk. On restart, `createRateLimiterAsync`
+// loads + prunes expired entries before handing control to the middleware.
+// Without a store (or with a NullStore), behaviour is pure-in-memory like
+// the pre-HF4 limiter.
 //
 // The limiter is invoked from the Basic Auth middleware around every
 // auth decision. Successful requests hit `.success(ip)`; 401 responses
 // hit `.fail(ip)`. Before each check, `.check(ip)` returns a lock state
 // that the middleware translates into a 429 response.
+
+import type { RateLimitStore } from './rate-limit-store.ts'
 
 export interface RateLimitEntry {
   fails: number
@@ -26,6 +32,15 @@ export interface RateLimitOptions {
   lockoutMs?: number
   /** Injected clock for tests. */
   now?: () => number
+  /** Optional disk-backed persistence. If provided, the limiter schedules
+   *  a debounced save on every state mutation. To seed entries from disk,
+   *  either use `createRateLimiterAsync` (which awaits `store.load()`
+   *  before construction) or pre-populate via `initialEntries`. */
+  store?: RateLimitStore
+  /** Pre-populated entries — typically the result of `store.load()`. Used
+   *  by `createRateLimiterAsync`. Consumers of the sync `createRateLimiter`
+   *  factory that already have entries in hand may pass them here. */
+  initialEntries?: Map<string, RateLimitEntry>
 }
 
 export interface RateLimiter {
@@ -40,6 +55,9 @@ export interface RateLimiter {
   reset(): void
   /** Map accessor for tests / diagnostics. */
   _entries(): Map<string, RateLimitEntry>
+  /** Flush pending saves + release the store. Safe to call without a store;
+   *  no-op in that case. Call from the shutdown path. */
+  dispose(): Promise<void>
 }
 
 const DEFAULTS = {
@@ -53,7 +71,21 @@ export function createRateLimiter(opts: RateLimitOptions = {}): RateLimiter {
   const failWindowMs = opts.failWindowMs ?? DEFAULTS.failWindowMs
   const lockoutMs = opts.lockoutMs ?? DEFAULTS.lockoutMs
   const now = opts.now ?? (() => Date.now())
+  const store = opts.store
   const entries = new Map<string, RateLimitEntry>()
+  if (opts.initialEntries) {
+    for (const [ip, entry] of opts.initialEntries) {
+      entries.set(ip, { ...entry })
+    }
+  }
+
+  // Debounced persistence hook. We call this from every mutation site.
+  // The store itself owns the debounce window — we just hand off the
+  // current snapshot each time.
+  function persist(): void {
+    if (!store) return
+    store.save(entries)
+  }
 
   function currentState(ip: string): { locked: boolean; retryAfterMs?: number; fails: number } {
     const entry = entries.get(ip)
@@ -95,23 +127,46 @@ export function createRateLimiter(opts: RateLimitOptions = {}): RateLimiter {
           lockedUntil: 0,
         }
         entries.set(ip, fresh)
+        persist()
         return { locked: false }
       }
       entry.fails += 1
       if (entry.fails >= maxFails) {
         entry.lockedUntil = t + lockoutMs
+        persist()
         return { locked: true, retryAfterMs: lockoutMs }
       }
+      persist()
       return { locked: false }
     },
     success(ip: string): void {
-      entries.delete(ip)
+      const had = entries.delete(ip)
+      if (had) persist()
     },
     reset(): void {
       entries.clear()
+      persist()
     },
     _entries(): Map<string, RateLimitEntry> {
       return entries
     },
+    async dispose(): Promise<void> {
+      if (store) await store.dispose()
+    },
   }
+}
+
+/** Async factory: loads persisted state from the store (pruning expired
+ *  entries using the same failWindowMs/lockoutMs as the runtime config)
+ *  before handing off to `createRateLimiter`. Preferred call site for
+ *  production wiring; the sync `createRateLimiter` stays around for the
+ *  30+ existing unit tests that don't care about persistence. */
+export async function createRateLimiterAsync(opts: RateLimitOptions = {}): Promise<RateLimiter> {
+  let initialEntries: Map<string, RateLimitEntry> | undefined
+  if (opts.store) {
+    initialEntries = await opts.store.load()
+  }
+  const merged: RateLimitOptions = { ...opts }
+  if (initialEntries) merged.initialEntries = initialEntries
+  return createRateLimiter(merged)
 }

@@ -2,7 +2,40 @@
 // and 15-minute lockout don't hold up the suite.
 
 import { expect, test } from 'bun:test'
-import { createRateLimiter } from '../../src/auth/rate-limit.ts'
+import {
+  createRateLimiter,
+  createRateLimiterAsync,
+  type RateLimitEntry,
+} from '../../src/auth/rate-limit.ts'
+import type { RateLimitStore } from '../../src/auth/rate-limit-store.ts'
+
+/** In-memory store for restart-scenario tests. Mimics the disk store's
+ *  contract but keeps everything in a local Map so tests are deterministic. */
+function createFakeStore(initial?: Map<string, RateLimitEntry>): RateLimitStore & {
+  snapshot: () => Map<string, RateLimitEntry>
+  saveCount: () => number
+} {
+  let storage = initial ? new Map(initial) : new Map<string, RateLimitEntry>()
+  let saves = 0
+  return {
+    async load(): Promise<Map<string, RateLimitEntry>> {
+      return new Map(storage)
+    },
+    save(entries: Map<string, RateLimitEntry>): void {
+      saves += 1
+      storage = new Map(entries)
+    },
+    async dispose(): Promise<void> {
+      /* no timer to flush in this fake */
+    },
+    snapshot(): Map<string, RateLimitEntry> {
+      return new Map(storage)
+    },
+    saveCount(): number {
+      return saves
+    },
+  }
+}
 
 test('fresh IP: check returns unlocked with 0 fails', () => {
   const limiter = createRateLimiter({ now: () => 0 })
@@ -84,4 +117,90 @@ test('reset() clears everything', () => {
   expect(limiter._entries().size).toBe(2)
   limiter.reset()
   expect(limiter._entries().size).toBe(0)
+})
+
+// ---------- Persistence / restart scenarios (HF4) ----------
+
+test('persistence: mutations trigger store.save()', () => {
+  const store = createFakeStore()
+  const limiter = createRateLimiter({ now: () => 0, store })
+  limiter.fail('1.2.3.4')
+  limiter.fail('1.2.3.4')
+  limiter.success('5.6.7.8') // no-op, no save
+  expect(store.saveCount()).toBeGreaterThanOrEqual(2)
+  const snap = store.snapshot()
+  expect(snap.get('1.2.3.4')?.fails).toBe(2)
+})
+
+test('persistence: createRateLimiterAsync seeds from store.load()', async () => {
+  const initial = new Map<string, RateLimitEntry>([
+    ['9.9.9.9', { fails: 4, firstFailAt: 0, lockedUntil: 0 }],
+  ])
+  const store = createFakeStore(initial)
+  const limiter = await createRateLimiterAsync({ now: () => 100, store })
+  // One more fail → locks out at maxFails=5.
+  const r = limiter.fail('9.9.9.9')
+  expect(r.locked).toBe(true)
+})
+
+test('restart scenario: limiter1 locks, dispose → limiter2 still locked', async () => {
+  const store = createFakeStore()
+  let t = 0
+  const lockoutMs = 15 * 60 * 1000
+  const limiter1 = await createRateLimiterAsync({
+    now: () => t,
+    store,
+    maxFails: 5,
+    lockoutMs,
+    failWindowMs: 5 * 60 * 1000,
+  })
+  for (let i = 0; i < 5; i += 1) limiter1.fail('attacker')
+  expect(limiter1.check('attacker').locked).toBe(true)
+  await limiter1.dispose()
+
+  // "Restart" — time hasn't advanced; build a new limiter pointed at the
+  // same store.
+  const limiter2 = await createRateLimiterAsync({
+    now: () => t,
+    store,
+    maxFails: 5,
+    lockoutMs,
+    failWindowMs: 5 * 60 * 1000,
+  })
+  const state = limiter2.check('attacker')
+  expect(state.locked).toBe(true)
+  expect(state.retryAfterMs).toBeGreaterThan(0)
+})
+
+test('restart with expired lockout: new limiter reports unlocked', async () => {
+  const store = createFakeStore()
+  let t = 0
+  const lockoutMs = 1000
+  const limiter1 = await createRateLimiterAsync({
+    now: () => t,
+    store,
+    maxFails: 2,
+    lockoutMs,
+    failWindowMs: 60_000,
+  })
+  limiter1.fail('x')
+  limiter1.fail('x') // triggers lockout
+  expect(limiter1.check('x').locked).toBe(true)
+  await limiter1.dispose()
+
+  // Advance clock past the lockout.
+  t = 5000
+  const limiter2 = await createRateLimiterAsync({
+    now: () => t,
+    store,
+    maxFails: 2,
+    lockoutMs,
+    failWindowMs: 60_000,
+  })
+  expect(limiter2.check('x').locked).toBe(false)
+})
+
+test('dispose() is safe without a store', async () => {
+  const limiter = createRateLimiter({ now: () => 0 })
+  await limiter.dispose() // should not throw
 })

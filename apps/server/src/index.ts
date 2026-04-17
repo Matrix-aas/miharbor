@@ -30,11 +30,20 @@ srv.logger.info({
   auth_disabled: srv.env.MIHARBOR_AUTH_DISABLED,
 })
 
-// Graceful shutdown — stop the polling interval so Bun exits.
-const shutdown = (signal: string): void => {
+// Graceful shutdown — stop the polling interval AND flush the rate-limit
+// store so brute-force counters persist across a SIGTERM/SIGINT cycle.
+const shutdown = async (signal: string): Promise<void> => {
   srv.logger.info({ msg: 'shutdown', signal })
-  srv.stop()
+  try {
+    await srv.dispose()
+  } catch (e) {
+    srv.logger.error({ msg: 'shutdown dispose error', error: (e as Error).message })
+  }
   process.exit(0)
 }
-process.on('SIGINT', () => shutdown('SIGINT'))
-process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => {
+  void shutdown('SIGINT')
+})
+process.on('SIGTERM', () => {
+  void shutdown('SIGTERM')
+})
