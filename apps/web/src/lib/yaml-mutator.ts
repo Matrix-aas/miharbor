@@ -27,6 +27,9 @@ import {
   type ProxyNode,
   type Rule,
   serializeRule,
+  type SnifferConfig,
+  type SnifferProtocol,
+  type SnifferProtocolConfig,
   type TunConfig,
   type WireGuardNode,
 } from 'miharbor-shared'
@@ -430,6 +433,85 @@ export function setTunConfig(doc: Document, config: TunConfig): void {
   }
   const node = doc.createNode(raw)
   doc.setIn(['tun'], node)
+}
+
+// ----- sniffer: section mutators -----------------------------------------
+
+/** Canonical order for `sniffer:` keys. Roughly matches mihomo's example
+ *  docs — enable/override first, then parse-pure-ip, then the nested sniff
+ *  map, then domain lists, then dns-mapping, then port-whitelist. */
+const SNIFFER_KEY_ORDER: readonly string[] = [
+  'enable',
+  'override-destination',
+  'parse-pure-ip',
+  'force-dns-mapping',
+  'sniff',
+  'force-domain',
+  'skip-domain',
+  'port-whitelist',
+]
+
+const SNIFFER_PROTOCOL_ORDER: readonly SnifferProtocol[] = ['HTTP', 'TLS', 'QUIC']
+const SNIFFER_PROTOCOL_KEY_ORDER: readonly string[] = ['ports', 'override-destination']
+
+function buildProtocolConfig(cfg: SnifferProtocolConfig): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const k of SNIFFER_PROTOCOL_KEY_ORDER) {
+    const v = (cfg as Record<string, unknown>)[k]
+    if (v === undefined) continue
+    out[k] = v
+  }
+  if (cfg.extras) {
+    const extraKeys = Object.keys(cfg.extras).sort()
+    for (const k of extraKeys) {
+      out[k] = cfg.extras[k]
+    }
+  }
+  return out
+}
+
+function buildSniffMap(sniff: NonNullable<SnifferConfig['sniff']>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const proto of SNIFFER_PROTOCOL_ORDER) {
+    const p = sniff[proto]
+    if (p === undefined) continue
+    out[proto] = buildProtocolConfig(p)
+  }
+  if (sniff.extras) {
+    const extraKeys = Object.keys(sniff.extras).sort()
+    for (const k of extraKeys) {
+      out[k] = sniff.extras[k]
+    }
+  }
+  return out
+}
+
+/** Replace the entire `sniffer:` section with `config`. Unknown keys on
+ *  `config.extras` (and per-protocol `extras`) are preserved. Callers pass a
+ *  freshly-merged object; this writes, it does not merge. */
+export function setSnifferConfig(doc: Document, config: SnifferConfig): void {
+  const raw: Record<string, unknown> = {}
+  for (const k of SNIFFER_KEY_ORDER) {
+    if (k === 'sniff') {
+      if (config.sniff !== undefined) raw.sniff = buildSniffMap(config.sniff)
+      continue
+    }
+    const v = (config as Record<string, unknown>)[k]
+    if (v === undefined) continue
+    raw[k] = v
+  }
+  if (config.extras) {
+    const extraKeys = Object.keys(config.extras).sort()
+    for (const k of extraKeys) {
+      raw[k] = config.extras[k]
+    }
+  }
+  if (Object.keys(raw).length === 0) {
+    doc.deleteIn(['sniffer'])
+    return
+  }
+  const node = doc.createNode(raw)
+  doc.setIn(['sniffer'], node)
 }
 
 /** Collect proxy-server IPs from the current doc. Used by the Tun page to

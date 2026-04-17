@@ -16,7 +16,15 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import type { Document } from 'yaml'
-import type { DnsConfig, Issue, ProxyNode, Rule, Service, TunConfig } from 'miharbor-shared'
+import type {
+  DnsConfig,
+  Issue,
+  ProxyNode,
+  Rule,
+  Service,
+  SnifferConfig,
+  TunConfig,
+} from 'miharbor-shared'
 import { endpoints, ApiError } from '@/api/client'
 import type { DraftResponse } from '@/api/client'
 import {
@@ -32,6 +40,7 @@ import {
   serializeDraft,
   setDnsConfig,
   setGroupDirection,
+  setSnifferConfig,
   setTunConfig,
   upsertProxyNode,
   YAMLMap,
@@ -40,6 +49,7 @@ import {
 } from '@/lib/yaml-mutator'
 import { getDnsConfig } from '@/lib/dns-view'
 import { getTunConfig } from '@/lib/tun-view'
+import { getSnifferConfig } from '@/lib/sniffer-view'
 import type { Node, YAMLSeq } from 'yaml'
 import { parseRulesFromDoc } from 'miharbor-shared'
 
@@ -219,6 +229,17 @@ export const useConfigStore = defineStore('config', () => {
     if (!draftText.value) return {}
     try {
       return getTunConfig(parseDraft(draftText.value))
+    } catch {
+      return {}
+    }
+  })
+
+  /** Typed view of the `sniffer:` section from the draft. Same contract as
+   *  the other structured views. */
+  const snifferConfig = computed<SnifferConfig>(() => {
+    if (!draftText.value) return {}
+    try {
+      return getSnifferConfig(parseDraft(draftText.value))
     } catch {
       return {}
     }
@@ -446,6 +467,18 @@ export const useConfigStore = defineStore('config', () => {
     await commitDoc(doc)
   }
 
+  /** Replace the entire `sniffer:` section in the draft with `config`. Same
+   *  contract as `setDnsConfigDraft` / `setTunConfigDraft`. */
+  async function setSnifferConfigDraft(config: SnifferConfig): Promise<void> {
+    if (!draftText.value) {
+      if (rawLive.value === null) throw new Error('no live config to bootstrap draft from')
+      draftText.value = rawLive.value
+    }
+    const doc = parseDraft(draftText.value)
+    setSnifferConfig(doc, config)
+    await commitDoc(doc)
+  }
+
   // Initial lint on first load.
   watch(
     () => draftText.value,
@@ -476,6 +509,7 @@ export const useConfigStore = defineStore('config', () => {
     existingProxyNodeNames,
     dnsConfig,
     tunConfig,
+    snifferConfig,
     // lifecycle
     loadAll,
     fetchLiveProxyState,
@@ -492,5 +526,6 @@ export const useConfigStore = defineStore('config', () => {
     removeProxyNodeDraft,
     setDnsConfigDraft,
     setTunConfigDraft,
+    setSnifferConfigDraft,
   }
 })

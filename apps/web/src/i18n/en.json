@@ -440,7 +440,50 @@
     },
     "sniffer": {
       "title": "Sniffer",
-      "placeholder": "Sniffer editor ships in stage 2."
+      "subtitle": "Mihomo protocol sniffer — HTTP/TLS/QUIC destination inference.",
+      "sections": {
+        "general": "General",
+        "protocols": "Per-protocol ports",
+        "domains": "Force / skip domains",
+        "port_whitelist": "Port whitelist",
+        "extras": "Unknown fields"
+      },
+      "fields": {
+        "enable": "Enable sniffer",
+        "override_destination": "Override destination (rewrite rule-match target to sniffed domain)",
+        "parse_pure_ip": "Parse pure-IP connections",
+        "force_dns_mapping": "Inject sniffed hostname into DNS cache",
+        "force_domain": "Force domain list",
+        "force_domain_hint": "Domains that always use the sniffed hostname, even when override-destination is off.",
+        "force_domain_placeholder": "+.netflix.com",
+        "skip_domain": "Skip domain list",
+        "skip_domain_hint": "Domains that skip sniffing entirely.",
+        "skip_domain_placeholder": "+.apple.com",
+        "port_whitelist": "Port whitelist",
+        "port_whitelist_hint": "If non-empty, ONLY these ports are ever sniffed — per-protocol configs are overridden. One range per entry (e.g. \"80\", \"8080-8090\").",
+        "port_whitelist_placeholder": "80"
+      },
+      "guardrails": {
+        "override_destination": "`override-destination` rewrites the rule-matching destination from IP to the sniffed domain. It's useful but surprising — domain-based rules will match traffic that CIDR rules would otherwise catch. Understand the consequences before enabling."
+      },
+      "protocols": {
+        "description": "Configure ports mihomo should monitor per protocol. Each entry is a single port (\"80\") or an inclusive range (\"80-90\"). Comma-separated lists are NOT valid — use multiple entries.",
+        "http": "HTTP",
+        "tls": "TLS",
+        "quic": "QUIC",
+        "placeholder": "80 or 8080-8090",
+        "add": "Add port range",
+        "remove": "Remove entry",
+        "empty": "No port ranges — this protocol is not sniffed.",
+        "aria_label": "{protocol} port ranges",
+        "entry_aria": "{protocol} port range {index}",
+        "override_destination": "{protocol}: per-protocol override-destination",
+        "extras_title": "Unknown protocols",
+        "extras_note": "Preserved verbatim from the YAML — edit in Raw YAML."
+      },
+      "extras": {
+        "note": "Unknown fields preserved verbatim from the YAML — edit them in Raw YAML."
+      }
     },
     "profile": {
       "title": "Profile",

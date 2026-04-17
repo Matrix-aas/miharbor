@@ -440,7 +440,50 @@
     },
     "sniffer": {
       "title": "Sniffer",
-      "placeholder": "Редактор Sniffer появится на этапе 2."
+      "subtitle": "Сниффер протоколов mihomo — определение домена из HTTP/TLS/QUIC.",
+      "sections": {
+        "general": "Общие",
+        "protocols": "Порты по протоколам",
+        "domains": "Force / skip домены",
+        "port_whitelist": "Белый список портов",
+        "extras": "Неизвестные поля"
+      },
+      "fields": {
+        "enable": "Включить сниффер",
+        "override_destination": "Переписывать destination (правила сопоставляются с выявленным доменом)",
+        "parse_pure_ip": "Обрабатывать подключения только по IP",
+        "force_dns_mapping": "Добавлять выявленное имя в DNS-кеш",
+        "force_domain": "Список force-domain",
+        "force_domain_hint": "Домены, для которых выявленное имя используется всегда — даже если override-destination выключен.",
+        "force_domain_placeholder": "+.netflix.com",
+        "skip_domain": "Список skip-domain",
+        "skip_domain_hint": "Домены, которые полностью пропускаются сниффером.",
+        "skip_domain_placeholder": "+.apple.com",
+        "port_whitelist": "Белый список портов",
+        "port_whitelist_hint": "Если список не пустой — сниффер работает ТОЛЬКО на этих портах, настройки по протоколам игнорируются. По одному диапазону на строку (например, «80», «8080-8090»).",
+        "port_whitelist_placeholder": "80"
+      },
+      "guardrails": {
+        "override_destination": "`override-destination` переписывает destination при сопоставлении правил с IP на выявленный домен. Полезно, но неочевидно — правила по доменам начнут срабатывать на трафик, который до этого ловили CIDR-правила. Понимайте последствия перед включением."
+      },
+      "protocols": {
+        "description": "Настройка портов по протоколам, которые мониторит mihomo. Каждая запись — один порт («80») или диапазон («80-90»). Списки через запятую НЕ валидны — используйте несколько строк.",
+        "http": "HTTP",
+        "tls": "TLS",
+        "quic": "QUIC",
+        "placeholder": "80 или 8080-8090",
+        "add": "Добавить диапазон",
+        "remove": "Удалить запись",
+        "empty": "Нет диапазонов — сниффер не работает для этого протокола.",
+        "aria_label": "Диапазоны портов {protocol}",
+        "entry_aria": "Диапазон портов {protocol} № {index}",
+        "override_destination": "{protocol}: override-destination для протокола",
+        "extras_title": "Неизвестные протоколы",
+        "extras_note": "Сохранены как есть из YAML — редактируйте в Raw YAML."
+      },
+      "extras": {
+        "note": "Неизвестные поля сохранены как есть из YAML — редактируйте их в Raw YAML."
+      }
     },
     "profile": {
       "title": "Профиль",

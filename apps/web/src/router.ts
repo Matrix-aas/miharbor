@@ -36,8 +36,9 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/sniffer',
     name: 'sniffer',
-    component: Placeholder,
-    props: { pageKey: 'pages.sniffer' },
+    // Lazy-loaded — Sniffer.vue pulls its subcomponent tree only when the
+    // operator actually navigates here.
+    component: () => import('@/pages/Sniffer.vue'),
   },
   {
     path: '/profile',
