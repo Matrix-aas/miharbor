@@ -67,7 +67,11 @@ const groups = computed<SidebarGroup[]>(() => [
 
 const asideClass = computed(() =>
   cn(
-    'flex h-full flex-col border-r border-border bg-card/40 transition-all duration-200',
+    // min-h-screen (not h-full) so the right-side border always reaches the
+    // viewport floor even when the main-column content is shorter than 100vh.
+    // h-full alone was resolving to the flex parent's natural height which,
+    // on pages like Settings with sparse content, falls short of the viewport.
+    'flex min-h-screen flex-col border-r border-border bg-card/40 transition-all duration-200',
     // Desktop: collapse/expand width; Mobile: overlay slides from left.
     props.collapsed ? 'w-16' : 'w-60',
     'max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:w-64',
