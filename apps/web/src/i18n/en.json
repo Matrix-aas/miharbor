@@ -368,7 +368,75 @@
     },
     "tun": {
       "title": "TUN",
-      "placeholder": "TUN editor ships in stage 2."
+      "subtitle": "Mihomo TUN interface — transparent interception + routing.",
+      "placeholder": "TUN editor ships in stage 2.",
+      "sections": {
+        "general": "General",
+        "dns_hijack": "DNS hijack",
+        "route_exclude": "Route exclude (prevent self-intercept)",
+        "route_address": "Route address (advanced)",
+        "addresses": "Addresses & interfaces",
+        "extras": "Unknown fields"
+      },
+      "fields": {
+        "enable": "Enable TUN",
+        "device": "Device name",
+        "device_placeholder": "mihomo-tun",
+        "device_hint": "The TUN interface name shown by `ip link`. Empty → mihomo picks an OS-specific default (utun* / tun*).",
+        "stack": "Stack",
+        "stack_hint": "`system` uses the OS TCP/IP stack (fastest). `gvisor` provides a user-space sandbox for hostile environments. `mixed` combines both.",
+        "mtu": "MTU",
+        "mtu_placeholder": "9000",
+        "auto_route": "auto-route (install default routes)",
+        "auto_redirect": "auto-redirect (transparent redirect rules)",
+        "auto_detect_interface": "auto-detect-interface",
+        "strict_route": "strict-route",
+        "endpoint_independent_nat": "endpoint-independent-nat",
+        "interface_name": "Interface name (explicit WAN binding)",
+        "interface_name_placeholder": "enp170s0",
+        "interface_name_hint": "Explicit WAN interface — preferred over auto-detect on multi-NIC hosts.",
+        "inet4_address": "IPv4 addresses",
+        "inet4_placeholder": "198.18.0.1/30",
+        "inet6_address": "IPv6 addresses",
+        "inet6_placeholder": "fd00::1/64",
+        "exclude_interface": "Exclude interface",
+        "exclude_interface_placeholder": "docker0"
+      },
+      "stack": {
+        "system": "system (OS stack, fastest)",
+        "gvisor": "gvisor (user-space sandbox)",
+        "mixed": "mixed"
+      },
+      "guardrails": {
+        "device_empty": "Device name is unset — mihomo will pick an OS-specific default (utun* on macOS, tun* on Linux). Set an explicit name (e.g. `mihomo-tun`) for easier debugging.",
+        "auto_detect": "`auto-detect-interface` usually works, but breaks on dual-NIC hosts (e.g. routers with WAN≠LAN). Prefer setting `interface-name` explicitly."
+      },
+      "dns_hijack": {
+        "hint": "List of host:port entries TUN intercepts for DNS. Leave empty to disable DNS takeover (recommended on first rollout).",
+        "placeholder": "any:53",
+        "aria_label": "DNS hijack entries"
+      },
+      "route_exclude": {
+        "description": "CIDRs that bypass TUN. Must include every proxy-server IP — without this, mihomo's own proxy traffic loops back through its TUN and the tunnel dies.",
+        "placeholder": "91.132.58.113/32",
+        "aria_label": "Route exclude entries",
+        "entry_aria": "Route exclude entry {index}",
+        "empty": "No exclusions yet — add every proxy-server IP as a /32.",
+        "add": "Add exclusion",
+        "remove": "Remove exclusion",
+        "badge": "proxy IP",
+        "badge_title": "Matches proxy-server IP {ip} — self-intercept prevented",
+        "missing_header": "Self-intercept loop risk",
+        "missing_hint": "Add these IPs to the exclusion list (as /32) so mihomo's proxy traffic doesn't recurse through its own TUN."
+      },
+      "route_address": {
+        "hint": "Additional CIDRs to route through TUN. Most setups don't need this — `auto-route: true` handles the defaults.",
+        "placeholder": "1.2.3.0/24",
+        "aria_label": "Route address entries"
+      },
+      "extras": {
+        "note": "Unknown fields preserved verbatim from the YAML — edit them in Raw YAML."
+      }
     },
     "sniffer": {
       "title": "Sniffer",

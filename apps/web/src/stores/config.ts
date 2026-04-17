@@ -16,7 +16,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import type { Document } from 'yaml'
-import type { DnsConfig, Issue, ProxyNode, Rule, Service } from 'miharbor-shared'
+import type { DnsConfig, Issue, ProxyNode, Rule, Service, TunConfig } from 'miharbor-shared'
 import { endpoints, ApiError } from '@/api/client'
 import type { DraftResponse } from '@/api/client'
 import {
@@ -32,12 +32,14 @@ import {
   serializeDraft,
   setDnsConfig,
   setGroupDirection,
+  setTunConfig,
   upsertProxyNode,
   YAMLMap,
   isMap,
   isSeq,
 } from '@/lib/yaml-mutator'
 import { getDnsConfig } from '@/lib/dns-view'
+import { getTunConfig } from '@/lib/tun-view'
 import type { Node, YAMLSeq } from 'yaml'
 import { parseRulesFromDoc } from 'miharbor-shared'
 
@@ -205,6 +207,18 @@ export const useConfigStore = defineStore('config', () => {
     if (!draftText.value) return {}
     try {
       return getDnsConfig(parseDraft(draftText.value))
+    } catch {
+      return {}
+    }
+  })
+
+  /** Typed view of the `tun:` section from the draft. Same contract as
+   *  `dnsConfig` — recomputes on every draft change; empty object on missing
+   *  section or parse error. */
+  const tunConfig = computed<TunConfig>(() => {
+    if (!draftText.value) return {}
+    try {
+      return getTunConfig(parseDraft(draftText.value))
     } catch {
       return {}
     }
@@ -420,6 +434,18 @@ export const useConfigStore = defineStore('config', () => {
     await commitDoc(doc)
   }
 
+  /** Replace the entire `tun:` section in the draft with `config`. Same
+   *  contract as `setDnsConfigDraft`. */
+  async function setTunConfigDraft(config: TunConfig): Promise<void> {
+    if (!draftText.value) {
+      if (rawLive.value === null) throw new Error('no live config to bootstrap draft from')
+      draftText.value = rawLive.value
+    }
+    const doc = parseDraft(draftText.value)
+    setTunConfig(doc, config)
+    await commitDoc(doc)
+  }
+
   // Initial lint on first load.
   watch(
     () => draftText.value,
@@ -449,6 +475,7 @@ export const useConfigStore = defineStore('config', () => {
     existingGroupNames,
     existingProxyNodeNames,
     dnsConfig,
+    tunConfig,
     // lifecycle
     loadAll,
     fetchLiveProxyState,
@@ -464,5 +491,6 @@ export const useConfigStore = defineStore('config', () => {
     upsertProxyNodeDraft,
     removeProxyNodeDraft,
     setDnsConfigDraft,
+    setTunConfigDraft,
   }
 })

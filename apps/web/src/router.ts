@@ -26,7 +26,13 @@ const routes: RouteRecordRaw[] = [
     // only when the operator actually navigates here.
     component: () => import('@/pages/Dns.vue'),
   },
-  { path: '/tun', name: 'tun', component: Placeholder, props: { pageKey: 'pages.tun' } },
+  {
+    path: '/tun',
+    name: 'tun',
+    // Lazy-loaded — Tun.vue pulls the TUN subcomponent tree + route-exclude
+    // cross-reference only when the operator actually navigates here.
+    component: () => import('@/pages/Tun.vue'),
+  },
   {
     path: '/sniffer',
     name: 'sniffer',

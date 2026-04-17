@@ -368,7 +368,75 @@
     },
     "tun": {
       "title": "TUN",
-      "placeholder": "Редактор TUN появится на этапе 2."
+      "subtitle": "TUN-интерфейс mihomo — прозрачный перехват и маршрутизация.",
+      "placeholder": "Редактор TUN появится на этапе 2.",
+      "sections": {
+        "general": "Общие",
+        "dns_hijack": "Перехват DNS",
+        "route_exclude": "Route exclude (защита от self-intercept)",
+        "route_address": "Route address (продвинутое)",
+        "addresses": "Адреса и интерфейсы",
+        "extras": "Неизвестные поля"
+      },
+      "fields": {
+        "enable": "Включить TUN",
+        "device": "Имя устройства",
+        "device_placeholder": "mihomo-tun",
+        "device_hint": "Имя TUN-интерфейса (`ip link`). Пусто — mihomo выберет значение по умолчанию (utun* / tun*).",
+        "stack": "Stack",
+        "stack_hint": "`system` — системный TCP/IP (быстрее всего). `gvisor` — user-space sandbox. `mixed` — комбинация.",
+        "mtu": "MTU",
+        "mtu_placeholder": "9000",
+        "auto_route": "auto-route (установка маршрутов по-умолчанию)",
+        "auto_redirect": "auto-redirect (прозрачные redirect-правила)",
+        "auto_detect_interface": "auto-detect-interface",
+        "strict_route": "strict-route",
+        "endpoint_independent_nat": "endpoint-independent-nat",
+        "interface_name": "Имя интерфейса (явная привязка к WAN)",
+        "interface_name_placeholder": "enp170s0",
+        "interface_name_hint": "Явный WAN-интерфейс — предпочтительно на хостах с двумя NIC.",
+        "inet4_address": "IPv4-адреса",
+        "inet4_placeholder": "198.18.0.1/30",
+        "inet6_address": "IPv6-адреса",
+        "inet6_placeholder": "fd00::1/64",
+        "exclude_interface": "Исключить интерфейсы",
+        "exclude_interface_placeholder": "docker0"
+      },
+      "stack": {
+        "system": "system (ОС-стек, быстрее всего)",
+        "gvisor": "gvisor (user-space sandbox)",
+        "mixed": "mixed"
+      },
+      "guardrails": {
+        "device_empty": "Имя устройства не задано — mihomo выберет значение по умолчанию (utun* в macOS, tun* в Linux). Лучше задать явно (например, `mihomo-tun`) — проще отлаживать.",
+        "auto_detect": "`auto-detect-interface` обычно работает, но ломается на хостах с двумя NIC (например, на роутерах с WAN≠LAN). Вместо этого укажите `interface-name` явно."
+      },
+      "dns_hijack": {
+        "hint": "Список host:port, которые TUN перехватывает для DNS. Оставьте пустым — перехват выключен (рекомендуется на первом запуске).",
+        "placeholder": "any:53",
+        "aria_label": "Список DNS-перехватов"
+      },
+      "route_exclude": {
+        "description": "CIDR, которые идут мимо TUN. Здесь ДОЛЖНЫ быть все IP прокси-серверов — иначе трафик mihomo зациклится через собственный TUN и туннель умрёт.",
+        "placeholder": "91.132.58.113/32",
+        "aria_label": "Список route-exclude",
+        "entry_aria": "Строка route-exclude {index}",
+        "empty": "Исключений пока нет — добавьте все IP прокси-серверов как /32.",
+        "add": "Добавить исключение",
+        "remove": "Удалить исключение",
+        "badge": "IP прокси",
+        "badge_title": "Совпадает с IP прокси-сервера {ip} — self-intercept предотвращён",
+        "missing_header": "Риск self-intercept-петли",
+        "missing_hint": "Добавьте эти IP в список исключений (как /32), иначе трафик прокси mihomo зациклится через его же TUN."
+      },
+      "route_address": {
+        "hint": "Дополнительные CIDR, которые будут идти через TUN. Обычно не нужно — `auto-route: true` покрывает дефолты.",
+        "placeholder": "1.2.3.0/24",
+        "aria_label": "Список route-address"
+      },
+      "extras": {
+        "note": "Неизвестные поля сохранены как есть из YAML — редактируйте их в Raw YAML."
+      }
     },
     "sniffer": {
       "title": "Sniffer",

@@ -27,6 +27,7 @@ import {
   type ProxyNode,
   type Rule,
   serializeRule,
+  type TunConfig,
   type WireGuardNode,
 } from 'miharbor-shared'
 
@@ -380,6 +381,73 @@ export function setDnsConfig(doc: Document, config: DnsConfig): void {
   }
   const node = doc.createNode(raw)
   doc.setIn(['dns'], node)
+}
+
+// ----- tun: section mutators ---------------------------------------------
+
+/** Canonical order for `tun:` keys. Matches mihomo's conventional ordering
+ *  (enable/device/stack first, then routing flags, then address/interface
+ *  bindings, finally list fields). Keys not in this list come from `extras`
+ *  and are appended after the known ones. */
+const TUN_KEY_ORDER: readonly string[] = [
+  'enable',
+  'device',
+  'stack',
+  'mtu',
+  'auto-route',
+  'auto-redirect',
+  'auto-detect-interface',
+  'strict-route',
+  'interface-name',
+  'endpoint-independent-nat',
+  'inet4-address',
+  'inet6-address',
+  'dns-hijack',
+  'route-address',
+  'route-exclude-address',
+  'exclude-interface',
+]
+
+/** Replace the entire `tun:` section with `config`. Unknown keys on
+ *  `config.extras` are preserved (appended at the end). Callers should pass a
+ *  freshly-merged object; this writes, it does not merge. */
+export function setTunConfig(doc: Document, config: TunConfig): void {
+  const raw: Record<string, unknown> = {}
+  for (const k of TUN_KEY_ORDER) {
+    const v = (config as Record<string, unknown>)[k]
+    if (v === undefined) continue
+    raw[k] = v
+  }
+  if (config.extras) {
+    const extraKeys = Object.keys(config.extras).sort()
+    for (const k of extraKeys) {
+      raw[k] = config.extras[k]
+    }
+  }
+  if (Object.keys(raw).length === 0) {
+    doc.deleteIn(['tun'])
+    return
+  }
+  const node = doc.createNode(raw)
+  doc.setIn(['tun'], node)
+}
+
+/** Collect proxy-server IPs from the current doc. Used by the Tun page to
+ *  cross-reference `route-exclude-address` against every server that would
+ *  otherwise self-intercept. Returns bare IPs (no /32 suffix) for each proxy
+ *  entry that has a resolvable `server:` key. */
+export function listProxyServerIps(doc: Document): string[] {
+  const seq = getProxiesSeq(doc)
+  if (!seq) return []
+  const out: string[] = []
+  for (const item of seq.items) {
+    if (!isMap(item as Node)) continue
+    const server = (item as YAMLMap).get('server')
+    if (typeof server === 'string' && server.trim().length > 0) {
+      out.push(server.trim())
+    }
+  }
+  return out
 }
 
 // ----- low-level re-exports ------------------------------------------------
