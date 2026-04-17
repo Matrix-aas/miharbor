@@ -99,7 +99,9 @@ jobs:
       - name: Install Playwright browsers
         # chromium-headless-shell is a separate binary in Playwright ≥1.49 used
         # for `headless: true` (default in CI). Install both so tests work in
-        # either mode.
+        # either mode. working-directory ensures bunx resolves the workspace's
+        # pinned @playwright/test (~1.50.1) rather than fetching a fresh tree.
+        working-directory: apps/web
         run: bunx playwright install --with-deps chromium chromium-headless-shell
 
       - name: Run e2e (mock-mihomo version ${{ matrix.mihomo-version }})
