@@ -82,8 +82,16 @@ export function basicAuth(opts: BasicAuthOptions): Elysia {
       // and external monitors (e.g. uptime kuma) can reach it without
       // credentials. This path is registered by server-bootstrap.ts BEFORE
       // any /api/* routes; everything else still goes through auth.
+      //
+      // `/api/onboarding/status` is also exempt: it's a read-only probe that
+      // the SPA router-guard hits *before* the user has a chance to log in,
+      // so it can decide whether to render the onboarding screen. Response
+      // only reveals "is the mihomo config file missing?" + the configured
+      // path, which is not sensitive. Writes (/api/onboarding/seed) stay
+      // behind this gate — status is exact-match, not a prefix.
       const url = new URL(request.url)
       if (url.pathname === '/health') return undefined
+      if (url.pathname === '/api/onboarding/status') return undefined
 
       // Extract IP — prefer Bun server's live address when available (the
       // socket remote), then apply trust-proxy header evaluation.
