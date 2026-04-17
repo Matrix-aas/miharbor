@@ -13,6 +13,7 @@
     "lint": "bun run --filter='*' lint",
     "test": "bun test",
     "e2e": "bun --filter miharbor-web e2e",
+    "i18n:check": "bun run scripts/i18n-validator.ts",
     "prepare": "husky"
   },
   "devDependencies": {
