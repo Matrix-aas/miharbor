@@ -44,6 +44,8 @@ import { mihomoRoutes } from './routes/mihomo.ts'
 import { providersRoutes } from './routes/providers.ts'
 import { settingsRoutes } from './routes/settings.ts'
 import { onboardingRoutes } from './routes/onboarding.ts'
+import { invariantsRoutes, loadUserInvariants } from './routes/invariants.ts'
+import type { UserInvariant } from 'miharbor-shared'
 import { join, normalize, resolve } from 'node:path'
 import type { AuditLog } from './observability/audit-log.ts'
 import type { Logger } from './observability/logger.ts'
@@ -151,6 +153,34 @@ export async function wireApp(
     })
   })
 
+  // ---------- user invariants ----------
+  // Load the operator's custom invariants once at boot. The linter route
+  // (and anything else that wants the current list) reads from `userInvariantsState`
+  // — PUT /api/invariants mutates `.current` in place so subsequent lints
+  // pick up the new list without a server restart.
+  const userInvariantsState: { current: UserInvariant[] } = { current: [] }
+  try {
+    const loaded = await loadUserInvariants(env.MIHARBOR_DATA_DIR, logger)
+    userInvariantsState.current = loaded.invariants
+    if (loaded.errors.length > 0) {
+      logger.warn({
+        msg: 'invariants.yaml: some entries were dropped during boot',
+        count_valid: loaded.invariants.length,
+        errors: loaded.errors,
+      })
+    } else {
+      logger.info({
+        msg: 'invariants.yaml: loaded',
+        count: loaded.invariants.length,
+      })
+    }
+  } catch (e) {
+    logger.warn({
+      msg: 'invariants.yaml: load failed — continuing with empty list',
+      error: (e as Error).message,
+    })
+  }
+
   // ---------- draft store + health monitor ----------
   const draftStore = createDraftStore()
   const monitor = startHealthMonitor(mihomoApi, {
@@ -226,7 +256,7 @@ export async function wireApp(
       }),
     )
     .get('/health', () => ({ status: 'ok' }))
-    .use(lintRoutes)
+    .use(lintRoutes({ userInvariants: () => userInvariantsState.current }))
     .use(configRoutes({ transport, draftStore, vault }))
     .use(snapshotRoutes({ snapshots, deployCtx }))
     .use(deployRoutes({ draftStore, deployCtx }))
@@ -235,6 +265,13 @@ export async function wireApp(
     .use(mihomoRoutes({ mihomoApi }))
     .use(providersRoutes({ mihomoApi, transport }))
     .use(settingsRoutes({ env, rawEnv }))
+    .use(
+      invariantsRoutes({
+        dataDir: env.MIHARBOR_DATA_DIR,
+        logger,
+        state: userInvariantsState,
+      }),
+    )
     .use(
       onboardingRoutes({
         transport,

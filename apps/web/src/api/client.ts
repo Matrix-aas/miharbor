@@ -5,7 +5,7 @@
 // The client is intentionally minimal: no caching, no retries. Stores
 // compose richer behaviour on top.
 
-import type { Issue } from 'miharbor-shared'
+import type { Issue, UserInvariant } from 'miharbor-shared'
 
 export interface ApiErrorBody {
   code?: string
@@ -172,6 +172,17 @@ export const endpoints = {
     seed: () => api<{ success: boolean; path: string }>('/api/onboarding/seed', { method: 'POST' }),
   },
   lint: (yaml: string) => api<{ issues: Issue[] }>('/api/lint', { method: 'POST', body: { yaml } }),
+  invariants: {
+    list: () =>
+      api<{ invariants: UserInvariant[]; errors: Array<{ index: number; message: string }> }>(
+        '/api/invariants',
+      ),
+    put: (invariants: UserInvariant[]) =>
+      api<{ ok: true; invariants: UserInvariant[] }>('/api/invariants', {
+        method: 'PUT',
+        body: { invariants },
+      }),
+  },
   mihomo: {
     version: () => api<{ version: string; premium: boolean }>('/api/mihomo/version'),
     proxies: () => api<Record<string, unknown>>('/api/mihomo/proxies'),
