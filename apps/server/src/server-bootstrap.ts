@@ -183,9 +183,14 @@ export async function wireApp(
   // `securityHeaders` is mounted FIRST so its onRequest hook fires before
   // any other middleware or route handler — this way security headers end
   // up on every response including auth 401s and router-synthesised 404s.
-  // CSP is skipped in dev (NODE_ENV !== 'production') or when the operator
+  // CSP is skipped in dev (MIHARBOR_PRODUCTION=false) or when the operator
   // explicitly sets MIHARBOR_CSP_DISABLED=true; other headers stay on.
-  const cspDisabled = env.NODE_ENV !== 'production' || env.MIHARBOR_CSP_DISABLED
+  const cspDisabled = !env.MIHARBOR_PRODUCTION || env.MIHARBOR_CSP_DISABLED
+  logger.info({
+    msg: 'security-headers initialized',
+    csp_enabled: !cspDisabled,
+    production: env.MIHARBOR_PRODUCTION,
+  })
   const app = new Elysia()
     .use(securityHeaders({ cspDisabled, trustProxy }))
     .use(

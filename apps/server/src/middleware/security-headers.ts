@@ -6,12 +6,13 @@
 // including auth 401s and router-synthesised 404s.
 //
 // Headers:
-//   - Content-Security-Policy — omitted in dev / when cspDisabled=true
-//     (Vite HMR relies on inline scripts + eval + wss://. Strict CSP
-//     would block Vite + HMR and break local dev. The SPA in prod bundles
-//     no eval-using code EXCEPT Monaco Editor's Web Workers — those need
-//     'unsafe-eval' + blob: in worker-src/script-src. Tailwind JIT emits
-//     plain <style> tags, so 'unsafe-inline' is required for style-src.)
+//   - Content-Security-Policy — omitted in dev / when cspDisabled=true.
+//     Vite HMR relies on inline scripts + eval + ws://; we sidestep this
+//     by OMITTING CSP entirely in dev (via MIHARBOR_PRODUCTION=0). The
+//     SPA in prod bundles no eval-using code EXCEPT Monaco Editor's Web
+//     Workers — those need 'unsafe-eval' + blob: in worker-src/script-src.
+//     Tailwind JIT emits plain <style> tags, so 'unsafe-inline' is
+//     required for style-src.
 //   - X-Frame-Options: DENY — no framing; defense-in-depth for SAMEORIGIN
 //     browsers that predate frame-ancestors support.
 //   - X-Content-Type-Options: nosniff — stop MIME type confusion attacks.
@@ -36,7 +37,7 @@ import type { TrustProxyEvaluator } from '../auth/trust-proxy.ts'
 export interface SecurityHeadersOptions {
   /**
    * Whether to SKIP emitting the Content-Security-Policy header. Compute
-   * upstream (e.g. in server-bootstrap) from `NODE_ENV !== 'production' ||
+   * upstream (e.g. in server-bootstrap) from `!MIHARBOR_PRODUCTION ||
    * MIHARBOR_CSP_DISABLED`. All other headers remain on regardless.
    */
   cspDisabled: boolean
@@ -48,6 +49,8 @@ export interface SecurityHeadersOptions {
 }
 
 // Precomputed header values — reuse across requests (no per-request strings).
+// connect-src 'self' — SPA currently only calls Miharbor server API. If the
+// SPA ever adds direct mihomo/websocket connections, update this directive.
 const CSP_VALUE =
   "default-src 'self'; " +
   "script-src 'self' 'unsafe-eval' blob:; " +

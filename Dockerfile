@@ -83,7 +83,8 @@ ENV MIHARBOR_PORT=3000 \
     MIHARBOR_CONFIG_PATH=/config/config.yaml \
     MIHARBOR_DATA_DIR=/app/data \
     MIHARBOR_WEB_DIST=/app/apps/web/dist \
-    MIHARBOR_LOG_LEVEL=info
+    MIHARBOR_LOG_LEVEL=info \
+    MIHARBOR_PRODUCTION=true
 
 # Volumes: host-mounted mihomo config directory + persistent miharbor state
 # (snapshots, vault, auth.json, audit.log). Declared for documentation and

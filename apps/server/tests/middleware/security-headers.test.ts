@@ -17,7 +17,7 @@
 import { expect, test } from 'bun:test'
 import { Elysia } from 'elysia'
 import { createTrustProxyEvaluator } from '../../src/auth/trust-proxy.ts'
-import { securityHeaders } from '../../src/middleware/security-headers.ts'
+import { isVerifiedHttps, securityHeaders } from '../../src/middleware/security-headers.ts'
 
 function buildApp(opts: { cspDisabled: boolean; trustedCidrs?: string }): Elysia {
   const trustProxy = createTrustProxyEvaluator(opts.trustedCidrs ?? '')
@@ -129,8 +129,9 @@ test('CSP absent in dev mode (cspDisabled=true) but other headers still set', as
 })
 
 test('MIHARBOR_CSP_DISABLED opt-out path (cspDisabled=true surface)', async () => {
-  // The middleware only sees a resolved flag; the env binding (NODE_ENV /
-  // MIHARBOR_CSP_DISABLED → cspDisabled) is the wireApp caller's job.
+  // The middleware only sees a resolved flag; the env binding
+  // (MIHARBOR_PRODUCTION / MIHARBOR_CSP_DISABLED → cspDisabled) is the
+  // wireApp caller's job.
   // Assert: even when cspDisabled=true, everything else including HSTS still fires.
   const app = buildApp({ cspDisabled: true, trustedCidrs: '0.0.0.0/0' })
   const r = await app.handle(
@@ -165,4 +166,50 @@ test('headers present on /health', async () => {
   expect(r.status).toBe(200)
   expect(r.headers.get('x-frame-options')).toBe('DENY')
   expect(r.headers.get('content-security-policy')).toContain("default-src 'self'")
+})
+
+// ---------------------------------------------------------------------------
+// isVerifiedHttps() — direct unit tests (helper is exercised indirectly by
+// the HSTS gate above; these cover the edge cases explicitly).
+// ---------------------------------------------------------------------------
+
+test('isVerifiedHttps: empty socket IP returns false', () => {
+  const trustProxy = createTrustProxyEvaluator('0.0.0.0/0')
+  const req = new Request('http://localhost/', {
+    headers: { 'x-forwarded-proto': 'https' },
+  })
+  expect(isVerifiedHttps(req, '', trustProxy)).toBe(false)
+})
+
+test('isVerifiedHttps: untrusted CIDR returns false even with x-forwarded-proto=https', () => {
+  const trustProxy = createTrustProxyEvaluator('10.0.0.0/8')
+  const req = new Request('http://localhost/', {
+    headers: { 'x-forwarded-proto': 'https' },
+  })
+  // 192.168.1.1 is NOT in 10.0.0.0/8 → untrusted → header ignored.
+  expect(isVerifiedHttps(req, '192.168.1.1', trustProxy)).toBe(false)
+})
+
+test('isVerifiedHttps: comma-separated proto list honours first token (https,http → true)', () => {
+  const trustProxy = createTrustProxyEvaluator('0.0.0.0/0')
+  const req = new Request('http://localhost/', {
+    headers: { 'x-forwarded-proto': 'https, http' },
+  })
+  expect(isVerifiedHttps(req, '10.1.2.3', trustProxy)).toBe(true)
+})
+
+test('isVerifiedHttps: case-insensitive proto (HTTPS → true)', () => {
+  const trustProxy = createTrustProxyEvaluator('0.0.0.0/0')
+  const req = new Request('http://localhost/', {
+    headers: { 'x-forwarded-proto': 'HTTPS' },
+  })
+  expect(isVerifiedHttps(req, '10.1.2.3', trustProxy)).toBe(true)
+})
+
+test('isVerifiedHttps: whitespace around proto is trimmed (" https " → true)', () => {
+  const trustProxy = createTrustProxyEvaluator('0.0.0.0/0')
+  const req = new Request('http://localhost/', {
+    headers: { 'x-forwarded-proto': ' https ' },
+  })
+  expect(isVerifiedHttps(req, '10.1.2.3', trustProxy)).toBe(true)
 })

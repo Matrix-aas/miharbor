@@ -92,14 +92,12 @@ test('loadEnv does NOT coerce "true"/"false" strings for string-typed fields (C1
   expect(typeof env.MIHARBOR_AUTH_USER).toBe('string')
 })
 
-test('loadEnv defaults NODE_ENV to "development" and MIHARBOR_CSP_DISABLED to false', () => {
+test('loadEnv defaults MIHARBOR_CSP_DISABLED to false', () => {
   const env = loadEnv({})
-  expect(env.NODE_ENV).toBe('development')
   expect(env.MIHARBOR_CSP_DISABLED).toBe(false)
 })
 
-test('loadEnv accepts NODE_ENV override + MIHARBOR_CSP_DISABLED boolean coercion', () => {
-  const env = loadEnv({ NODE_ENV: 'production', MIHARBOR_CSP_DISABLED: 'true' })
-  expect(env.NODE_ENV).toBe('production')
+test('loadEnv accepts MIHARBOR_CSP_DISABLED boolean coercion', () => {
+  const env = loadEnv({ MIHARBOR_CSP_DISABLED: 'true' })
   expect(env.MIHARBOR_CSP_DISABLED).toBe(true)
 })
