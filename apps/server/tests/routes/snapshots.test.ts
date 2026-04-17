@@ -102,3 +102,28 @@ test('POST /api/snapshots/:id/rollback emits SSE stream of step events', async (
   expect(text).toContain('event: step')
   expect(text).toContain('event: done')
 })
+
+test('GET /api/snapshots/:id includes diffPatch when available', async () => {
+  const { app, snapshots, transport } = await buildApp()
+  // Create first snapshot
+  await snapshots.createSnapshot('mode: rule\n', { applied_by: 'user' })
+  // Mutate and create second snapshot
+  transport.setConfigRaw('mode: global\n')
+  const snap2 = await snapshots.createSnapshot('mode: global\n', { applied_by: 'user' })
+
+  const r = await app.handle(new Request(`http://localhost/api/snapshots/${snap2!.id}`))
+  expect(r.status).toBe(200)
+  const body = (await r.json()) as {
+    meta: { id: string }
+    configMasked: string
+    diffPatch?: string
+  }
+  expect(body.meta.id).toBe(snap2!.id)
+  expect(body.configMasked).toContain('mode: global')
+})
+
+test('GET /api/snapshots/:id with nonexistent ID throws error', async () => {
+  const { app } = await buildApp()
+  const r = await app.handle(new Request('http://localhost/api/snapshots/nonexistent'))
+  expect(r.status).toBe(500)
+})

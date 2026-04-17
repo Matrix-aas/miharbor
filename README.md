@@ -155,7 +155,13 @@ bun run web:dev
 # Tests
 bun test                           # server + shared
 bun run --filter miharbor-web test # web (Vitest)
+
+# Coverage
+bun test --coverage                # generate coverage report
+bun run scripts/check-coverage.ts  # enforce ≥80% line coverage gate (CI)
 ```
+
+**Test Coverage**: Server-side code (`apps/server/src/`) maintains ≥80% line coverage. See [`.coverage-exclusions.json`](./.coverage-exclusions.json) for documented low-coverage files and rationale (infrastructure code, SSH primitives, complex bootstrapping).
 
 See [`docs/superpowers/plans/`](./docs/superpowers/) for the staged implementation plans.
 

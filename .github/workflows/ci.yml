@@ -53,6 +53,9 @@ jobs:
       - name: Server + shared unit tests
         run: bun test
 
+      - name: Coverage check (≥80% for apps/server/src)
+        run: bun run scripts/check-coverage.ts
+
       - name: Web (Vitest) tests
         run: bun run --filter miharbor-web test
 
