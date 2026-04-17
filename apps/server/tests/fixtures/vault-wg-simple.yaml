@@ -1,0 +1,3 @@
+proxies:
+  - name: wg-home
+    private-key: 'kEYA0FWkeJj3fTGt0WlBCQhMErX/u/rt82v+8NLtCEo='

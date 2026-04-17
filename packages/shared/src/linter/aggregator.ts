@@ -1,0 +1,49 @@
+// Aggregator — runs every shared linter against a Document and returns a
+// flat Issue[] in deterministic order. The order matters for snapshot-style
+// tests and for the UI which tends to show issues grouped by section; we go
+// unreachable → invariants → duplicates, which happens to be "rule-list
+// problems first, then root-level problems, then reference problems".
+//
+// Malformed rules surface as an Issue themselves (LINTER_RULE_PARSE_ERROR)
+// and the aggregator skips rule-based linters for unparseable inputs rather
+// than throwing. The universal-invariants linter is doc-level and runs
+// regardless of whether rules parsed.
+
+import type { Document } from 'yaml'
+import type { Issue } from '../types/issue.ts'
+import { detectUnreachable } from './unreachable.ts'
+import { checkUniversalInvariants } from './invariants-universal.ts'
+import { detectDuplicates } from './duplicates.ts'
+import { parseRulesFromDoc } from '../parser/rule-parser.ts'
+import type { Rule } from '../types/rule.ts'
+
+export function runSharedLinters(doc: Document): Issue[] {
+  const issues: Issue[] = []
+
+  // Parse rules once up front. A malformed rule aborts `parseRulesFromDoc`
+  // with an Error — we catch and surface it as a single Issue so the rest of
+  // the linters still run against what we can read.
+  let rules: { index: number; rule: Rule }[] = []
+  let rulesParsed = true
+  try {
+    rules = parseRulesFromDoc(doc)
+  } catch (err) {
+    rulesParsed = false
+    issues.push({
+      level: 'error',
+      code: 'LINTER_RULE_PARSE_ERROR',
+      path: ['rules'],
+      params: { message: err instanceof Error ? err.message : String(err) },
+    })
+  }
+
+  if (rulesParsed) {
+    issues.push(...detectUnreachable(rules))
+  }
+  issues.push(...checkUniversalInvariants(doc))
+  if (rulesParsed) {
+    issues.push(...detectDuplicates(doc, rules))
+  }
+
+  return issues
+}

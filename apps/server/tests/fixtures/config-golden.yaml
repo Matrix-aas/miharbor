@@ -1,0 +1,420 @@
+# =============================================================================
+#  mihomo config for EQi12 router — transparent proxy edge
+#  Base: config-perk.yaml (fuller rule set). WireGuard identity taken from
+#  config-matrix.yaml (operator's own account).
+#
+#  Runbook invariants (sec 1.6 / 7.9 / 7.9A / 7.9C / 13 / 20A.6):
+#    - mihomo owns transparent interception (TUN + auto-route + auto-redirect)
+#    - tun.dns-hijack MUST be disabled in first production rollout
+#    - dns.listen MUST be 127.0.0.1:1053 (NOT 0.0.0.0, NOT :53)
+#    - external-controller MUST be localhost only
+#    - interface-name MUST be explicit (not auto-detect) on dual-NIC router
+#    - proxy-server-nameserver MUST use IP-based resolvers
+#    - route-exclude-address MUST include proxy server IP (self-intercept guard)
+# =============================================================================
+
+# ----- core listeners (TUN-only; explicit HTTP/SOCKS proxies removed)
+# Rationale: TUN already intercepts LAN traffic transparently, so the explicit
+# proxy ports (7890/7891/1080) were unused but bound to 0.0.0.0 — defense-in-depth
+# failure if router-fw ever drops. Removed entirely. allow-lan also dropped.
+mode: rule
+log-level: info
+ipv6: false
+tcp-concurrent: true
+unified-delay: true
+geo-auto-update: true
+geo-update-interval: 168
+geodata-mode: true
+
+# LAN-only control API (Runbook 7.9 + 13.5).
+# Protected by Bearer token (secret below). nginx in front of miharbor injects
+# the header server-side so Zashboard never holds the secret in localStorage.
+external-controller: 192.168.1.1:9090
+secret: '0000000000000000000000000000000000000000000000000000000000000000'
+external-ui: ./zash
+external-ui-url: 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip'
+
+# ----- outbound NIC binding — explicit, no auto-detect (Runbook hard rule)
+interface-name: enp170s0
+routing-mark: 7890
+
+# Optional perk settings
+keep-alive-interval: 15
+keep-alive-idle: 15
+
+profile:
+  store-selected: true
+find-process-mode: 'off'
+
+# ----- TUN transparent interception (Runbook 1.6 / 7.9 / 20A.6)
+tun:
+  enable: true
+  stack: system
+  device: mihomo-tun
+  dns-hijack: [] # DISABLED for first rollout
+  auto-route: true
+  auto-redirect: false
+  auto-detect-interface: false
+  strict-route: false
+  mtu: 1500
+  # Prevent self-intercept: proxy server IP must NOT be TUN-routed
+  route-exclude-address:
+    - 198.51.100.1/32
+    - 192.168.0.0/16
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 224.0.0.0/4
+    - 255.255.255.255/32
+
+# ----- sniffer (needed for fake-ip + rule classification)
+sniffer:
+  enable: true
+  force-dns-mapping: true
+  parse-pure-ip: true
+  override-destination: true
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true
+    TLS:
+      ports: [443, 8443]
+    QUIC:
+      ports: [443]
+
+# ----- DNS engine — internal upstream ONLY (Runbook 1.4 / 7.9 / 13.4)
+dns:
+  enable: true
+  listen: 127.0.0.1:1053 # MUST NOT be :53 or 0.0.0.0
+  ipv6: false
+  cache-algorithm: arc
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  use-hosts: true
+  respect-rules: true
+
+  # Resolvers for DIRECT domains (routed outside TUN)
+  direct-nameserver:
+    - https://common.dot.dns.yandex.net/dns-query
+    - https://dns.adguard-dns.com/dns-query
+    - https://cloudflare-dns.com/dns-query
+    - https://dns.google/dns-query
+
+  # Mandatory resolvers for proxy-node names (runbook hard rule: IP-based only)
+  proxy-server-nameserver:
+    - 1.1.1.1
+    - 8.8.8.8
+
+  # Bootstrap resolvers (always literal IPs — no host-system resolver dependency)
+  default-nameserver:
+    - 1.1.1.1
+    - 8.8.8.8
+    - 1.0.0.1
+    - 8.8.4.4
+
+  # Primary resolvers for PROXY domains — DoH via Cloudflare/Google/OpenDNS
+  nameserver:
+    - https://cloudflare-dns.com/dns-query
+    - https://doh.opendns.com/dns-query
+    - https://dns.google/dns-query
+
+  fallback:
+    - https://dns.google/dns-query
+    - tls://dns.google
+  fallback-filter:
+    geoip: true
+    geoip-code: RU
+    ipcidr:
+      - 240.0.0.0/4
+
+  nameserver-policy:
+    '+.supercell.net': https://dns.google/dns-query
+    '+.brawlstarsgame.com': https://dns.google/dns-query
+
+  fake-ip-filter-mode: blacklist
+  fake-ip-filter:
+    - '*.lan'
+    - '*.local'
+    - 'localhost'
+    - +.msftconnecttest.com
+    - +.msftncsi.com
+    - +.connectivitycheck.gstatic.com
+    - +.detectportal.firefox.com
+    - +.pool.ntp.org
+    - +.ntp.org
+    - +.time.windows.com
+    - +.3gppnetwork.org
+    # home.arpa / mDNS etc
+    - +.home.arpa
+    - '*.internal'
+
+# ----- Proxy nodes — WireGuard endpoint (operator's own credentials)
+proxies:
+  - name: '🇳🇱 Нидерланды'
+    type: wireguard
+    private-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    server: 198.51.100.1
+    port: 37072
+    ip: 10.8.1.23
+    dns: ['1.1.1.1', '1.0.0.1']
+    public-key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=
+    pre-shared-key: CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=
+    allowed-ips: ['0.0.0.0/0']
+    udp: true
+    persistent-keepalive: 15
+    amnezia-wg-option:
+      jc: 3
+      jmin: 10
+      jmax: 50
+      s1: 132
+      s2: 70
+      h1: 311788334
+      h2: 875294421
+      h3: 2030296400
+      h4: 793060531
+
+# ----- Proxy groups (policies)
+proxy-groups:
+  - { name: 'Gemini', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Speedtest', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: '18+', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Apple', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Fastly', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Discord', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Grok', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Spotify', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Viber', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Roblox', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Linkedin', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Akamai', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Netflix', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: '2IP.IO', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Twitter', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Instagram', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Google', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Google Play', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Whatsapp', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Microsoft', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'GitHub', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Amazon', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Notion', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Tidal', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Telegram', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'TikTok', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Cloudflare', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Twitch', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Claude', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'YouTube', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Facebook', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'OpenAI', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'Steam', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'other', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'intel', type: select, proxies: ['🇳🇱 Нидерланды', DIRECT] }
+  - { name: 'RU трафик', type: select, proxies: [DIRECT, '🇳🇱 Нидерланды'] }
+  - name: 'Остальной трафик'
+    type: select
+    proxies: ['🇳🇱 Нидерланды', DIRECT]
+  - name: 'Блокировка рекламы'
+    type: select
+    proxies: [REJECT, DIRECT, '🇳🇱 Нидерланды']
+  - name: health-check
+    type: url-test
+    proxies: ['🇳🇱 Нидерланды']
+    url: 'https://www.gstatic.com/generate_204'
+    interval: 60
+    hidden: true
+
+# ----- geo data
+geox-url:
+  geosite: 'https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat'
+  geoip: 'https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/geoip.dat'
+
+rule-providers:
+  hagezi_pro:
+    type: http
+    behavior: domain
+    format: mrs
+    url: 'https://github.com/zxc-rv/ad-filter/releases/latest/download/adlist.mrs'
+    path: ./adblock/adlist.mrs
+    interval: 86400
+  discord:
+    type: inline
+    behavior: classical
+    format: text
+    payload:
+      - 'AND,((DOMAIN-KEYWORD,discord),(NOT,((DOMAIN-SUFFIX,ru))))'
+      - 'AND,((IP-CIDR,34.0.192.0/18,no-resolve),(NETWORK,UDP),(DST-PORT,50000-50100))'
+      - 'AND,((IP-CIDR,35.192.0.0/11,no-resolve),(NETWORK,UDP),(DST-PORT,50000-50100))'
+      - 'AND,((IP-CIDR,66.22.192.0/18,no-resolve),(NETWORK,UDP),(DST-PORT,50000-50100))'
+
+# ----- rules (runbook 13.3 safe starter shape + operator's service splits)
+rules:
+  # 0. Ad blocking
+  - GEOSITE,category-ads-all,Блокировка рекламы
+  - RULE-SET,hagezi_pro,Блокировка рекламы
+
+  # 1. Private / local (runbook 13.3 pt 1 — MUST be first real rule)
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,224.0.0.0/4,DIRECT,no-resolve
+  - IP-CIDR,240.0.0.0/4,DIRECT,no-resolve
+  - GEOIP,private,DIRECT,no-resolve
+
+  # 2. Russia direct
+  - DOMAIN-SUFFIX,avito.ru,DIRECT
+  - DOMAIN-SUFFIX,avito.st,DIRECT
+  - GEOSITE,category-ru,RU трафик
+  - DOMAIN-SUFFIX,ru,RU трафик
+  - DOMAIN-SUFFIX,by,RU трафик
+  - DOMAIN-SUFFIX,xn--p1ai,RU трафик
+  - DOMAIN-SUFFIX,yandex-pogoda.static-storage.net,RU трафик
+  - GEOSITE,category-gov-ru,RU трафик
+  - GEOIP,RU,RU трафик,no-resolve
+
+  # 3. Service-specific routing
+  - OR,((DOMAIN-SUFFIX,gql.twitch.tv),(DOMAIN-SUFFIX,usher.ttvnw.net)),Twitch
+  - GEOSITE,openai,OpenAI
+  - DOMAIN-SUFFIX,openai.com,OpenAI
+  - DOMAIN-SUFFIX,chatgpt.com,OpenAI
+  - DOMAIN-SUFFIX,oaiusercontent.com,OpenAI
+  - DOMAIN-SUFFIX,oaistatic.com,OpenAI
+  - RULE-SET,discord,Discord
+  - GEOSITE,tidal,Tidal
+  - GEOSITE,linkedin,Linkedin
+  - GEOSITE,facebook,Facebook
+  - GEOSITE,netflix,Netflix
+  - GEOIP,netflix,Netflix
+  - GEOSITE,spotify,Spotify
+  - GEOSITE,speedtest,Speedtest
+  - GEOSITE,ookla-speedtest,Speedtest
+  - GEOSITE,category-speedtest,Speedtest
+  - GEOSITE,instagram,Instagram
+  - GEOSITE,steam,Steam
+  - IP-ASN,714,Apple
+  - GEOSITE,apple,Apple
+  - GEOSITE,youtube,YouTube
+  - GEOSITE,twitter,Twitter
+  - GEOSITE,tiktok,TikTok
+  - GEOSITE,intel,intel
+  - GEOSITE,notion,Notion
+  - GEOSITE,google,Google
+  - GEOSITE,google-play,Google Play
+  - GEOSITE,google-gemini,Gemini
+  - GEOSITE,github,GitHub
+  - GEOSITE,microsoft,Microsoft
+  - GEOSITE,telegram,Telegram
+  - GEOIP,telegram,Telegram
+  - DOMAIN-SUFFIX,grok.com,Grok
+
+  # Claude / Anthropic
+  - DOMAIN-SUFFIX,claude.ai,Claude
+  - DOMAIN-SUFFIX,claude.com,Claude
+  - DOMAIN-SUFFIX,anthropic.com,Claude
+  - DOMAIN-SUFFIX,claudeusercontent.com,Claude
+
+  # CDN
+  - IP-ASN,16509,Amazon
+  - GEOIP,fastly,Fastly
+  - IP-ASN,12222,Akamai
+  - IP-ASN,16625,Akamai
+  - IP-ASN,16702,Akamai
+  - IP-ASN,17204,Akamai
+  - IP-ASN,17334,Akamai
+  - IP-ASN,18680,Akamai
+  - IP-ASN,18717,Akamai
+  - IP-ASN,20189,Akamai
+  - IP-ASN,20940,Akamai
+  - IP-ASN,21342,Akamai
+  - IP-ASN,22207,Akamai
+  - IP-ASN,22452,Akamai
+  - IP-ASN,23454,Akamai
+  - IP-ASN,23455,Akamai
+  - IP-ASN,23903,Akamai
+  - IP-ASN,24319,Akamai
+  - IP-ASN,26008,Akamai
+  - IP-ASN,31107,Akamai
+  - IP-ASN,31108,Akamai
+  - IP-ASN,31109,Akamai
+  - IP-ASN,31110,Akamai
+  - IP-ASN,31377,Akamai
+  - IP-ASN,32787,Akamai
+  - IP-ASN,33905,Akamai
+  - IP-ASN,34164,Akamai
+  - IP-ASN,34850,Akamai
+  - IP-ASN,35204,Akamai
+  - IP-ASN,35993,Akamai
+  - IP-ASN,35994,Akamai
+  - IP-ASN,36183,Akamai
+
+  # Roblox
+  - AND,((IP-ASN,22697),(DST-PORT,49152-65535)),Roblox
+  - GEOSITE,roblox,Roblox
+  - DOMAIN-SUFFIX,roblox.com,Roblox
+  - DOMAIN-SUFFIX,rbxcdn.com,Roblox
+  - DOMAIN-SUFFIX,rbxinfra.net,Roblox
+
+  # Viber
+  - GEOSITE,viber,Viber
+  - IP-ASN,16509,Viber
+
+  # WhatsApp
+  - GEOSITE,whatsapp,Whatsapp
+  - IP-ASN,32934,Whatsapp
+  - IP-ASN,11917,Whatsapp
+  - IP-ASN,9002,Whatsapp
+
+  # Supercell (games)
+  - GEOSITE,supercell,other
+  - DOMAIN-KEYWORD,supercell,other
+  - AND,((IP-ASN,14618),(DST-PORT,9339)),other
+  - AND,((IP-ASN,16509),(DST-PORT,9339)),other
+
+  # IP checkers
+  - DOMAIN-SUFFIX,2ip.io,2IP.IO
+  - DOMAIN-SUFFIX,2ip.ru,2IP.IO
+  - DOMAIN-SUFFIX,ipinfo.io,2IP.IO
+  - DOMAIN-SUFFIX,ip-api.com,2IP.IO
+  - DOMAIN-SUFFIX,whatismyipaddress.com,2IP.IO
+  - DOMAIN-SUFFIX,whatismyip.com,2IP.IO
+  - DOMAIN-SUFFIX,myip.com,2IP.IO
+  - DOMAIN-SUFFIX,ipleak.net,2IP.IO
+  - DOMAIN-SUFFIX,icanhazip.com,2IP.IO
+  - DOMAIN-SUFFIX,ident.me,2IP.IO
+  - DOMAIN-SUFFIX,ip.sb,2IP.IO
+  - DOMAIN-SUFFIX,ipify.org,2IP.IO
+  - DOMAIN-SUFFIX,ifconfig.co,2IP.IO
+
+  # Content
+  - DOMAIN-SUFFIX,onlyfans.com,other
+  - DOMAIN-SUFFIX,fansly.com,other
+  - DOMAIN-SUFFIX,patreon.com,other
+  - DOMAIN-SUFFIX,rockblack.su,other
+  - DOMAIN-SUFFIX,rockblack.pro,other
+  - DOMAIN-SUFFIX,rockblack.info,other
+
+  # Torrent trackers
+  - DOMAIN-SUFFIX,rutracker.org,other
+  - DOMAIN-SUFFIX,rutor.info,other
+  - DOMAIN-SUFFIX,lostfilm.tv,other
+  - DOMAIN-SUFFIX,nnmclub.to,other
+  - DOMAIN-SUFFIX,kinozal.tv,other
+  - DOMAIN-SUFFIX,fast-torrent.ru,other
+  - DOMAIN-SUFFIX,tapochek.net,other
+  - DOMAIN-SUFFIX,rgfootball.net,other
+  - DOMAIN-SUFFIX,thepiratebay.org,other
+  - DOMAIN-SUFFIX,rarbg.to,other
+
+  # 18+
+  - GEOSITE,category-porn,18+
+
+  # kino.pub
+  - DOMAIN-SUFFIX,kp-pro.cloud,other
+  - DOMAIN-SUFFIX,cdn32.lol,other
+  - DOMAIN-SUFFIX,kino.pub,other
+
+  # Cloudflare CDN
+  - IP-ASN,13335,Cloudflare
+
+  # 4. Default — everything else via proxy (runbook 13.3 pt 4)
+  - 'MATCH,Остальной трафик'

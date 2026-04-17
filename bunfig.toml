@@ -1,0 +1,8 @@
+# Bun-specific settings.
+#
+# The web workspace uses Vitest (via `bun run --filter miharbor-web test`)
+# because its tests rely on Vue SFC compilation + jsdom, which Bun's test
+# runner doesn't support. Everything under apps/web is ignored here; server
+# and shared tests run via `bun test` at the repo root as usual.
+[test]
+pathIgnorePatterns = ["**/apps/web/**"]

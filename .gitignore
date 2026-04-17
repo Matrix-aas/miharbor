@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.bun/
+.env*
+!.env.example
+**/secrets.json
+**/secrets-vault.enc
+**/.vault-key
+**/auth.json
+**/snapshots/
+**/*.key
+**/wg-*.conf
+*.yaml.bak
+.miharbor.lock
+.miharbor.draft.yaml
+.miharbor.test.yaml
+.DS_Store
+*.tsbuildinfo
+# Playwright e2e
+apps/web/playwright-report/
+apps/web/test-results/
+.playwright-data/

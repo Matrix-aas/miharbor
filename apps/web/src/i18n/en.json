@@ -1,0 +1,316 @@
+{
+  "app": {
+    "title": "Miharbor",
+    "tagline": "mihomo control plane"
+  },
+  "common": {
+    "loading": "Loading…",
+    "soon": "Coming soon",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "apply": "Apply",
+    "add": "Add",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "show": "Show",
+    "hide": "Hide",
+    "all": "All",
+    "none": "None",
+    "empty": "Nothing here yet.",
+    "error": "Error",
+    "stage_2_tooltip": "Shipping in stage 2"
+  },
+  "header": {
+    "apply": "Apply",
+    "apply_tooltip_empty": "No unsaved changes",
+    "apply_tooltip_ready": "Review and deploy pending changes",
+    "changes_count": "{count} change | {count} changes",
+    "no_changes": "No changes",
+    "settings": "Settings",
+    "language": "Language",
+    "config_version": "Config v{version}",
+    "transport_docker": "Docker",
+    "transport_ssh": "SSH",
+    "transport_local": "Local"
+  },
+  "health": {
+    "online": "mihomo online",
+    "offline": "mihomo offline",
+    "unknown": "mihomo status unknown",
+    "canonicalized": "Config canonicalized"
+  },
+  "sidebar": {
+    "routing": "Routing",
+    "infra": "Infrastructure",
+    "advanced": "Advanced",
+    "services": "Services",
+    "proxies": "Proxy nodes",
+    "providers": "Rule providers",
+    "dns": "DNS",
+    "tun": "TUN",
+    "sniffer": "Sniffer",
+    "profile": "Profile",
+    "raw_yaml": "Raw YAML",
+    "history": "History",
+    "settings": "Settings",
+    "toggle": "Toggle sidebar"
+  },
+  "deploy": {
+    "title": "Deploy pipeline",
+    "subtitle": "Review the 6-step flow before applying",
+    "close": "Close",
+    "run": "Run deploy",
+    "steps": {
+      "diff": "Diff",
+      "lint": "Lint",
+      "snapshot": "Snapshot",
+      "preflight": "Preflight",
+      "write_reload": "Write & reload",
+      "healthcheck": "Healthcheck"
+    },
+    "status": {
+      "pending": "waiting",
+      "running": "running…",
+      "ok": "ok",
+      "failed": "failed",
+      "skipped": "skipped"
+    },
+    "skeleton_note": "Live streaming wires up in a later task."
+  },
+  "diff": {
+    "title": "Pending changes",
+    "placeholder": "Monaco diff viewer arrives in a later task."
+  },
+  "services": {
+    "search_placeholder": "Search services…",
+    "filter_all": "All",
+    "filter_vpn": "VPN",
+    "filter_direct": "DIRECT",
+    "filter_reject": "REJECT",
+    "add": "Add service",
+    "empty": "No services match your filter.",
+    "none_loaded": "No services loaded yet.",
+    "select_to_view": "Select a service on the left to inspect its rules.",
+    "rule_count": "no rules | {count} rule | {count} rules",
+    "delete_service": "Delete service",
+    "delete_confirm_title": "Delete service \"{name}\"?",
+    "delete_confirm_body": "This will also remove {count} related rule. | This will also remove {count} related rules.",
+    "delete_confirm_body_none": "No rules reference this service.",
+    "direction_label": "Direction",
+    "direction_vpn": "VPN",
+    "direction_direct": "DIRECT",
+    "direction_reject": "REJECT",
+    "direction_mixed": "mixed",
+    "direction_not_select": "Non-select groups are managed via Raw YAML in MVP.",
+    "live_state_unknown": "live state unknown",
+    "issues_label": "linter issues",
+    "add_rule": "Add rule",
+    "no_rules": "No rules route to this service yet.",
+    "add_dialog": {
+      "title": "New service",
+      "name_label": "Name",
+      "name_placeholder": "MyService",
+      "name_taken": "A service with this name already exists.",
+      "name_invalid": "Use letters, numbers, dashes, underscores.",
+      "direction_label": "Direction",
+      "create": "Create"
+    }
+  },
+  "rules": {
+    "type_label": "Type",
+    "value_label": "Value",
+    "target_label": "Target",
+    "modifiers_label": "Modifiers",
+    "modifiers_placeholder": "no-resolve, src",
+    "save": "Save rule",
+    "cancel": "Cancel",
+    "edit": "Edit rule",
+    "delete": "Delete rule",
+    "complex": {
+      "badge": "Complex rule",
+      "tooltip": "Edit in Raw YAML — tree-editor arrives in stage 2.",
+      "match": "MATCH (catch-all)"
+    },
+    "validation": {
+      "empty": "Value is required.",
+      "domain": "Not a valid domain.",
+      "keyword_whitespace": "Keyword cannot contain whitespace.",
+      "cidr": "Not a valid CIDR.",
+      "cidr_v4": "Not a valid IPv4 CIDR (e.g. 10.0.0.0/8).",
+      "cidr_v6": "Not a valid IPv6 CIDR.",
+      "port": "Not a valid port or port range."
+    }
+  },
+  "proxies": {
+    "heading": "Proxy nodes",
+    "add_wireguard": "Add WireGuard",
+    "import": "Import from URL",
+    "import_placeholder": "Import flow arrives in v1.0 (Task 60).",
+    "empty": "No proxy nodes configured yet.",
+    "search_placeholder": "Search proxy nodes…",
+    "edit_disabled": "Edit support for this transport lands in v0.2.",
+    "delete": "Remove node",
+    "delete_confirm_title": "Remove proxy \"{name}\"?",
+    "delete_confirm_body": "Removing a proxy may break any service that references it.",
+    "delay": {
+      "fast": "{ms} ms",
+      "ok": "{ms} ms",
+      "slow": "{ms} ms",
+      "timeout": "timeout",
+      "unknown": "—"
+    },
+    "types": {
+      "wireguard": "WireGuard",
+      "ss": "Shadowsocks",
+      "vmess": "VMess",
+      "trojan": "Trojan",
+      "http": "HTTP",
+      "socks5": "SOCKS5",
+      "hysteria2": "Hysteria2"
+    },
+    "wireguard": {
+      "title": "WireGuard node",
+      "name": "Name",
+      "server": "Server",
+      "port": "Port",
+      "ip": "Tunnel IP",
+      "private_key": "Private key",
+      "public_key": "Public key",
+      "pre_shared_key": "Pre-shared key (optional)",
+      "dns": "DNS servers (one per line)",
+      "allowed_ips": "Allowed IPs (one per line)",
+      "persistent_keepalive": "Persistent keepalive",
+      "udp": "UDP",
+      "amnezia_section": "Amnezia-WG obfuscation",
+      "amnezia_hint": "These values MUST match the server's .awg-params. Leave empty to disable obfuscation.",
+      "save": "Save node",
+      "name_taken": "A proxy with this name already exists.",
+      "name_required": "Name is required.",
+      "key_invalid": "Not a valid WireGuard key (base64, ≥40 chars)."
+    }
+  },
+  "raw_yaml": {
+    "read_only": "Read-only",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "copy_failed": "Failed"
+  },
+  "history": {
+    "title": "History",
+    "search_placeholder": "Search snapshots…",
+    "filter_all": "All",
+    "filter_user": "User",
+    "filter_rollback": "Rollback",
+    "filter_auto_rollback": "Auto-rollback",
+    "filter_canonicalization": "Canonicalization",
+    "applied_by": "applied by {by}",
+    "snapshot_id": "Snapshot {id}",
+    "ip": "from {ip}",
+    "diff_summary": "+{added} / -{removed}",
+    "empty": "No snapshots yet.",
+    "loading": "Loading snapshots…",
+    "open": "View diff",
+    "rollback": "Rollback to this snapshot",
+    "rollback_confirm_title": "Rollback to snapshot?",
+    "rollback_confirm_body": "This rewinds the live config to the snapshot below. A new snapshot will be created for the rollback.",
+    "diff_title": "Diff",
+    "diff_empty": "No diff — first snapshot",
+    "drawer_close": "Close",
+    "just_now": "just now",
+    "seconds_ago": "{n} seconds ago",
+    "minutes_ago": "{n} minutes ago",
+    "hours_ago": "{n} hours ago",
+    "days_ago": "{n} days ago"
+  },
+  "settings": {
+    "title": "Settings",
+    "password_title": "Change password",
+    "password_current": "Current password",
+    "password_new": "New password",
+    "password_confirm": "Confirm new password",
+    "password_submit": "Change password",
+    "password_success": "Password updated.",
+    "password_mismatch": "New passwords don't match.",
+    "password_too_short": "Password must be at least 8 characters.",
+    "password_wrong_current": "Current password is incorrect.",
+    "env_title": "Environment",
+    "env_subtitle": "Runtime configuration is read-only — edit your compose / env file and restart.",
+    "env_key": "Key",
+    "env_value": "Value",
+    "env_source": "Source",
+    "env_source_env": "from env",
+    "env_source_default": "default",
+    "env_masked": "secret",
+    "env_empty": "(empty)",
+    "llm_title": "LLM keys",
+    "llm_disabled_note": "LLM-assisted editing ships in v1.0 (Tasks 58–59).",
+    "llm_anthropic_placeholder": "Anthropic API key (coming soon)",
+    "llm_openai_placeholder": "OpenAI API key (coming soon)"
+  },
+  "onboarding": {
+    "title": "Welcome to Miharbor",
+    "subtitle": "Mihomo config file not found at {path}",
+    "question": "Would you like to create a minimal starter config?",
+    "create": "Create minimal config",
+    "creating": "Creating…",
+    "created": "Starter config created — redirecting…",
+    "failed": "Failed to create: {error}",
+    "about_seed": "The starter config enables TUN + fake-ip DNS with a single \"Default → DIRECT\" service. Your new mihomo API secret is auto-generated (64 hex chars)."
+  },
+  "deploy_live": {
+    "running": "Applying…",
+    "ok": "Applied",
+    "error": "Failed",
+    "rollback_auto": "Auto-rollback triggered",
+    "reconnect": "Stream disconnected — retry",
+    "health_canonicalized_banner": "Config was canonicalized on startup — see History",
+    "dismiss": "Dismiss"
+  },
+  "pages": {
+    "services": {
+      "title": "Services",
+      "placeholder": "Master-detail editor."
+    },
+    "proxies": {
+      "title": "Proxy nodes",
+      "placeholder": "WireGuard editor."
+    },
+    "providers": {
+      "title": "Rule providers",
+      "placeholder": "Rule-providers management ships in stage 2."
+    },
+    "dns": {
+      "title": "DNS",
+      "placeholder": "DNS editor ships in stage 2."
+    },
+    "tun": {
+      "title": "TUN",
+      "placeholder": "TUN editor ships in stage 2."
+    },
+    "sniffer": {
+      "title": "Sniffer",
+      "placeholder": "Sniffer editor ships in stage 2."
+    },
+    "profile": {
+      "title": "Profile",
+      "placeholder": "Profile editor ships in stage 2."
+    },
+    "raw_yaml": {
+      "title": "Raw YAML",
+      "placeholder": "Read-only Monaco editor arrives in a later task."
+    },
+    "history": {
+      "title": "History",
+      "placeholder": "Snapshot browser arrives in a later task."
+    },
+    "settings": {
+      "title": "Settings",
+      "placeholder": "Password + runtime settings arrive in a later task."
+    }
+  }
+}

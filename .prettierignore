@@ -1,0 +1,10 @@
+# Test fixtures are canonical byte-exact YAML snapshots — prettier mustn't
+# reformat them or canonicalize idempotency tests break.
+apps/server/tests/fixtures/
+packages/shared/tests/fixtures/
+
+# PoC / reference material — intentionally out-of-tree formatting.
+docs/superpowers/poc-yaml/
+
+# Bun lockfile is auto-generated.
+bun.lock

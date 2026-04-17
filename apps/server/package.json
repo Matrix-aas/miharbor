@@ -1,0 +1,22 @@
+{
+  "name": "miharbor-server",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --max-warnings 0",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "~0.34.14",
+    "diff": "^9.0.0",
+    "elysia": "~1.2.10",
+    "miharbor-shared": "workspace:*",
+    "proper-lockfile": "^4.1.2",
+    "yaml": "~2.8.3"
+  },
+  "devDependencies": {
+    "@types/diff": "^8.0.0",
+    "@types/proper-lockfile": "^4.1.4"
+  }
+}

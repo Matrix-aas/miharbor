@@ -1,0 +1,316 @@
+{
+  "app": {
+    "title": "Miharbor",
+    "tagline": "панель управления mihomo"
+  },
+  "common": {
+    "loading": "Загрузка…",
+    "soon": "Скоро",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "close": "Закрыть",
+    "apply": "Применить",
+    "add": "Добавить",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "search": "Поиск",
+    "confirm": "Подтвердить",
+    "yes": "Да",
+    "no": "Нет",
+    "show": "Показать",
+    "hide": "Скрыть",
+    "all": "Все",
+    "none": "Ничего",
+    "empty": "Пока пусто.",
+    "error": "Ошибка",
+    "stage_2_tooltip": "Появится на этапе 2"
+  },
+  "header": {
+    "apply": "Применить",
+    "apply_tooltip_empty": "Нет несохранённых изменений",
+    "apply_tooltip_ready": "Посмотреть и применить изменения",
+    "changes_count": "{count} изменение | {count} изменения | {count} изменений",
+    "no_changes": "Нет изменений",
+    "settings": "Настройки",
+    "language": "Язык",
+    "config_version": "Конфиг v{version}",
+    "transport_docker": "Docker",
+    "transport_ssh": "SSH",
+    "transport_local": "Локально"
+  },
+  "health": {
+    "online": "mihomo работает",
+    "offline": "mihomo недоступен",
+    "unknown": "статус mihomo неизвестен",
+    "canonicalized": "Конфиг канонизирован"
+  },
+  "sidebar": {
+    "routing": "Роутинг",
+    "infra": "Инфра",
+    "advanced": "Продвинутое",
+    "services": "Сервисы",
+    "proxies": "Прокси-ноды",
+    "providers": "Rule-providers",
+    "dns": "DNS",
+    "tun": "TUN",
+    "sniffer": "Sniffer",
+    "profile": "Профиль",
+    "raw_yaml": "Raw YAML",
+    "history": "История",
+    "settings": "Настройки",
+    "toggle": "Свернуть меню"
+  },
+  "deploy": {
+    "title": "Применение изменений",
+    "subtitle": "6 шагов применения",
+    "close": "Закрыть",
+    "run": "Запустить",
+    "steps": {
+      "diff": "Diff",
+      "lint": "Линтер",
+      "snapshot": "Снапшот",
+      "preflight": "Preflight",
+      "write_reload": "Запись и reload",
+      "healthcheck": "Healthcheck"
+    },
+    "status": {
+      "pending": "ожидает",
+      "running": "выполняется…",
+      "ok": "ок",
+      "failed": "ошибка",
+      "skipped": "пропущено"
+    },
+    "skeleton_note": "Реальный стрим событий подключится позже."
+  },
+  "diff": {
+    "title": "Изменения",
+    "placeholder": "Monaco-diff появится позже."
+  },
+  "services": {
+    "search_placeholder": "Поиск сервисов…",
+    "filter_all": "Все",
+    "filter_vpn": "VPN",
+    "filter_direct": "DIRECT",
+    "filter_reject": "REJECT",
+    "add": "Добавить сервис",
+    "empty": "Ничего не найдено по фильтру.",
+    "none_loaded": "Сервисы ещё не загружены.",
+    "select_to_view": "Выберите сервис слева, чтобы посмотреть правила.",
+    "rule_count": "нет правил | {count} правило | {count} правила | {count} правил",
+    "delete_service": "Удалить сервис",
+    "delete_confirm_title": "Удалить сервис «{name}»?",
+    "delete_confirm_body": "Также будет удалено {count} связанное правило. | Также будут удалены {count} связанных правила. | Также будет удалено {count} связанных правил.",
+    "delete_confirm_body_none": "С сервисом не связано ни одного правила.",
+    "direction_label": "Направление",
+    "direction_vpn": "VPN",
+    "direction_direct": "DIRECT",
+    "direction_reject": "REJECT",
+    "direction_mixed": "смешанное",
+    "direction_not_select": "Группы non-select редактируются через Raw YAML в MVP.",
+    "live_state_unknown": "live-состояние неизвестно",
+    "issues_label": "проблемы линтера",
+    "add_rule": "Добавить правило",
+    "no_rules": "К этому сервису пока нет правил.",
+    "add_dialog": {
+      "title": "Новый сервис",
+      "name_label": "Имя",
+      "name_placeholder": "МойСервис",
+      "name_taken": "Сервис с таким именем уже существует.",
+      "name_invalid": "Используйте буквы, цифры, дефис, подчёркивание.",
+      "direction_label": "Направление",
+      "create": "Создать"
+    }
+  },
+  "rules": {
+    "type_label": "Тип",
+    "value_label": "Значение",
+    "target_label": "Куда",
+    "modifiers_label": "Модификаторы",
+    "modifiers_placeholder": "no-resolve, src",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "edit": "Редактировать правило",
+    "delete": "Удалить правило",
+    "complex": {
+      "badge": "Сложное правило",
+      "tooltip": "Редактируй в Raw YAML — tree-editor появится на этапе 2.",
+      "match": "MATCH (catch-all)"
+    },
+    "validation": {
+      "empty": "Значение обязательно.",
+      "domain": "Некорректное имя домена.",
+      "keyword_whitespace": "Ключевое слово не должно содержать пробелы.",
+      "cidr": "Некорректный CIDR.",
+      "cidr_v4": "Некорректный IPv4 CIDR (например, 10.0.0.0/8).",
+      "cidr_v6": "Некорректный IPv6 CIDR.",
+      "port": "Некорректный порт или диапазон портов."
+    }
+  },
+  "proxies": {
+    "heading": "Прокси-ноды",
+    "add_wireguard": "Добавить WireGuard",
+    "import": "Импорт из URL",
+    "import_placeholder": "Импорт появится в v1.0 (Task 60).",
+    "empty": "Прокси-нод пока нет.",
+    "search_placeholder": "Поиск прокси-нод…",
+    "edit_disabled": "Редактирование этого транспорта появится в v0.2.",
+    "delete": "Удалить ноду",
+    "delete_confirm_title": "Удалить прокси «{name}»?",
+    "delete_confirm_body": "Удаление прокси может сломать сервис, который на него ссылается.",
+    "delay": {
+      "fast": "{ms} мс",
+      "ok": "{ms} мс",
+      "slow": "{ms} мс",
+      "timeout": "таймаут",
+      "unknown": "—"
+    },
+    "types": {
+      "wireguard": "WireGuard",
+      "ss": "Shadowsocks",
+      "vmess": "VMess",
+      "trojan": "Trojan",
+      "http": "HTTP",
+      "socks5": "SOCKS5",
+      "hysteria2": "Hysteria2"
+    },
+    "wireguard": {
+      "title": "WireGuard нода",
+      "name": "Имя",
+      "server": "Сервер",
+      "port": "Порт",
+      "ip": "IP в туннеле",
+      "private_key": "Private key",
+      "public_key": "Public key",
+      "pre_shared_key": "Pre-shared key (опционально)",
+      "dns": "DNS-серверы (по одному на строку)",
+      "allowed_ips": "Allowed IPs (по одному на строку)",
+      "persistent_keepalive": "Persistent keepalive",
+      "udp": "UDP",
+      "amnezia_section": "Обфускация Amnezia-WG",
+      "amnezia_hint": "Значения ДОЛЖНЫ совпадать с .awg-params сервера. Оставь пустым — обфускация не включится.",
+      "save": "Сохранить ноду",
+      "name_taken": "Прокси с таким именем уже есть.",
+      "name_required": "Имя обязательно.",
+      "key_invalid": "Некорректный WireGuard-ключ (base64, ≥40 символов)."
+    }
+  },
+  "raw_yaml": {
+    "read_only": "Только чтение",
+    "copy": "Скопировать",
+    "copied": "Скопировано!",
+    "copy_failed": "Ошибка"
+  },
+  "history": {
+    "title": "История",
+    "search_placeholder": "Поиск снапшотов…",
+    "filter_all": "Все",
+    "filter_user": "Пользователь",
+    "filter_rollback": "Откат",
+    "filter_auto_rollback": "Авто-откат",
+    "filter_canonicalization": "Канонизация",
+    "applied_by": "источник: {by}",
+    "snapshot_id": "Снапшот {id}",
+    "ip": "с {ip}",
+    "diff_summary": "+{added} / -{removed}",
+    "empty": "Снапшотов пока нет.",
+    "loading": "Загрузка снапшотов…",
+    "open": "Показать diff",
+    "rollback": "Откатиться на этот снапшот",
+    "rollback_confirm_title": "Откатить конфиг?",
+    "rollback_confirm_body": "Live-конфиг будет перезаписан выбранным снапшотом. Для отката будет создан новый снапшот.",
+    "diff_title": "Diff",
+    "diff_empty": "Нет diff — первый снапшот",
+    "drawer_close": "Закрыть",
+    "just_now": "только что",
+    "seconds_ago": "{n} сек назад",
+    "minutes_ago": "{n} мин назад",
+    "hours_ago": "{n} ч назад",
+    "days_ago": "{n} дн назад"
+  },
+  "settings": {
+    "title": "Настройки",
+    "password_title": "Смена пароля",
+    "password_current": "Текущий пароль",
+    "password_new": "Новый пароль",
+    "password_confirm": "Повторите новый пароль",
+    "password_submit": "Сменить пароль",
+    "password_success": "Пароль обновлён.",
+    "password_mismatch": "Новые пароли не совпадают.",
+    "password_too_short": "Пароль должен быть не короче 8 символов.",
+    "password_wrong_current": "Текущий пароль неверен.",
+    "env_title": "Переменные окружения",
+    "env_subtitle": "Переменные только для чтения — измените ваш compose / .env и перезапустите.",
+    "env_key": "Ключ",
+    "env_value": "Значение",
+    "env_source": "Источник",
+    "env_source_env": "из env",
+    "env_source_default": "по-умолчанию",
+    "env_masked": "секрет",
+    "env_empty": "(пусто)",
+    "llm_title": "LLM-ключи",
+    "llm_disabled_note": "LLM-режим появится в v1.0 (Tasks 58–59).",
+    "llm_anthropic_placeholder": "Anthropic API-ключ (скоро)",
+    "llm_openai_placeholder": "OpenAI API-ключ (скоро)"
+  },
+  "onboarding": {
+    "title": "Добро пожаловать в Miharbor",
+    "subtitle": "Файл конфига mihomo не найден по пути {path}",
+    "question": "Создать минимальный starter-конфиг?",
+    "create": "Создать минимальный конфиг",
+    "creating": "Создаём…",
+    "created": "Starter-конфиг создан — переадресация…",
+    "failed": "Не удалось создать: {error}",
+    "about_seed": "Starter включает TUN + fake-ip DNS и единственный сервис «Default → DIRECT». mihomo API-секрет генерируется автоматически (64 hex-символа)."
+  },
+  "deploy_live": {
+    "running": "Применяем…",
+    "ok": "Применено",
+    "error": "Ошибка",
+    "rollback_auto": "Авто-откат запущен",
+    "reconnect": "Поток прерван — повторить",
+    "health_canonicalized_banner": "Конфиг был канонизирован при старте — открыть Историю",
+    "dismiss": "Закрыть"
+  },
+  "pages": {
+    "services": {
+      "title": "Сервисы",
+      "placeholder": "Master-detail редактор."
+    },
+    "proxies": {
+      "title": "Прокси-ноды",
+      "placeholder": "Редактор WireGuard."
+    },
+    "providers": {
+      "title": "Rule-providers",
+      "placeholder": "Управление rule-providers появится на этапе 2."
+    },
+    "dns": {
+      "title": "DNS",
+      "placeholder": "Редактор DNS появится на этапе 2."
+    },
+    "tun": {
+      "title": "TUN",
+      "placeholder": "Редактор TUN появится на этапе 2."
+    },
+    "sniffer": {
+      "title": "Sniffer",
+      "placeholder": "Редактор Sniffer появится на этапе 2."
+    },
+    "profile": {
+      "title": "Профиль",
+      "placeholder": "Редактор профиля появится на этапе 2."
+    },
+    "raw_yaml": {
+      "title": "Raw YAML",
+      "placeholder": "Read-only Monaco появится позже."
+    },
+    "history": {
+      "title": "История",
+      "placeholder": "Просмотр снапшотов появится позже."
+    },
+    "settings": {
+      "title": "Настройки",
+      "placeholder": "Смена пароля появится позже."
+    }
+  }
+}

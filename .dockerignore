@@ -1,0 +1,48 @@
+# --- build contexts we never want shipped ---
+node_modules
+**/node_modules
+
+# --- build artifacts (rebuilt inside the image) ---
+**/dist
+**/.vite
+**/tsconfig.tsbuildinfo
+
+# --- repo-level tooling / docs (don't bloat the image) ---
+.git/
+.github/
+.husky/
+.vscode/
+.idea/
+docs/
+scripts/
+tests/
+**/tests/
+**/*.test.ts
+**/*.spec.ts
+e2e/
+**/e2e/
+**/playwright-report/
+**/test-results/
+.playwright-data/
+*.md
+!README.md
+
+# --- env / secrets / local state ---
+.env
+.env.*
+!.env.example
+**/secrets.json
+**/secrets-vault.enc
+**/.vault-key
+**/auth.json
+**/snapshots/
+**/*.key
+**/wg-*.conf
+*.yaml.bak
+.miharbor.lock
+.miharbor.draft.yaml
+.miharbor.test.yaml
+
+# --- OS / editor noise ---
+.DS_Store
+*.log
