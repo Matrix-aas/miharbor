@@ -24,7 +24,7 @@ import { createSnapshotManager, type SnapshotManager } from './deploy/snapshot.t
 import { createMihomoApi, type MihomoApi } from './mihomo/api-client.ts'
 import { createAuthStore, type AuthStore } from './auth/password.ts'
 import { createRateLimiterAsync, type RateLimiter } from './auth/rate-limit.ts'
-import { createFileStore, createNullStore } from './auth/rate-limit-store.ts'
+import { createFileStore } from './auth/rate-limit-store.ts'
 import { createTrustProxyEvaluator, type TrustProxyEvaluator } from './auth/trust-proxy.ts'
 import { basicAuth } from './auth/basic-auth.ts'
 import { securityHeaders } from './middleware/security-headers.ts'
@@ -126,25 +126,21 @@ export async function wireApp(
     defaultUser: env.MIHARBOR_AUTH_USER,
     envPassHash: env.MIHARBOR_AUTH_PASS_HASH,
   })
-  // Rate limiter with disk-backed persistence so lockouts survive container
-  // restart. Under the LocalFs transport we persist to
-  // `$MIHARBOR_DATA_DIR/rate-limit.state.json`; other transports (SSH /
-  // in-memory test harness) use the null store so behaviour stays the same
-  // as before HF4.
-  const rlStore =
-    env.MIHARBOR_TRANSPORT === 'local'
-      ? createFileStore({
-          path: join(env.MIHARBOR_DATA_DIR, 'rate-limit.state.json'),
-          logger,
-          pruneBefore: {
-            // Match the limiter's runtime defaults — keeps load-time pruning
-            // consistent with what currentState() would decide on the first
-            // check() call anyway.
-            failWindowMs: 5 * 60 * 1000,
-            lockoutMs: 15 * 60 * 1000,
-          },
-        })
-      : createNullStore()
+  // Rate-limit state persists to $MIHARBOR_DATA_DIR/rate-limit.state.json
+  // regardless of transport — auth gate is local to this Miharbor process
+  // even when mihomo config is over SSH. This survives container restart
+  // and prevents attackers from bypassing lockout by restarting the container.
+  const rlStore = createFileStore({
+    path: join(env.MIHARBOR_DATA_DIR, 'rate-limit.state.json'),
+    logger,
+    pruneBefore: {
+      // Match the limiter's runtime defaults — keeps load-time pruning
+      // consistent with what currentState() would decide on the first
+      // check() call anyway.
+      failWindowMs: 5 * 60 * 1000,
+      lockoutMs: 15 * 60 * 1000,
+    },
+  })
   const rateLimiter = await createRateLimiterAsync({ store: rlStore })
   const trustProxy = createTrustProxyEvaluator(env.MIHARBOR_TRUSTED_PROXY_CIDRS, (raw, reason) => {
     logger.warn({
