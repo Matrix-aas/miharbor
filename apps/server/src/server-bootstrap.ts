@@ -283,13 +283,33 @@ export async function wireApp(
   // CSP is skipped in dev (MIHARBOR_PRODUCTION=false) or when the operator
   // explicitly sets MIHARBOR_CSP_DISABLED=true; other headers stay on.
   const cspDisabled = !env.MIHARBOR_PRODUCTION || env.MIHARBOR_CSP_DISABLED
+  const hstsFlags: string[] = []
+  if (env.MIHARBOR_HSTS_MAX_AGE === 0) {
+    hstsFlags.push('disabled')
+  } else {
+    if (env.MIHARBOR_HSTS_INCLUDE_SUBDOMAINS) hstsFlags.push('includeSubDomains')
+    if (env.MIHARBOR_HSTS_PRELOAD) hstsFlags.push('preload')
+    if (hstsFlags.length === 0) hstsFlags.push('basic')
+  }
   logger.info({
     msg: 'security-headers initialized',
     csp_enabled: !cspDisabled,
     production: env.MIHARBOR_PRODUCTION,
+    hsts_max_age: env.MIHARBOR_HSTS_MAX_AGE,
+    hsts_flags: hstsFlags,
   })
   const app = new Elysia()
-    .use(securityHeaders({ cspDisabled, trustProxy }))
+    .use(
+      securityHeaders({
+        cspDisabled,
+        trustProxy,
+        hsts: {
+          maxAge: env.MIHARBOR_HSTS_MAX_AGE,
+          includeSubdomains: env.MIHARBOR_HSTS_INCLUDE_SUBDOMAINS,
+          preload: env.MIHARBOR_HSTS_PRELOAD,
+        },
+      }),
+    )
     .use(
       basicAuth({
         authStore,

@@ -34,6 +34,15 @@
 import { Elysia } from 'elysia'
 import type { TrustProxyEvaluator } from '../auth/trust-proxy.ts'
 
+export interface HstsOptions {
+  /** max-age value in seconds. 0 = disable HSTS entirely. */
+  maxAge: number
+  /** Whether to include the 'includeSubDomains' directive. */
+  includeSubdomains: boolean
+  /** Whether to include the 'preload' directive. */
+  preload: boolean
+}
+
 export interface SecurityHeadersOptions {
   /**
    * Whether to SKIP emitting the Content-Security-Policy header. Compute
@@ -46,6 +55,10 @@ export interface SecurityHeadersOptions {
    * `x-forwarded-proto` header is honoured for deciding HSTS.
    */
   trustProxy: TrustProxyEvaluator
+  /**
+   * HSTS configuration. If maxAge is 0, no HSTS header is emitted.
+   */
+  hsts: HstsOptions
 }
 
 // Precomputed header values — reuse across requests (no per-request strings).
@@ -63,8 +76,19 @@ const CSP_VALUE =
   "base-uri 'self'; " +
   "form-action 'self'"
 
-const HSTS_VALUE = 'max-age=31536000; includeSubDomains'
 const PERMISSIONS_POLICY_VALUE = 'camera=(), microphone=(), geolocation=()'
+
+/**
+ * Build the HSTS header value from options. Returns null if maxAge is 0
+ * (HSTS disabled), so the caller can skip header emission.
+ */
+export function buildHstsValue(opts: HstsOptions): string | null {
+  if (opts.maxAge === 0) return null
+  let value = `max-age=${opts.maxAge}`
+  if (opts.includeSubdomains) value += '; includeSubDomains'
+  if (opts.preload) value += '; preload'
+  return value
+}
 
 /**
  * Decide whether the current request is verified-HTTPS. Returns true only
@@ -94,6 +118,9 @@ export function isVerifiedHttps(
  * request (including onboarding redirects, 404s, and SPA static files).
  */
 export function securityHeaders(opts: SecurityHeadersOptions): Elysia {
+  // Precompute HSTS value at plugin creation time (not per-request).
+  const hstsValue = buildHstsValue(opts.hsts)
+
   // `onRequest` fires for every incoming request on the host app that `.use()`s
   // this plugin (unlike `onBeforeHandle`, it doesn't need an `as: 'global'`
   // scope — the hook is inherently request-level, not handler-level).
@@ -108,19 +135,21 @@ export function securityHeaders(opts: SecurityHeadersOptions): Elysia {
       set.headers['content-security-policy'] = CSP_VALUE
     }
 
-    // HSTS — only when request is verified HTTPS. Resolve socket IP the
-    // same way basic-auth does (server.requestIP), fall back to '0.0.0.0'
-    // if unavailable (happens in Elysia synthetic-Request unit tests).
-    let socketIp = ''
-    try {
-      const addr = server?.requestIP(request)
-      if (addr && typeof addr.address === 'string') socketIp = addr.address
-    } catch {
-      /* ignore — treat as no socket info */
-    }
-    if (!socketIp) socketIp = '0.0.0.0'
-    if (isVerifiedHttps(request, socketIp, opts.trustProxy)) {
-      set.headers['strict-transport-security'] = HSTS_VALUE
+    // HSTS — only when request is verified HTTPS and HSTS is not disabled.
+    // Resolve socket IP the same way basic-auth does (server.requestIP),
+    // fall back to '0.0.0.0' if unavailable (happens in Elysia synthetic-Request unit tests).
+    if (hstsValue !== null) {
+      let socketIp = ''
+      try {
+        const addr = server?.requestIP(request)
+        if (addr && typeof addr.address === 'string') socketIp = addr.address
+      } catch {
+        /* ignore — treat as no socket info */
+      }
+      if (!socketIp) socketIp = '0.0.0.0'
+      if (isVerifiedHttps(request, socketIp, opts.trustProxy)) {
+        set.headers['strict-transport-security'] = hstsValue
+      }
     }
   })
 }

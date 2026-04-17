@@ -71,6 +71,22 @@ const EnvSchema = Type.Object({
    * security headers stay on.
    */
   MIHARBOR_CSP_DISABLED: Type.Boolean({ default: false }),
+  /**
+   * Strict-Transport-Security max-age (seconds). Default 31536000 (1 year).
+   * Set to 0 to disable HSTS entirely (no header emitted).
+   */
+  MIHARBOR_HSTS_MAX_AGE: Type.Number({ default: 31536000 }),
+  /**
+   * Include the 'includeSubDomains' directive in HSTS header.
+   * Default false for safety in shared deployments (e.g. sibling subdomains
+   * on the same domain). Set to true only if you own the entire domain.
+   */
+  MIHARBOR_HSTS_INCLUDE_SUBDOMAINS: Type.Boolean({ default: false }),
+  /**
+   * Include the 'preload' directive in HSTS header (for HSTS preload-list
+   * eligibility). Only meaningful if MIHARBOR_HSTS_INCLUDE_SUBDOMAINS=true.
+   */
+  MIHARBOR_HSTS_PRELOAD: Type.Boolean({ default: false }),
 
   // --- SSH transport (only read when MIHARBOR_TRANSPORT=ssh) ---
   /** Remote host — required when MIHARBOR_TRANSPORT=ssh. */

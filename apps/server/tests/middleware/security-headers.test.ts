@@ -11,21 +11,35 @@
 //      explicit opt-in", documented in middleware header comment)
 //   6. CSP omitted in dev mode (cspDisabled=true)
 //   7. MIHARBOR_CSP_DISABLED=1 opt-out still emits all other headers
-//   8. 404 responses (no route) still get headers (acceptance: every response)
-//   9. /health still gets headers
+//   8. HSTS disabled (maxAge=0) — no header even with verified HTTPS
+//   9. HSTS with includeSubDomains directive
+//   10. HSTS with preload directive
+//   11. 404 responses (no route) still get headers (acceptance: every response)
+//   12. /health still gets headers
 
 import { expect, test } from 'bun:test'
 import { Elysia } from 'elysia'
 import { createTrustProxyEvaluator } from '../../src/auth/trust-proxy.ts'
-import { isVerifiedHttps, securityHeaders } from '../../src/middleware/security-headers.ts'
+import type { HstsOptions } from '../../src/middleware/security-headers.ts'
+import {
+  buildHstsValue,
+  isVerifiedHttps,
+  securityHeaders,
+} from '../../src/middleware/security-headers.ts'
 
-function buildApp(opts: { cspDisabled: boolean; trustedCidrs?: string }): Elysia {
+function buildApp(opts: {
+  cspDisabled: boolean
+  trustedCidrs?: string
+  hsts?: HstsOptions
+}): Elysia {
   const trustProxy = createTrustProxyEvaluator(opts.trustedCidrs ?? '')
+  const hsts = opts.hsts ?? { maxAge: 31536000, includeSubdomains: false, preload: false }
   return new Elysia()
     .use(
       securityHeaders({
         cspDisabled: opts.cspDisabled,
         trustProxy,
+        hsts,
       }),
     )
     .get('/health', () => ({ status: 'ok' }))
@@ -63,15 +77,16 @@ test('sets all six non-HSTS headers in prod mode', async () => {
 // HSTS gate
 // ---------------------------------------------------------------------------
 
-test('HSTS present when trusted proxy + x-forwarded-proto=https', async () => {
+test('HSTS present when trusted proxy + x-forwarded-proto=https (default: no subdomain flag)', async () => {
   // 0.0.0.0/0 matches the Elysia synthetic-Request fallback socket IP (0.0.0.0).
+  // Default: maxAge=31536000, includeSubdomains=false, preload=false
   const app = buildApp({ cspDisabled: false, trustedCidrs: '0.0.0.0/0' })
   const r = await app.handle(
     new Request('http://localhost/api/me', {
       headers: { 'x-forwarded-proto': 'https' },
     }),
   )
-  expect(r.headers.get('strict-transport-security')).toBe('max-age=31536000; includeSubDomains')
+  expect(r.headers.get('strict-transport-security')).toBe('max-age=31536000')
 })
 
 test('HSTS absent when UNtrusted proxy sends x-forwarded-proto=https', async () => {
@@ -140,7 +155,7 @@ test('MIHARBOR_CSP_DISABLED opt-out path (cspDisabled=true surface)', async () =
     }),
   )
   expect(r.headers.get('content-security-policy')).toBeNull()
-  expect(r.headers.get('strict-transport-security')).toBe('max-age=31536000; includeSubDomains')
+  expect(r.headers.get('strict-transport-security')).toBe('max-age=31536000')
 })
 
 // ---------------------------------------------------------------------------
@@ -166,6 +181,68 @@ test('headers present on /health', async () => {
   expect(r.status).toBe(200)
   expect(r.headers.get('x-frame-options')).toBe('DENY')
   expect(r.headers.get('content-security-policy')).toContain("default-src 'self'")
+})
+
+// ---------------------------------------------------------------------------
+// HSTS configuration options (maxAge, includeSubDomains, preload)
+// ---------------------------------------------------------------------------
+
+test('HSTS disabled when maxAge=0 (no header even with verified HTTPS)', async () => {
+  const app = buildApp({
+    cspDisabled: false,
+    trustedCidrs: '0.0.0.0/0',
+    hsts: { maxAge: 0, includeSubdomains: false, preload: false },
+  })
+  const r = await app.handle(
+    new Request('http://localhost/api/me', {
+      headers: { 'x-forwarded-proto': 'https' },
+    }),
+  )
+  expect(r.headers.get('strict-transport-security')).toBeNull()
+})
+
+test('HSTS with includeSubDomains directive', async () => {
+  const app = buildApp({
+    cspDisabled: false,
+    trustedCidrs: '0.0.0.0/0',
+    hsts: { maxAge: 31536000, includeSubdomains: true, preload: false },
+  })
+  const r = await app.handle(
+    new Request('http://localhost/api/me', {
+      headers: { 'x-forwarded-proto': 'https' },
+    }),
+  )
+  expect(r.headers.get('strict-transport-security')).toBe('max-age=31536000; includeSubDomains')
+})
+
+test('HSTS with preload directive', async () => {
+  const app = buildApp({
+    cspDisabled: false,
+    trustedCidrs: '0.0.0.0/0',
+    hsts: { maxAge: 31536000, includeSubdomains: true, preload: true },
+  })
+  const r = await app.handle(
+    new Request('http://localhost/api/me', {
+      headers: { 'x-forwarded-proto': 'https' },
+    }),
+  )
+  expect(r.headers.get('strict-transport-security')).toBe(
+    'max-age=31536000; includeSubDomains; preload',
+  )
+})
+
+test('HSTS with custom maxAge', async () => {
+  const app = buildApp({
+    cspDisabled: false,
+    trustedCidrs: '0.0.0.0/0',
+    hsts: { maxAge: 86400, includeSubdomains: false, preload: false }, // 1 day
+  })
+  const r = await app.handle(
+    new Request('http://localhost/api/me', {
+      headers: { 'x-forwarded-proto': 'https' },
+    }),
+  )
+  expect(r.headers.get('strict-transport-security')).toBe('max-age=86400')
 })
 
 // ---------------------------------------------------------------------------
@@ -212,4 +289,38 @@ test('isVerifiedHttps: whitespace around proto is trimmed (" https " → true)',
     headers: { 'x-forwarded-proto': ' https ' },
   })
   expect(isVerifiedHttps(req, '10.1.2.3', trustProxy)).toBe(true)
+})
+
+// ---------------------------------------------------------------------------
+// buildHstsValue() — factory function unit tests
+// ---------------------------------------------------------------------------
+
+test('buildHstsValue: maxAge=0 returns null (HSTS disabled)', () => {
+  const value = buildHstsValue({ maxAge: 0, includeSubdomains: false, preload: false })
+  expect(value).toBeNull()
+})
+
+test('buildHstsValue: basic (no flags)', () => {
+  const value = buildHstsValue({ maxAge: 31536000, includeSubdomains: false, preload: false })
+  expect(value).toBe('max-age=31536000')
+})
+
+test('buildHstsValue: includeSubdomains flag', () => {
+  const value = buildHstsValue({ maxAge: 31536000, includeSubdomains: true, preload: false })
+  expect(value).toBe('max-age=31536000; includeSubDomains')
+})
+
+test('buildHstsValue: preload flag (both flags)', () => {
+  const value = buildHstsValue({ maxAge: 31536000, includeSubdomains: true, preload: true })
+  expect(value).toBe('max-age=31536000; includeSubDomains; preload')
+})
+
+test('buildHstsValue: preload without includeSubdomains (valid but uncommon)', () => {
+  const value = buildHstsValue({ maxAge: 31536000, includeSubdomains: false, preload: true })
+  expect(value).toBe('max-age=31536000; preload')
+})
+
+test('buildHstsValue: custom maxAge', () => {
+  const value = buildHstsValue({ maxAge: 86400, includeSubdomains: false, preload: false })
+  expect(value).toBe('max-age=86400')
 })

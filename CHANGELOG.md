@@ -48,6 +48,12 @@ All notable changes to Miharbor are documented here. Format follows
   flipped from `available:false` stubs to live routes.
 - Extracted `GuardrailPlate` UI component (was three inline
   amber boxes in the DNS page); reused across the new pages.
+- **BREAKING: HSTS default changed** — `Strict-Transport-Security` header
+  now defaults to `max-age=31536000` **without** `includeSubDomains`. The
+  `includeSubDomains` directive is aggressive for shared deployments (poisons
+  TLS policy for sibling subdomains). **Upgrading from v0.1.x?** If you
+  relied on `includeSubDomains`, set `MIHARBOR_HSTS_INCLUDE_SUBDOMAINS=true`
+  (only if you own the entire domain).
 
 ### Security / Hardening — merged from v0.1.1
 
@@ -77,6 +83,12 @@ All notable changes to Miharbor are documented here. Format follows
 ### New environment variables
 
 - `MIHARBOR_CSP_DISABLED` — opt out of CSP in non-dev contexts.
+- `MIHARBOR_HSTS_MAX_AGE` — configure HSTS `max-age` (seconds), or `0` to
+  disable HSTS entirely.
+- `MIHARBOR_HSTS_INCLUDE_SUBDOMAINS` — include `includeSubDomains` directive
+  (default `false` for safer shared deployments).
+- `MIHARBOR_HSTS_PRELOAD` — include `preload` directive for preload-list
+  eligibility (default `false`).
 - `MIHARBOR_SSH_*` — host, port, user, key path, passphrase,
   remote config / lock paths, connect timeout, keepalive interval.
   Full list in `docs/SSH_SETUP.md`.
