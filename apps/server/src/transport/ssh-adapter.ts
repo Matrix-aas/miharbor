@@ -23,6 +23,7 @@
 
 import { Client, type ConnectConfig, type ClientChannel } from 'ssh2'
 import { readFile } from 'node:fs/promises'
+import { keyFingerprint, keyMatchesKnownHost, type KnownHostEntry } from './ssh-known-hosts.ts'
 
 /** Result of a remote `ssh.exec` invocation. `signal` is set when the remote
  *  process was killed by a signal instead of exiting normally. */
@@ -32,6 +33,28 @@ export interface SshExecResult {
   code: number | null
   signal?: string | undefined
 }
+
+/** Host-key verification policy. Exactly one shape is active at any time.
+ *
+ * Why refuse-by-default rather than "warn and accept"? An operator who can
+ * wire up SSH at all can also spend two minutes pointing Miharbor at
+ * `~/.ssh/known_hosts`. The cost of surfacing the misconfiguration at
+ * startup is ~0. The cost of a silent MITM against an un-pinned
+ * SshTransport is every secret the mihomo config has ever held.
+ */
+export type HostKeyPolicy =
+  | {
+      kind: 'known-hosts'
+      /** Parsed entries from `MIHARBOR_SSH_KNOWN_HOSTS`. */
+      entries: KnownHostEntry[]
+      /** Absolute path — only used to improve error messages. */
+      sourcePath: string
+    }
+  | {
+      kind: 'insecure'
+      /** Always `true` — encodes the explicit operator opt-in. */
+      accepted: true
+    }
 
 export interface SshAdapterOptions {
   host: string
@@ -51,6 +74,12 @@ export interface SshAdapterOptions {
    *  (either peer disconnect or local error). Consumers use this to
    *  trigger lazy reconnect on the next operation. */
   onDisconnect?: (reason: string) => void
+  /** REQUIRED: how the ssh2 host-key check is wired. `undefined` is
+   *  rejected by `buildConnectConfig` — we never fall back to silent
+   *  acceptance. See HostKeyPolicy docs. */
+  hostKeyPolicy?: HostKeyPolicy
+  /** Optional logger hook. Used only to surface host-key decisions. */
+  log?: (level: 'debug' | 'info' | 'warn' | 'error', payload: Record<string, unknown>) => void
 }
 
 export interface SshAdapter {
@@ -69,7 +98,26 @@ export interface SshAdapter {
 }
 
 /** Build an ssh2 ConnectConfig from our adapter options. Separated so tests
- *  can exercise the auth-selection logic directly. */
+ *  can exercise the auth-selection logic directly.
+ *
+ *  Host-key verification wiring:
+ *    - `policy.kind === 'known-hosts'` → install a synchronous `hostVerifier`
+ *      that compares the server's offered public key against the parsed
+ *      entries. Mismatch returns `false`; ssh2 tears down the connection
+ *      with `All configured authentication methods failed` / a KEX error
+ *      — a clear signal to the operator to re-run `ssh-keyscan` and
+ *      update the file.
+ *    - `policy.kind === 'insecure'` → DO NOT install a verifier (ssh2's
+ *      default behaviour is to accept anything). We emit a WARN once per
+ *      connect to keep the operator aware.
+ *    - `policy === undefined` → reject. Callers must pick one of the two
+ *      shapes; see `createSshTransport` for the wiring from env vars.
+ *
+ *  Why a sync verifier: the known_hosts file is already loaded and parsed
+ *  before connect time (cached per-path in the transport). Blocking on
+ *  an ed25519 key comparison is a ~microsecond operation; there's no
+ *  benefit to the async variant.
+ */
 export function buildConnectConfig(opts: SshAdapterOptions): ConnectConfig {
   const base: ConnectConfig = {
     host: opts.host,
@@ -77,13 +125,53 @@ export function buildConnectConfig(opts: SshAdapterOptions): ConnectConfig {
     username: opts.username,
     readyTimeout: opts.connectTimeoutMs,
     keepaliveInterval: opts.keepaliveIntervalMs,
-    // Security posture: never auto-accept unknown host keys. In MVP we rely
-    // on ssh2's default host-key verification (which is: whatever the user
-    // passes in `hostVerifier`). We don't set one, which means ssh2 does NOT
-    // verify — this is the same behaviour as `StrictHostKeyChecking=no`
-    // and is documented in SSH_SETUP.md as an operator caveat. A future
-    // task may add a known_hosts store. Not done here to avoid scope creep.
   }
+
+  // Host-key policy is MANDATORY. Without it we'd be silently equivalent
+  // to `StrictHostKeyChecking=no` — the very thing this change closes.
+  if (!opts.hostKeyPolicy) {
+    throw new Error(
+      'SshAdapter: host-key verification is not configured — set MIHARBOR_SSH_KNOWN_HOSTS to a known_hosts-format file (recommended) or MIHARBOR_SSH_HOST_KEY_INSECURE=true to explicitly accept any host key (NOT SAFE on hostile networks)',
+    )
+  }
+
+  if (opts.hostKeyPolicy.kind === 'known-hosts') {
+    const policy = opts.hostKeyPolicy
+    const log = opts.log
+    const host = opts.host
+    const port = opts.port
+    // Sync verifier — see docstring. `true` ⇒ accept, `false` ⇒ ssh2 closes.
+    base.hostVerifier = (key: Buffer): boolean => {
+      const match = keyMatchesKnownHost(policy.entries, host, port, key)
+      if (!match) {
+        const fp = keyFingerprint(key)
+        // Safe to log: fingerprint is a public-key hash, not secret material.
+        log?.('error', {
+          msg: 'ssh-transport: host-key verification FAILED — offered key not in known_hosts',
+          host,
+          port,
+          offered_fingerprint: fp,
+          known_hosts_path: policy.sourcePath,
+        })
+      } else {
+        log?.('debug', {
+          msg: 'ssh-transport: host-key verified against known_hosts',
+          host,
+          port,
+          fingerprint: keyFingerprint(key),
+        })
+      }
+      return match
+    }
+  } else {
+    // `insecure` — accept everything, but make noise about it.
+    opts.log?.('warn', {
+      msg: 'ssh-transport: host-key verification disabled via MIHARBOR_SSH_HOST_KEY_INSECURE — not safe on hostile networks',
+      host: opts.host,
+      port: opts.port,
+    })
+  }
+
   if (opts.privateKey) {
     base.privateKey = opts.privateKey
     if (opts.passphrase) {

@@ -110,6 +110,14 @@ export async function wireApp(
         'MIHARBOR_TRANSPORT=ssh requires either MIHARBOR_SSH_KEY_PATH or SSH_AUTH_SOCK (ssh-agent) to be set',
       )
     }
+    // Host-key verification: refuse-by-default. Operator must either point
+    // us at a known_hosts file (preferred) or explicitly set the insecure
+    // opt-in. See createSshTransport for the policy wiring.
+    if (!env.MIHARBOR_SSH_KNOWN_HOSTS && !env.MIHARBOR_SSH_HOST_KEY_INSECURE) {
+      throw new Error(
+        'MIHARBOR_TRANSPORT=ssh requires host-key verification: set MIHARBOR_SSH_KNOWN_HOSTS to a known_hosts-format file path (preferred) or MIHARBOR_SSH_HOST_KEY_INSECURE=true to explicitly accept any host key. See docs/SSH_SETUP.md.',
+      )
+    }
     sshTransport = await createSshTransport({
       host: env.MIHARBOR_SSH_HOST,
       port: env.MIHARBOR_SSH_PORT,
@@ -124,6 +132,8 @@ export async function wireApp(
       mihomoApiSecret: env.MIHOMO_API_SECRET,
       connectTimeoutMs: env.MIHARBOR_SSH_CONNECT_TIMEOUT_MS,
       keepaliveIntervalMs: env.MIHARBOR_SSH_KEEPALIVE_INTERVAL_MS,
+      knownHostsPath: env.MIHARBOR_SSH_KNOWN_HOSTS || undefined,
+      hostKeyInsecure: env.MIHARBOR_SSH_HOST_KEY_INSECURE,
       logger,
     })
     transport = sshTransport

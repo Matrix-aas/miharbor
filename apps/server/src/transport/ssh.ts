@@ -33,9 +33,11 @@ import {
   buildConnectConfig,
   loadPrivateKey,
   Ssh2Adapter,
+  type HostKeyPolicy,
   type SshAdapter,
   type SshAdapterOptions,
 } from './ssh-adapter.ts'
+import { loadKnownHosts } from './ssh-known-hosts.ts'
 import {
   ConfigChangedExternallyError,
   type SnapshotBundle,
@@ -67,6 +69,12 @@ export interface SshTransportOptions {
   mihomoApiSecret: string
   connectTimeoutMs: number
   keepaliveIntervalMs: number
+  /** Host-key verification policy. When `adapter` is supplied (tests) this
+   *  may be omitted — the adapter short-circuits `buildConnectConfig`. In
+   *  production the policy is built from env vars in `createSshTransport`
+   *  and passed through here; `undefined` causes `buildConnectConfig` to
+   *  throw with the operator-facing error. */
+  hostKeyPolicy?: HostKeyPolicy
   /** Adapter injection — tests pass a FakeSshAdapter here. Production
    *  code leaves this unset and gets the real `Ssh2Adapter`. */
   adapter?: SshAdapter
@@ -105,6 +113,13 @@ export async function createSshTransport(opts: {
   mihomoApiSecret: string
   connectTimeoutMs: number
   keepaliveIntervalMs: number
+  /** Path to a known_hosts-format file. When non-empty, `createSshTransport`
+   *  loads + parses it here (once, at startup) and wires the pinned-key
+   *  policy. Empty string ⇒ not configured. */
+  knownHostsPath?: string
+  /** When `true` AND `knownHostsPath` is empty, pass the `insecure`
+   *  policy through. Explicit opt-in; logs a per-connect warning. */
+  hostKeyInsecure?: boolean
   logger?: Pick<Logger, 'info' | 'warn' | 'debug' | 'error'>
   adapter?: SshAdapter
 }): Promise<SshTransport> {
@@ -126,6 +141,38 @@ export async function createSshTransport(opts: {
   if (opts.agentSocket !== undefined) ctorOpts.agentSocket = opts.agentSocket
   if (opts.logger !== undefined) ctorOpts.logger = opts.logger
   if (opts.adapter !== undefined) ctorOpts.adapter = opts.adapter
+
+  // Build the host-key policy up-front. Refuse-by-default: an operator who
+  // can wire SSH at all can spend two minutes pointing us at
+  // ~/.ssh/known_hosts. The alternative (silent accept-any) is a MITM
+  // foot-gun that buys nothing.
+  if (opts.knownHostsPath && opts.knownHostsPath.length > 0) {
+    const warnSink = (msg: string): void => opts.logger?.warn({ msg })
+    const entries = await loadKnownHosts(opts.knownHostsPath, warnSink)
+    if (entries.length === 0) {
+      throw new Error(
+        `MIHARBOR_SSH_KNOWN_HOSTS=${opts.knownHostsPath} parsed zero entries — is the path correct and readable?`,
+      )
+    }
+    ctorOpts.hostKeyPolicy = {
+      kind: 'known-hosts',
+      entries,
+      sourcePath: opts.knownHostsPath,
+    }
+    opts.logger?.info({
+      msg: 'ssh-transport: host-key pinning active via known_hosts',
+      path: opts.knownHostsPath,
+      entries: entries.length,
+    })
+  } else if (opts.hostKeyInsecure === true) {
+    ctorOpts.hostKeyPolicy = { kind: 'insecure', accepted: true }
+    opts.logger?.warn({
+      msg: 'ssh-transport: host-key verification disabled via MIHARBOR_SSH_HOST_KEY_INSECURE — not safe on hostile networks. Set MIHARBOR_SSH_KNOWN_HOSTS once you have the remote fingerprint.',
+    })
+  }
+  // else: policy stays undefined → SshTransport ctor (via buildConnectConfig)
+  // throws at bootstrap. That is deliberate: see module header comment.
+
   return new SshTransport(ctorOpts)
 }
 
@@ -151,6 +198,7 @@ export class SshTransport implements Transport {
     if (opts.adapter) {
       this.#adapter = opts.adapter
     } else {
+      const logger = this.#logger
       const adapterOpts: SshAdapterOptions = {
         host: opts.host,
         port: opts.port,
@@ -158,14 +206,19 @@ export class SshTransport implements Transport {
         connectTimeoutMs: opts.connectTimeoutMs,
         keepaliveIntervalMs: opts.keepaliveIntervalMs,
         onDisconnect: (reason) => {
-          this.#logger.warn({ msg: 'ssh-transport: peer disconnected', reason })
+          logger.warn({ msg: 'ssh-transport: peer disconnected', reason })
+        },
+        log: (level, payload) => {
+          logger[level](payload)
         },
       }
       if (opts.privateKey !== undefined) adapterOpts.privateKey = opts.privateKey
       if (opts.passphrase !== undefined) adapterOpts.passphrase = opts.passphrase
       if (opts.agentSocket !== undefined) adapterOpts.agentSocket = opts.agentSocket
-      // Surface the auth-mode misconfiguration at construction time so the
-      // server bootstrap fails with a clean error instead of on first use.
+      if (opts.hostKeyPolicy !== undefined) adapterOpts.hostKeyPolicy = opts.hostKeyPolicy
+      // Surface misconfiguration (missing auth OR missing host-key policy)
+      // at construction time so the server bootstrap fails with a clean
+      // error instead of on first deploy.
       buildConnectConfig(adapterOpts)
       this.#adapter = new Ssh2Adapter(adapterOpts)
     }

@@ -19,10 +19,17 @@ import { createHash } from 'node:crypto'
 import { SshTransport } from '../../src/transport/ssh.ts'
 import {
   buildConnectConfig,
+  type HostKeyPolicy,
   type SshAdapter,
   type SshExecResult,
 } from '../../src/transport/ssh-adapter.ts'
+import { parseKnownHosts } from '../../src/transport/ssh-known-hosts.ts'
 import { ConfigChangedExternallyError } from '../../src/transport/transport.ts'
+
+/** Sentinel policy used by tests that don't care about host-key behaviour
+ *  (auth selection, connection lifecycle, etc.). Tests exercising the
+ *  host-verifier path build their own policy. */
+const INSECURE_POLICY: HostKeyPolicy = { kind: 'insecure', accepted: true }
 
 // ---------- FakeSshAdapter ----------
 
@@ -218,6 +225,7 @@ test('buildConnectConfig uses privateKey when provided', () => {
     privateKey: Buffer.from('FAKE KEY'),
     connectTimeoutMs: 1000,
     keepaliveIntervalMs: 5000,
+    hostKeyPolicy: INSECURE_POLICY,
   })
   expect(cfg.privateKey).toBeDefined()
   expect(cfg.agent).toBeUndefined()
@@ -232,6 +240,7 @@ test('buildConnectConfig forwards passphrase for encrypted key', () => {
     passphrase: 'hunter2',
     connectTimeoutMs: 1000,
     keepaliveIntervalMs: 5000,
+    hostKeyPolicy: INSECURE_POLICY,
   })
   expect(cfg.passphrase).toBe('hunter2')
 })
@@ -244,6 +253,7 @@ test('buildConnectConfig falls back to agent socket when no key', () => {
     agentSocket: '/tmp/ssh-agent.sock',
     connectTimeoutMs: 1000,
     keepaliveIntervalMs: 5000,
+    hostKeyPolicy: INSECURE_POLICY,
   })
   expect(cfg.agent).toBe('/tmp/ssh-agent.sock')
   expect(cfg.privateKey).toBeUndefined()
@@ -257,8 +267,101 @@ test('buildConnectConfig throws when neither key nor agent socket set', () => {
       username: 'u',
       connectTimeoutMs: 1000,
       keepaliveIntervalMs: 5000,
+      hostKeyPolicy: INSECURE_POLICY,
     }),
   ).toThrow(/no authentication configured/)
+})
+
+test('buildConnectConfig refuses to connect when host-key policy is missing', () => {
+  // Refuse-by-default: the operator must pick known_hosts OR explicit
+  // insecure. Silent accept-any is NOT a valid default.
+  expect(() =>
+    buildConnectConfig({
+      host: 'h',
+      port: 22,
+      username: 'u',
+      privateKey: Buffer.from('FAKE KEY'),
+      connectTimeoutMs: 1000,
+      keepaliveIntervalMs: 5000,
+    }),
+  ).toThrow(/host-key verification is not configured/)
+})
+
+// ---------- host-key verification wiring ----------
+
+/** Helper: build a one-line known_hosts entry for `host` with random-ish key. */
+function makeKnownHostsFor(host: string, keyBlob: Buffer): string {
+  return `${host} ssh-ed25519 ${keyBlob.toString('base64')}\n`
+}
+
+test('buildConnectConfig installs a hostVerifier that accepts matching key', () => {
+  const host = 'router.lan'
+  const goodKey = Buffer.from('this-is-not-really-a-key-but-bytes-equal-bytes')
+  const entries = parseKnownHosts(makeKnownHostsFor(host, goodKey))
+  const cfg = buildConnectConfig({
+    host,
+    port: 22,
+    username: 'u',
+    privateKey: Buffer.from('FAKE KEY'),
+    connectTimeoutMs: 1000,
+    keepaliveIntervalMs: 5000,
+    hostKeyPolicy: { kind: 'known-hosts', entries, sourcePath: '/fake/known_hosts' },
+  })
+  expect(typeof cfg.hostVerifier).toBe('function')
+  // ssh2 calls this callback with the server's public-key bytes. Matching
+  // bytes must return truthy; mismatched must return falsy.
+  // Sync-form verifier: (key) => boolean.
+  const sync = cfg.hostVerifier as (key: Buffer) => boolean
+  expect(sync(goodKey)).toBe(true)
+})
+
+test('buildConnectConfig installs a hostVerifier that rejects mismatched key', () => {
+  const host = 'router.lan'
+  const trustedKey = Buffer.from('trusted-public-key-bytes')
+  const rogueKey = Buffer.from('attacker-supplied-public-key-bytes')
+  const logCalls: Array<{ level: string; payload: Record<string, unknown> }> = []
+  const entries = parseKnownHosts(makeKnownHostsFor(host, trustedKey))
+  const cfg = buildConnectConfig({
+    host,
+    port: 22,
+    username: 'u',
+    privateKey: Buffer.from('FAKE KEY'),
+    connectTimeoutMs: 1000,
+    keepaliveIntervalMs: 5000,
+    hostKeyPolicy: { kind: 'known-hosts', entries, sourcePath: '/fake/known_hosts' },
+    log: (level, payload) => {
+      logCalls.push({ level, payload })
+    },
+  })
+  const sync = cfg.hostVerifier as (key: Buffer) => boolean
+  expect(sync(rogueKey)).toBe(false)
+  // Should have logged an error with the offending fingerprint.
+  const errs = logCalls.filter((c) => c.level === 'error')
+  expect(errs.length).toBe(1)
+  expect(String(errs[0]!.payload.msg)).toMatch(/host-key verification FAILED/i)
+  expect(String(errs[0]!.payload.offered_fingerprint)).toMatch(/^SHA256:/)
+})
+
+test('buildConnectConfig with insecure policy skips hostVerifier and warns', () => {
+  const logCalls: Array<{ level: string; payload: Record<string, unknown> }> = []
+  const cfg = buildConnectConfig({
+    host: 'h',
+    port: 22,
+    username: 'u',
+    privateKey: Buffer.from('FAKE KEY'),
+    connectTimeoutMs: 1000,
+    keepaliveIntervalMs: 5000,
+    hostKeyPolicy: INSECURE_POLICY,
+    log: (level, payload) => {
+      logCalls.push({ level, payload })
+    },
+  })
+  // No verifier installed — ssh2 falls back to accept-any.
+  expect(cfg.hostVerifier).toBeUndefined()
+  // Warning surfaced so the operator knows they are exposed.
+  const warns = logCalls.filter((c) => c.level === 'warn')
+  expect(warns.length).toBe(1)
+  expect(String(warns[0]!.payload.msg)).toMatch(/host-key verification disabled/i)
 })
 
 // ---------- readConfig ----------
@@ -505,6 +608,28 @@ test('SshTransport ctor throws when neither key nor agent set', () => {
         mihomoApiSecret: '',
         connectTimeoutMs: 1000,
         keepaliveIntervalMs: 5000,
+        // Pass a policy so the error surfaces from the auth path, not the
+        // host-key path (both paths are covered; this test pins auth).
+        hostKeyPolicy: INSECURE_POLICY,
       }),
   ).toThrow(/no authentication configured/)
+})
+
+test('SshTransport ctor throws when host-key policy is missing', () => {
+  expect(
+    () =>
+      new SshTransport({
+        host: 'h',
+        port: 22,
+        username: 'u',
+        privateKey: Buffer.from('FAKE KEY'),
+        remoteConfigPath: '/etc/mihomo/config.yaml',
+        remoteLockPath: '/etc/mihomo/.miharbor.lock',
+        dataDir,
+        mihomoApiUrl: 'http://x',
+        mihomoApiSecret: '',
+        connectTimeoutMs: 1000,
+        keepaliveIntervalMs: 5000,
+      }),
+  ).toThrow(/host-key verification is not configured/)
 })

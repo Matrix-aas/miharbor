@@ -45,6 +45,8 @@ when `MIHARBOR_TRANSPORT=ssh`; otherwise the server ignores them.
 | `MIHARBOR_SSH_REMOTE_LOCK_PATH`      | `/etc/mihomo/.miharbor.lock` | Absolute path of the remote lock sidecar. Must live on the same filesystem as the config so `mv` is atomic. |
 | `MIHARBOR_SSH_CONNECT_TIMEOUT_MS`    | `10000`                      | SSH `readyTimeout`.                                                                                         |
 | `MIHARBOR_SSH_KEEPALIVE_INTERVAL_MS` | `30000`                      | SSH keepalive; `0` disables.                                                                                |
+| `MIHARBOR_SSH_KNOWN_HOSTS`           | _(empty)_                    | Absolute path to an OpenSSH `known_hosts`-format file. When set, Miharbor pins the remote host key.         |
+| `MIHARBOR_SSH_HOST_KEY_INSECURE`     | `false`                      | Explicit opt-in for "accept any host key" (`StrictHostKeyChecking=no`). Use only for first-contact/testing. |
 
 The rest of the env vars (`MIHOMO_API_URL`, `MIHOMO_API_SECRET`,
 `MIHARBOR_DATA_DIR`, `MIHARBOR_VAULT_KEY`, auth) have the same meaning as
@@ -168,6 +170,8 @@ services:
       - miharbor_data:/app/data
       # Mount your SSH private key (read-only) — or use a docker secret.
       - /home/matrix/.ssh/miharbor_ed25519:/ssh/key:ro
+      # Pinned host-key file (generate once with `ssh-keyscan -t ed25519,rsa,ecdsa`).
+      - /etc/miharbor/known_hosts:/ssh/known_hosts:ro
     environment:
       MIHARBOR_TRANSPORT: ssh
       MIHARBOR_SSH_HOST: router.lan
@@ -177,6 +181,10 @@ services:
       # MIHARBOR_SSH_KEY_PASSPHRASE: ${MIHARBOR_SSH_KEY_PASSPHRASE}
       MIHARBOR_SSH_REMOTE_CONFIG_PATH: /etc/mihomo/config.yaml
       MIHARBOR_SSH_REMOTE_LOCK_PATH: /etc/mihomo/.miharbor.lock
+      # Host-key verification — pick ONE (Miharbor refuses to start otherwise).
+      MIHARBOR_SSH_KNOWN_HOSTS: /ssh/known_hosts
+      # Lab / first-contact escape hatch (NOT SAFE on hostile networks):
+      # MIHARBOR_SSH_HOST_KEY_INSECURE: 'true'
       MIHARBOR_DATA_DIR: /app/data
       # mihomo REST API — reachable from Miharbor's vantage point. Typically
       # the same host you SSH into, bound to a LAN IP or reachable via
@@ -242,13 +250,79 @@ this, you probably set `MIHOMO_API_VALIDATION_MODE=shared-only` which
 skips the real mihomo check. That's fine for development, dangerous for
 production.
 
+## Host-key verification
+
+Miharbor **refuses to start** in SSH mode unless you tell it how to verify
+the remote host key. Picking one of the two options below is a two-minute
+setup that closes the MITM foot-gun a silent accept-any client has.
+
+### Option A — pin against a `known_hosts` file (recommended)
+
+```bash
+# 1. Fetch the remote host keys (run this once; repeat after key rotation).
+#    Drop `-H` so the parser can read the host patterns; Miharbor does
+#    not support OpenSSH's hashed-hostname format yet.
+ssh-keyscan -t ed25519,rsa,ecdsa router.lan > /etc/miharbor/known_hosts
+chmod 644 /etc/miharbor/known_hosts
+
+# 2. (Optional) verify by eye against the fingerprint the remote admin
+#    reads off the console at `ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key.pub`.
+ssh-keygen -lf /etc/miharbor/known_hosts
+
+# 3. Wire it up.
+export MIHARBOR_SSH_KNOWN_HOSTS=/etc/miharbor/known_hosts
+```
+
+Miharbor's `hostVerifier` compares the server's offered public key against
+this file on every connect. Mismatch aborts the connection with a logged
+`SHA256:` fingerprint of the offending key so you can investigate
+(rotated key? actual MITM? stale `known_hosts`?).
+
+Supported subset of the format:
+
+- `host[,alt] keytype base64key` — the common case.
+- `[host]:port keytype base64key` — non-standard port.
+- Comments (`#...`) and blank lines.
+
+Not supported yet (lines are skipped with a warning):
+
+- Hashed hostnames (`|1|salt|hash`).
+- `@cert-authority` / `@revoked` markers.
+
+### Option B — explicit insecure opt-in (first contact / lab)
+
+```bash
+export MIHARBOR_SSH_HOST_KEY_INSECURE=true
+```
+
+This skips `hostVerifier` entirely — equivalent to
+`StrictHostKeyChecking=no`. Miharbor emits a WARN log line at every
+connect so you can't forget you left it on. Use this only to bootstrap
+against a host whose fingerprint you don't have yet: connect, copy the
+fingerprint out of the next log line, generate a `known_hosts` file,
+switch to Option A.
+
+### What happens if neither is set
+
+`wireApp()` throws at bootstrap:
+
+```
+MIHARBOR_TRANSPORT=ssh requires host-key verification: set
+MIHARBOR_SSH_KNOWN_HOSTS to a known_hosts-format file path (preferred)
+or MIHARBOR_SSH_HOST_KEY_INSECURE=true to explicitly accept any host key.
+```
+
+This is intentional. An operator who can wire SSH at all can spend two
+minutes pointing us at `~/.ssh/known_hosts`; the cost of surfacing this
+misconfiguration at startup is ~0. The cost of a silent MITM against an
+un-pinned SshTransport is every secret the mihomo config has ever held.
+
 ## Security notes
 
-- **Host key verification is disabled in MVP.** The ssh2 client does
-  not pin the remote host key. Treat the SSH path as trusted-by-other-means
-  (VPN, private LAN, operator-supplied known_hosts via a future env var).
-  Don't use this transport across the open internet without a VPN in
-  front of it.
+- **Host-key verification is on by default** (via the two env vars above).
+  No more MVP asterisk: unless you explicitly set
+  `MIHARBOR_SSH_HOST_KEY_INSECURE=true`, Miharbor pins the remote key or
+  refuses to start.
 - **Miharbor reuses one persistent SSH connection.** On peer close the
   next operation reconnects lazily. `SIGTERM` triggers `dispose()` which
   calls `ssh2.Client.end()` — no zombie connection left behind.

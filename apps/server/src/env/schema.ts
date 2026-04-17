@@ -91,6 +91,19 @@ const EnvSchema = Type.Object({
   MIHARBOR_SSH_REMOTE_LOCK_PATH: Type.String({ default: '/etc/mihomo/.miharbor.lock' }),
   MIHARBOR_SSH_CONNECT_TIMEOUT_MS: Type.Number({ default: 10_000 }),
   MIHARBOR_SSH_KEEPALIVE_INTERVAL_MS: Type.Number({ default: 30_000 }),
+  /** Absolute path to an OpenSSH `known_hosts`-format file on the Miharbor
+   *  host. When non-empty, Miharbor pins the remote host key against this
+   *  file: connection is aborted on fingerprint mismatch. Generate with:
+   *    ssh-keyscan -t ed25519,rsa,ecdsa <host> > /path/to/known_hosts
+   *  (drop `-H` for unhashed lines — the parser doesn't support hashed
+   *  entries yet.) Mutually exclusive with `MIHARBOR_SSH_HOST_KEY_INSECURE`. */
+  MIHARBOR_SSH_KNOWN_HOSTS: Type.String({ default: '' }),
+  /** Explicit opt-in to accept any host key (equivalent to
+   *  `StrictHostKeyChecking=no`). Intended for first-contact exploration
+   *  or controlled lab setups where you have no other way to pin the
+   *  key. The server logs a WARN per connect in this mode. When
+   *  MIHARBOR_SSH_KNOWN_HOSTS is set this flag is ignored. */
+  MIHARBOR_SSH_HOST_KEY_INSECURE: Type.Boolean({ default: false }),
 })
 
 export type Env = Static<typeof EnvSchema>
