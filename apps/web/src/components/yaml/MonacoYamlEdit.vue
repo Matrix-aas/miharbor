@@ -99,11 +99,13 @@ async function init(): Promise<void> {
     const contribPromise = import('monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution')
     const [monaco] = await Promise.all([monacoPromise, contribPromise])
     monacoRef = monaco as unknown as MonacoNamespace
-    if (!container.value)
-      return // Stub worker — read-write basic-languages tokenizer runs on the main
-      // thread; without this, Monaco throws when language-server modules try
-      // to spawn a worker. Same pattern as MonacoYamlView.
-    ;(globalThis as unknown as { MonacoEnvironment?: unknown }).MonacoEnvironment = {
+    if (!container.value) return
+
+    // Stub worker — read-write basic-languages tokenizer runs on the main
+    // thread; without this, Monaco throws when language-server modules try
+    // to spawn a worker. Same pattern as MonacoYamlView.
+    const envTarget = globalThis as unknown as { MonacoEnvironment?: unknown }
+    envTarget.MonacoEnvironment = {
       getWorker: () => {
         const blobURL = URL.createObjectURL(
           new Blob(['self.onmessage = () => {};'], { type: 'application/javascript' }),
