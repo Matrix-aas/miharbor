@@ -27,6 +27,19 @@ const EnvSchema = Type.Object({
   MIHARBOR_CONFIG_PATH: Type.String({ default: '/config/config.yaml' }),
   MIHARBOR_DATA_DIR: Type.String({ default: '/app/data' }),
   /**
+   * POSIX mode applied to the public config.yaml after Miharbor's atomic
+   * tmp-write+rename. Default `0o644` (420 decimal) lets mihomo — which
+   * typically runs as root but with a hardened CapabilityBoundingSet that
+   * drops CAP_DAC_OVERRIDE, OR as a different non-root UID entirely — read
+   * the file without relying on DAC bypass. Operators with unusual setups
+   * (e.g. Miharbor + mihomo running as the same dedicated UID) can tighten
+   * this to 0o600 (384). Octal literals in shell: export the decimal value
+   * (`420` for 0o644, `384` for 0o600) — TypeBox parses this as a Number.
+   * Internal files (.miharbor.lock, snapshots, drafts) keep their
+   * restrictive owner-only modes regardless of this knob.
+   */
+  MIHARBOR_CONFIG_WRITE_MODE: Type.Number({ default: 0o644 }),
+  /**
    * Absolute path to the pre-built Vue web bundle (apps/web/dist). If set and
    * the directory exists, the server will serve the SPA under `/` and handle
    * client-side routes by falling back to index.html. Empty (default) means

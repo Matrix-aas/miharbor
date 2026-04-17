@@ -58,6 +58,15 @@ export interface LocalFsTransportOptions {
   /** Optional logger for operational messages (stale lock, validation mode
    *  warnings). Falls back to a no-op shim. */
   logger?: Pick<Logger, 'info' | 'warn' | 'debug' | 'error'>
+  /** POSIX mode applied to the public config.yaml path *after* the atomic
+   *  rename. Defaults to 0o644 so mihomo (and any other well-behaved reader
+   *  sharing the bind-mount) can still read the file when it runs under a
+   *  different UID and its capability set omits CAP_DAC_OVERRIDE. Override
+   *  via `MIHARBOR_CONFIG_WRITE_MODE` when you need a stricter regime on an
+   *  unusual deployment (e.g. same-UID-only, 0o640). Internal files
+   *  (.miharbor.lock, snapshots/*, draft/) keep their restrictive modes —
+   *  this knob only affects the single "public" config path. */
+  configWriteMode?: number
 }
 
 const NOOP_LOGGER: Pick<Logger, 'info' | 'warn' | 'debug' | 'error'> = {
@@ -115,6 +124,7 @@ export class LocalFsTransport implements Transport {
   readonly #mihomoUrl: string
   readonly #mihomoSecret: string
   readonly #validationMode: MihomoValidationMode
+  readonly #configWriteMode: number
   readonly #logger: Pick<Logger, 'info' | 'warn' | 'debug' | 'error'>
   // Reserved for `api` validation mode (Task 15+); not invoked in MVP,
   // exposed as a protected method so TS's noUnusedParameters stays quiet
@@ -129,6 +139,7 @@ export class LocalFsTransport implements Transport {
     this.#mihomoUrl = opts.mihomoApiUrl
     this.#mihomoSecret = opts.mihomoApiSecret
     this.#validationMode = opts.validationMode ?? 'shared-only'
+    this.#configWriteMode = opts.configWriteMode ?? 0o644
     this._fetchImpl = opts.fetchImpl ?? ((input, init) => fetch(input, init))
     this.#logger = opts.logger ?? NOOP_LOGGER
   }
@@ -162,7 +173,11 @@ export class LocalFsTransport implements Transport {
     // We touch a sibling if the caller points at a fresh data dir.
     await this.ensureLockFile(lockFile)
     await withLock(lockFile, async () => {
-      await atomicWrite(this.#configPath, content, 0o600)
+      // Use #configWriteMode (default 0o644) so readers running under a
+      // different UID — notably a hardened mihomo whose CapabilityBoundingSet
+      // omits CAP_DAC_OVERRIDE — can still open the config. See field
+      // comment for rationale + MIHARBOR_CONFIG_WRITE_MODE override.
+      await atomicWrite(this.#configPath, content, this.#configWriteMode)
     })
   }
 
@@ -187,7 +202,8 @@ export class LocalFsTransport implements Transport {
       if (current !== expectedPriorHash) {
         throw new ConfigChangedExternallyError(expectedPriorHash, current)
       }
-      await atomicWrite(this.#configPath, content, 0o600)
+      // Same rationale as writeConfig — see #configWriteMode.
+      await atomicWrite(this.#configPath, content, this.#configWriteMode)
     })
   }
 

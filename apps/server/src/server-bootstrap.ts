@@ -94,6 +94,7 @@ export async function wireApp(
       mihomoApiUrl: env.MIHOMO_API_URL,
       mihomoApiSecret: env.MIHOMO_API_SECRET,
       validationMode: env.MIHOMO_API_VALIDATION_MODE,
+      configWriteMode: env.MIHARBOR_CONFIG_WRITE_MODE,
       logger,
     })
   } else if (env.MIHARBOR_TRANSPORT === 'ssh') {
