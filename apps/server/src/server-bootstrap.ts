@@ -26,6 +26,7 @@ import { createAuthStore, type AuthStore } from './auth/password.ts'
 import { createRateLimiter, type RateLimiter } from './auth/rate-limit.ts'
 import { createTrustProxyEvaluator, type TrustProxyEvaluator } from './auth/trust-proxy.ts'
 import { basicAuth } from './auth/basic-auth.ts'
+import { securityHeaders } from './middleware/security-headers.ts'
 import { createDraftStore, type DraftStore } from './draft-store.ts'
 import { startHealthMonitor, type HealthMonitor } from './health-monitor.ts'
 import { loadConfig } from './config/loader.ts'
@@ -179,7 +180,14 @@ export async function wireApp(
   }
 
   // ---------- app ----------
+  // `securityHeaders` is mounted FIRST so its onRequest hook fires before
+  // any other middleware or route handler — this way security headers end
+  // up on every response including auth 401s and router-synthesised 404s.
+  // CSP is skipped in dev (NODE_ENV !== 'production') or when the operator
+  // explicitly sets MIHARBOR_CSP_DISABLED=true; other headers stay on.
+  const cspDisabled = env.NODE_ENV !== 'production' || env.MIHARBOR_CSP_DISABLED
   const app = new Elysia()
+    .use(securityHeaders({ cspDisabled, trustProxy }))
     .use(
       basicAuth({
         authStore,

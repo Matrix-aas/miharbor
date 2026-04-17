@@ -56,6 +56,19 @@ const EnvSchema = Type.Object({
   MIHOMO_CONTAINER_NAME: Type.String({ default: 'mihomo' }),
   ANTHROPIC_API_KEY: Type.String({ default: '' }),
   OPENAI_API_KEY: Type.String({ default: '' }),
+  /**
+   * Standard Node/Bun runtime env. Used by the security-headers middleware to
+   * decide whether to emit Content-Security-Policy (only in production — Vite
+   * HMR would break under a strict CSP). Value is passed through as a string
+   * so unknown values (e.g. 'test') are preserved verbatim.
+   */
+  NODE_ENV: Type.String({ default: 'development' }),
+  /**
+   * Opt-out for Content-Security-Policy independent of NODE_ENV. Set to `true`
+   * when running the SPA behind a dev tunnel or some other setup where the
+   * strict CSP blocks legitimate resources. All other security headers stay on.
+   */
+  MIHARBOR_CSP_DISABLED: Type.Boolean({ default: false }),
 })
 
 export type Env = Static<typeof EnvSchema>
