@@ -224,6 +224,14 @@ function serializeChild(rule: Rule): string {
   return `(${rule.op},(${kids}))`
 }
 
+// Deep-clone a Rule. Used by the tree-editor to detach the draft state from
+// whatever the store handed us (Vue's reactivity proxies would otherwise leak
+// back into the config draft on every keystroke). Plain JSON is sufficient —
+// Rule has no functions / cyclic refs.
+export function cloneRule<R extends Rule>(rule: R): R {
+  return JSON.parse(JSON.stringify(rule)) as R
+}
+
 // Helper used by linters and views to iterate a doc's `rules:` array in order.
 // Returns { index, rule } pairs; skips nothing, throws on malformed entries
 // (callers may catch and surface as an Issue).

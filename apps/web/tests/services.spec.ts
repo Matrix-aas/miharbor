@@ -131,7 +131,9 @@ describe('RuleEditor', () => {
 })
 
 describe('RuleRow', () => {
-  it('shows complex-rule badge + disabled edit for logical rules', () => {
+  it('shows complex-rule badge + enabled edit that emits on click', async () => {
+    // Task 40 — the logical-rule pencil is no longer disabled. Clicking it
+    // opens the tree-editor modal via the parent (ServiceDetail).
     const logical: Rule = {
       kind: 'logical',
       op: 'AND',
@@ -151,12 +153,13 @@ describe('RuleRow', () => {
       global: { plugins: [makeI18n()] },
     })
     expect(wrapper.text()).toContain('Complex rule')
-    // Find the pencil button (there will be one disabled edit button).
     const editButtons = wrapper
       .findAll('button')
       .filter((b) => b.attributes('aria-label') === 'Edit rule')
     expect(editButtons.length).toBe(1)
-    expect((editButtons[0]!.element as HTMLButtonElement).disabled).toBe(true)
+    expect((editButtons[0]!.element as HTMLButtonElement).disabled).toBe(false)
+    await editButtons[0]!.trigger('click')
+    expect(wrapper.emitted('edit')).toBeTruthy()
   })
 })
 

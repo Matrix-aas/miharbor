@@ -18,7 +18,7 @@ import { useConfigStore } from '@/stores/config'
 import ServiceList from '@/components/services/ServiceList.vue'
 import ServiceDetail from '@/components/services/ServiceDetail.vue'
 import AddServiceDialog from '@/components/services/AddServiceDialog.vue'
-import type { SimpleRule } from 'miharbor-shared'
+import type { Rule, SimpleRule } from 'miharbor-shared'
 import { ref } from 'vue'
 
 const { t } = useI18n()
@@ -86,7 +86,7 @@ async function onAddRule(serviceName: string, rule: SimpleRule): Promise<void> {
   }
 }
 
-async function onReplaceRule(index: number, rule: SimpleRule): Promise<void> {
+async function onReplaceRule(index: number, rule: Rule): Promise<void> {
   try {
     await config.replaceRuleAt(index, rule)
   } catch (e) {

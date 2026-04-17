@@ -133,8 +133,27 @@
     "delete": "Delete rule",
     "complex": {
       "badge": "Complex rule",
-      "tooltip": "Edit in Raw YAML — tree-editor arrives in stage 2.",
+      "tooltip": "Open the tree editor to modify AND/OR/NOT structure.",
       "match": "MATCH (catch-all)"
+    },
+    "tree": {
+      "title": "Edit logical rule",
+      "description": "Edit AND / OR / NOT groups and their predicates visually.",
+      "target_label": "Target",
+      "add_condition": "Add condition",
+      "add_and": "Add AND group",
+      "add_or": "Add OR group",
+      "add_not": "Add NOT group",
+      "remove_node": "Remove node",
+      "move_up": "Move up",
+      "move_down": "Move down",
+      "group_label": "{op} group, {count} child | {op} group, {count} children",
+      "max_depth": "Maximum nesting depth reached (5).",
+      "empty_group": "Group is empty — add a child or remove the group.",
+      "empty_not_child": "NOT requires exactly one child.",
+      "too_many_not_children": "NOT accepts only one child — remove the extra.",
+      "invalid_tree": "Fix the highlighted fields before saving.",
+      "no_children": "No conditions yet — add one below."
     },
     "validation": {
       "empty": "Value is required.",

@@ -4,9 +4,10 @@
 // Three shapes:
 //   simple  — editable inline (emits `edit` when the pencil icon clicks).
 //   match   — read-only badge, not editable.
-//   logical — read-only badge "complex rule" with a preview of the tree.
-//             Edit button disabled per invariant (Task 21 spec); full
-//             tree-editor ships in stage 2.
+//   logical — badge "complex rule" with a tree preview. The pencil opens
+//             the modal tree editor (LogicalRuleEditor — Task 40). Stage 1
+//             had this button disabled with a "edit in Raw YAML" hint; the
+//             tree editor now unlocks visual editing.
 
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -106,10 +107,11 @@ function previewLogical(rule: Rule): string {
       <Button
         variant="ghost"
         size="icon"
-        class="h-7 w-7 opacity-40"
-        :disabled="true"
+        class="h-7 w-7"
         :title="t('rules.complex.tooltip')"
         :aria-label="t('rules.edit')"
+        data-testid="logical-edit-btn"
+        @click="emit('edit', index)"
       >
         <Pencil class="h-3.5 w-3.5" />
       </Button>
