@@ -102,6 +102,32 @@ test('GET /api/config/draft falls back to live config when no draft', async () =
   expect(body.text).toContain('mode: rule')
 })
 
+test('GET /api/config/draft live-fallback masks secrets, matching /raw byte-for-byte', async () => {
+  // Regression guard for v0.2.3: without masking, draftText !== rawLive on
+  // every secret line (proxy private-key, mihomo `secret:` Bearer, …) and
+  // the SPA's `dirtyCount` trips on fresh login before the operator has
+  // touched anything. Both endpoints must return the same masked YAML when
+  // no per-user draft exists.
+  const { app } = await buildApp()
+  const rawR = await app.handle(new Request('http://localhost/api/config/raw'))
+  const rawText = await rawR.text()
+  const draftR = await app.handle(new Request('http://localhost/api/config/draft'))
+  const draftBody = (await draftR.json()) as { source: string; text: string }
+
+  expect(draftBody.source).toBe('current')
+  // Secret fields in the golden fixture must be sentinels in the draft too.
+  expect(draftBody.text).not.toContain(REAL_LOOKING_KEY)
+  expect(draftBody.text).toContain('$MIHARBOR_VAULT:')
+  // And the vault-worthy mihomo `secret:` (Bearer token) is also masked —
+  // it was `'00...00'` (64 zero-hex) in the fixture; after masking the raw
+  // value is gone.
+  expect(draftBody.text).not.toContain(
+    "secret: '0000000000000000000000000000000000000000000000000000000000000000'",
+  )
+  // Byte-identical with /raw so `dirtyCount` == 0 on fresh login.
+  expect(draftBody.text).toBe(rawText)
+})
+
 test('DELETE /api/config/draft clears the draft', async () => {
   const { app, draftStore } = await buildApp()
   await app.handle(

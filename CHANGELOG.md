@@ -4,6 +4,31 @@ All notable changes to Miharbor are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [semver](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] — 2026-04-17
+
+### Fixed
+
+- **`/api/config/draft` now masks secrets when falling back to live
+  content, matching `/api/config/raw` — SPA no longer shows a spurious
+  dirty badge on fresh login.** The `source: 'current'` branch (no
+  per-user draft) previously returned the raw unmasked YAML, while
+  `/api/config/raw` returned a vault-masked copy. The SPA compared the
+  two strings to compute `dirtyCount`, so every secret line diverged
+  and the header read "1 изменения" plus an active Apply button the
+  moment the operator signed in, even without any edits. Both endpoints
+  now return byte-identical masked text (memoised per live-file hash so
+  repeated calls don't mint fresh `$MIHARBOR_VAULT:<uuid>` sentinels
+  and break identity compare).
+
+### Tests
+
+- 646 → **647** tests. Added a regression test asserting that
+  `/api/config/draft` (no draft) returns masked text byte-identical
+  with `/api/config/raw` on a fixture carrying proxy `private-key`,
+  `public-key`, `pre-shared-key`, and top-level mihomo `secret:`.
+
+---
+
 ## [0.2.2] — 2026-04-17
 
 Regression fix for v0.2.0: `reloadConfig()` was sending an empty request
