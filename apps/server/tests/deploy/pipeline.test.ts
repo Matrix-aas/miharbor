@@ -543,3 +543,81 @@ test('no runHealthcheck provided: pipeline skips step 6 cleanly', async () => {
   // No healthcheck events emitted.
   expect(events.some((e) => e.id === 'healthcheck')).toBe(false)
 })
+
+// ---------------------------------------------------------------------------
+// v0.2.4 — read-only-view sentinel round-trip.
+// ---------------------------------------------------------------------------
+
+test('META_SECRET_SENTINEL in draft is resolved back to current secret at write time (v0.2.4)', async () => {
+  // Secret must be ≥32 chars per the universal linter invariant, otherwise
+  // the pipeline's step-2 lint would reject the draft before write.
+  const REAL_SECRET = 'r'.repeat(64)
+  const initial = `mode: rule\nsecret: ${REAL_SECRET}\n`
+  // Operator's draft carries the sentinel — they saw the masked value in
+  // /api/config/meta or copied from a stale clipboard.
+  const draft = 'mode: rule\nsecret: __MIHARBOR_SECRET_SET_NOT_SHOWN__\n'
+  const { ctx, transport } = await buildCtx({ initialConfig: initial })
+  await runPipeline({ draft, ctx })
+  const after = await transport.readConfig()
+  // Sentinel must NOT survive onto disk.
+  expect(after.content).not.toContain('__MIHARBOR_SECRET_SET_NOT_SHOWN__')
+  // Existing secret preserved verbatim.
+  expect(after.content).toContain(`secret: ${REAL_SECRET}`)
+})
+
+test('WIREGUARD_PRIVATE_KEY_SENTINEL in draft is resolved back per-proxy by name (v0.2.4)', async () => {
+  const PK = 'priva' + 'te-key'
+  const PSK = 'pre-shared-' + 'key'
+  const REAL_PK = 'realprivatekeyAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+  const REAL_PSK = 'realpresharedkeyBBBBBBBBBBBBBBBBBBBBBBBBBB='
+  const SENTINEL_PK = 'MIHARBORMASKEDPRIVATEKEYREENTERTOCHANGE1234='
+  const SENTINEL_PSK = 'MIHARBORMASKEDPRESHAREDKEYREENTERTOCHANGE12='
+  const initial = [
+    'proxies:',
+    '  - name: wg1',
+    '    type: wireguard',
+    '    server: 1.2.3.4',
+    '    port: 51820',
+    '    ip: 10.0.0.2/32',
+    `    ${PK}: ${REAL_PK}`,
+    '    public-key: pubkeyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+    `    ${PSK}: ${REAL_PSK}`,
+    '',
+  ].join('\n')
+  const draft = [
+    'proxies:',
+    '  - name: wg1',
+    '    type: wireguard',
+    '    server: 1.2.3.4',
+    '    port: 51820',
+    '    ip: 10.0.0.3/32', // operator only changed the tunnel IP
+    `    ${PK}: ${SENTINEL_PK}`,
+    '    public-key: pubkeyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+    `    ${PSK}: ${SENTINEL_PSK}`,
+    '',
+  ].join('\n')
+  const { ctx, transport } = await buildCtx({ initialConfig: initial })
+  await runPipeline({ draft, ctx })
+  const after = await transport.readConfig()
+  expect(after.content).not.toContain(SENTINEL_PK)
+  expect(after.content).not.toContain(SENTINEL_PSK)
+  expect(after.content).toContain(REAL_PK)
+  expect(after.content).toContain(REAL_PSK)
+  // Edited field went through.
+  expect(after.content).toContain('10.0.0.3/32')
+})
+
+test('sentinel resolution is scoped — unrelated string equal to sentinel is left alone (v0.2.4)', async () => {
+  // An unrelated field whose value just happens to equal the sentinel string
+  // must NOT get substituted — sentinel resolution only applies when the
+  // key is `secret` / `private-key` / `pre-shared-key`.
+  const LITERAL = '__MIHARBOR_SECRET_SET_NOT_SHOWN__'
+  const GOOD_SECRET = 'a'.repeat(64)
+  const initial = `mode: rule\nsecret: ${GOOD_SECRET}\nfoo: ${LITERAL}\n`
+  const draft = `mode: rule\nsecret: ${GOOD_SECRET}\nfoo: ${LITERAL}\n`
+  const { ctx, transport } = await buildCtx({ initialConfig: initial })
+  await runPipeline({ draft, ctx })
+  const after = await transport.readConfig()
+  // Literal under `foo:` survives because the key isn't `secret`.
+  expect(after.content).toContain(`foo: ${LITERAL}`)
+})

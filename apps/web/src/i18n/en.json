@@ -229,7 +229,8 @@
       "save": "Save node",
       "name_taken": "A proxy with this name already exists.",
       "name_required": "Name is required.",
-      "key_invalid": "Not a valid WireGuard key (base64, ≥40 chars)."
+      "key_invalid": "Not a valid WireGuard key (base64, ≥40 chars).",
+      "key_sentinel_hint": "Key is set on the server — enter a new value to rotate, or leave unchanged to keep the current one. The UI cannot reveal the stored key."
     }
   },
   "raw_yaml": {
@@ -656,6 +657,7 @@
         "control_plane": "Control plane",
         "behavior": "Behavior",
         "geo": "Geodata",
+        "geox_url": "GeoX URL overrides",
         "profile_nested": "Profile sub-section",
         "authentication": "Authentication",
         "extras": "Unknown fields"
@@ -676,6 +678,18 @@
         "secret_placeholder": "64 hex chars (use `openssl rand -hex 32`)",
         "secret_show": "Show secret",
         "secret_hide": "Hide secret",
+        "secret_sentinel_hint": "Secret is set — enter a new value to change it. Cannot reveal from the UI.",
+        "interface_name": "Interface name (outbound bind)",
+        "interface_name_placeholder": "eth0 / en0 / enp170s0",
+        "interface_name_hint": "Forces outbound traffic to leave via this NIC. Recommended pattern on multi-homed hosts instead of `tun.auto-detect-interface`.",
+        "geox_url_geoip": "GeoIP URL override",
+        "geox_url_geoip_placeholder": "https://…/geoip.dat",
+        "geox_url_geosite": "GeoSite URL override",
+        "geox_url_geosite_placeholder": "https://…/geosite.dat",
+        "geox_url_mmdb": "MMDB URL override",
+        "geox_url_mmdb_placeholder": "https://…/Country.mmdb",
+        "geox_url_asn": "ASN URL override",
+        "geox_url_asn_placeholder": "https://…/GeoLite2-ASN.mmdb",
         "external_ui": "External UI path",
         "external_ui_placeholder": "./zash",
         "external_ui_name": "External UI name",
@@ -701,6 +715,12 @@
       "nested": {
         "description": "mihomo's nested `profile:` map. These are persisted runtime preferences, not routing policy."
       },
+      "geox_url": {
+        "description": "Override the default URLs mihomo fetches geodata from. Leave empty to use the compiled defaults. Refreshed on `geo-auto-update` cadence.",
+        "reset_label": "Reset",
+        "reset": "Reset {field} URL to default",
+        "invalid_url": "Enter a valid http:// or https:// URL."
+      },
       "auth": {
         "description": "HTTP proxy authentication entries (user:pass). Usernames are shown below; passwords are write-only — edit a row to set a new password, but previously-saved passwords are never echoed back in the UI.",
         "list_aria": "Authentication entries",
@@ -725,7 +745,8 @@
         "ipv6": "IPv6 is enabled. The runbook keeps IPv6 disabled until extended burn-in — the NAT / rule plane has not been stressed for IPv6 yet.",
         "external_controller": "External controller is bound to a non-loopback address without a secret. Any LAN host can control mihomo. Set a 64-char hex secret.",
         "secret": "The secret is the Bearer token for mihomo's control API. Treat it like a password: never commit it, rotate after suspected leaks (`openssl rand -hex 32`, then restart mihomo and re-enter in your dashboard).",
-        "authentication": "Passwords are written verbatim to the mihomo config file. After save, the UI only shows usernames — if you forget a password, you must remove the entry and re-add the user."
+        "authentication": "Passwords are written verbatim to the mihomo config file. After save, the UI only shows usernames — if you forget a password, you must remove the entry and re-add the user.",
+        "interface_name_auto_detect": "`interface-name` overrides `auto-detect-interface`; on multi-homed hosts this is the recommended setup."
       },
       "extras": {
         "note": "Unknown fields preserved verbatim from the YAML — edit them in Raw YAML."

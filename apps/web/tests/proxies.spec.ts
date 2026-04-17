@@ -9,12 +9,18 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
-import type { ProxyNode, WireGuardNode } from 'miharbor-shared'
+import {
+  type ProxyNode,
+  type WireGuardNode,
+  WIREGUARD_PRE_SHARED_KEY_SENTINEL,
+  WIREGUARD_PRIVATE_KEY_SENTINEL,
+} from 'miharbor-shared'
 
 import en from '../src/i18n/en.json'
 import ru from '../src/i18n/ru.json'
 import WireGuardForm from '../src/components/proxies/WireGuardForm.vue'
 import ProxyList from '../src/components/proxies/ProxyList.vue'
+import { isValidWireGuardKey } from '../src/lib/rule-validation'
 import {
   hasProxyNode,
   parseDraft,
@@ -55,6 +61,80 @@ describe('WireGuardForm', () => {
     expect(eyeButtons.length).toBeGreaterThan(0)
     await eyeButtons[0]!.trigger('click')
     expect(wrapper.get('[data-testid="wireguard-private-key"]').attributes('type')).toBe('text')
+  })
+
+  it('disables the private-key reveal-eye when the key equals the sentinel (v0.2.4)', () => {
+    const wg: WireGuardNode = {
+      name: 'wg1',
+      type: 'wireguard',
+      server: '1.2.3.4',
+      port: 51820,
+      ip: '10.0.0.2/32',
+      'private-key': WIREGUARD_PRIVATE_KEY_SENTINEL,
+      'public-key': 'B'.repeat(44),
+    }
+    const wrapper = mount(WireGuardForm, {
+      props: { initial: wg, existingNames: ['wg1'] },
+      global: { plugins: [makeI18n()] },
+    })
+    // Sentinel hint is rendered.
+    expect(wrapper.find('[data-testid="wireguard-private-key-sentinel-hint"]').exists()).toBe(true)
+    // Toggle button for the private-key is disabled; clicking must not flip.
+    const eyeButtons = wrapper
+      .findAll('button[type="button"]')
+      .filter((b) => b.attributes('title')?.toLowerCase().includes('show'))
+    // First eye button is the private-key one in DOM order.
+    expect((eyeButtons[0]!.element as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('disables the pre-shared-key reveal-eye when the PSK equals the sentinel (v0.2.4)', () => {
+    const wg: WireGuardNode = {
+      name: 'wg1',
+      type: 'wireguard',
+      server: '1.2.3.4',
+      port: 51820,
+      ip: '10.0.0.2/32',
+      'private-key': 'A'.repeat(44),
+      'public-key': 'B'.repeat(44),
+      'pre-shared-key': WIREGUARD_PRE_SHARED_KEY_SENTINEL,
+    }
+    const wrapper = mount(WireGuardForm, {
+      props: { initial: wg, existingNames: ['wg1'] },
+      global: { plugins: [makeI18n()] },
+    })
+    expect(wrapper.find('[data-testid="wireguard-pre-shared-key-sentinel-hint"]').exists()).toBe(
+      true,
+    )
+  })
+
+  it('accepts sentinels as valid WireGuard keys (isValidWireGuardKey, v0.2.4)', () => {
+    // The sentinels MUST pass the existing validator so the form doesn't
+    // show "not a valid WireGuard key" for every loaded WG node.
+    expect(isValidWireGuardKey(WIREGUARD_PRIVATE_KEY_SENTINEL)).toBe(true)
+    expect(isValidWireGuardKey(WIREGUARD_PRE_SHARED_KEY_SENTINEL)).toBe(true)
+  })
+
+  it('submit preserves the private-key sentinel untouched so the pipeline can round-trip (v0.2.4)', async () => {
+    // The form round-trips the sentinel verbatim when the operator doesn't
+    // rotate the key. The server-side pipeline substitutes the on-disk
+    // value back. Anything else would effectively wipe the key on save.
+    const wg: WireGuardNode = {
+      name: 'wg1',
+      type: 'wireguard',
+      server: '1.2.3.4',
+      port: 51820,
+      ip: '10.0.0.2/32',
+      'private-key': WIREGUARD_PRIVATE_KEY_SENTINEL,
+      'public-key': 'B'.repeat(44),
+    }
+    const wrapper = mount(WireGuardForm, {
+      props: { initial: wg, existingNames: ['wg1'] },
+      global: { plugins: [makeI18n()] },
+    })
+    await wrapper.find('form').trigger('submit.prevent')
+    const emitted = wrapper.emitted('submit') as unknown as WireGuardNode[][] | undefined
+    expect(emitted).toBeTruthy()
+    expect(emitted?.[0]?.[0]?.['private-key']).toBe(WIREGUARD_PRIVATE_KEY_SENTINEL)
   })
 
   it('emits submit with a valid WireGuard payload', async () => {

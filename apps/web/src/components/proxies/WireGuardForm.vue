@@ -14,6 +14,7 @@ import { computed, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AlertTriangle, ChevronDown, ChevronRight, Eye, EyeOff } from 'lucide-vue-next'
 import type { WireGuardNode } from 'miharbor-shared'
+import { WIREGUARD_PRE_SHARED_KEY_SENTINEL, WIREGUARD_PRIVATE_KEY_SENTINEL } from 'miharbor-shared'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { isValidWireGuardKey } from '@/lib/rule-validation'
@@ -45,6 +46,18 @@ const udp = ref<boolean>(props.initial?.udp ?? true)
 
 const showPrivate = ref(false)
 const showPsk = ref(false)
+
+/** `true` when the form's current `private-key` is still the server-side
+ *  sentinel, i.e. the operator hasn't rotated the key since load. The UI
+ *  disables the reveal-eye in that case — there is nothing to reveal —
+ *  and the submit handler knows to round-trip the sentinel unchanged so
+ *  the deploy pipeline substitutes the real on-disk value back. */
+const privateKeyIsSentinel = computed<boolean>(
+  () => privateKey.value === WIREGUARD_PRIVATE_KEY_SENTINEL,
+)
+const preSharedKeyIsSentinel = computed<boolean>(
+  () => preSharedKey.value === WIREGUARD_PRE_SHARED_KEY_SENTINEL,
+)
 
 // Amnezia section — pre-fill from initial.
 const amneziaOpen = ref<boolean>(Boolean(props.initial?.['amnezia-wg-option']))
@@ -232,7 +245,7 @@ const ids = {
         <Input
           :id="ids.privateKey"
           v-model="privateKey"
-          :type="showPrivate ? 'text' : 'password'"
+          :type="showPrivate && !privateKeyIsSentinel ? 'text' : 'password'"
           class="h-9 font-mono"
           data-testid="wireguard-private-key"
         />
@@ -241,13 +254,26 @@ const ids = {
           variant="outline"
           size="icon"
           class="h-9 w-9"
+          :disabled="privateKeyIsSentinel"
           :title="showPrivate ? t('common.hide') : t('common.show')"
           :aria-label="showPrivate ? t('common.hide') : t('common.show')"
-          @click="showPrivate = !showPrivate"
+          @click="
+            () => {
+              if (privateKeyIsSentinel) return
+              showPrivate = !showPrivate
+            }
+          "
         >
-          <component :is="showPrivate ? EyeOff : Eye" class="h-4 w-4" />
+          <component :is="showPrivate && !privateKeyIsSentinel ? EyeOff : Eye" class="h-4 w-4" />
         </Button>
       </div>
+      <p
+        v-if="privateKeyIsSentinel"
+        class="mt-1 text-xs text-muted-foreground"
+        data-testid="wireguard-private-key-sentinel-hint"
+      >
+        {{ t('proxies.wireguard.key_sentinel_hint') }}
+      </p>
       <p v-if="privateKeyError && privateKey.length > 0" class="mt-1 text-xs text-destructive">
         {{ privateKeyError }}
       </p>
@@ -271,21 +297,35 @@ const ids = {
         <Input
           :id="ids.preSharedKey"
           v-model="preSharedKey"
-          :type="showPsk ? 'text' : 'password'"
+          :type="showPsk && !preSharedKeyIsSentinel ? 'text' : 'password'"
           class="h-9 font-mono"
+          data-testid="wireguard-pre-shared-key"
         />
         <Button
           type="button"
           variant="outline"
           size="icon"
           class="h-9 w-9"
+          :disabled="preSharedKeyIsSentinel"
           :title="showPsk ? t('common.hide') : t('common.show')"
           :aria-label="showPsk ? t('common.hide') : t('common.show')"
-          @click="showPsk = !showPsk"
+          @click="
+            () => {
+              if (preSharedKeyIsSentinel) return
+              showPsk = !showPsk
+            }
+          "
         >
-          <component :is="showPsk ? EyeOff : Eye" class="h-4 w-4" />
+          <component :is="showPsk && !preSharedKeyIsSentinel ? EyeOff : Eye" class="h-4 w-4" />
         </Button>
       </div>
+      <p
+        v-if="preSharedKeyIsSentinel"
+        class="mt-1 text-xs text-muted-foreground"
+        data-testid="wireguard-pre-shared-key-sentinel-hint"
+      >
+        {{ t('proxies.wireguard.key_sentinel_hint') }}
+      </p>
     </div>
 
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">

@@ -24,6 +24,7 @@ import {
 } from 'yaml'
 import {
   type DnsConfig,
+  type GeoxUrlConfig,
   type ProfileConfig,
   type ProfileNested,
   type ProxyNode,
@@ -535,9 +536,11 @@ const PROFILE_KEY_ORDER: readonly string[] = [
   'ipv6',
   'tcp-concurrent',
   'unified-delay',
+  'interface-name',
   'geodata-mode',
   'geo-auto-update',
   'geo-update-interval',
+  'geox-url',
   'keep-alive-interval',
   'find-process-mode',
   'global-client-fingerprint',
@@ -553,7 +556,27 @@ const PROFILE_KEY_ORDER: readonly string[] = [
 /** Nested `profile:` sub-section key order. */
 const PROFILE_NESTED_KEY_ORDER: readonly string[] = ['store-selected', 'store-fake-ip']
 
+/** Nested `geox-url:` sub-section key order — matches mihomo docs convention
+ *  (geoip / geosite / mmdb / asn). Keys not in this list come from `extras`
+ *  and are appended after the known ones, sorted for determinism. */
+const GEOX_URL_KEY_ORDER: readonly string[] = ['geoip', 'geosite', 'mmdb', 'asn']
+
 const PROFILE_MANAGED_KEYS: ReadonlySet<string> = new Set(PROFILE_KEY_ORDER)
+
+function buildGeoxUrl(cfg: GeoxUrlConfig): Record<string, unknown> | null {
+  const out: Record<string, unknown> = {}
+  for (const k of GEOX_URL_KEY_ORDER) {
+    const v = (cfg as Record<string, unknown>)[k]
+    if (v === undefined) continue
+    out[k] = v
+  }
+  if (cfg.extras) {
+    for (const k of Object.keys(cfg.extras).sort()) {
+      out[k] = cfg.extras[k]
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null
+}
 
 function buildProfileNested(cfg: ProfileNested): Record<string, unknown> {
   const out: Record<string, unknown> = {}
@@ -603,6 +626,15 @@ export function setProfileConfig(doc: Document, config: ProfileConfig): void {
           (nested.extras && Object.keys(nested.extras).length > 0))
       ) {
         managed.set('profile', buildProfileNested(nested))
+      }
+      continue
+    }
+    if (k === 'geox-url') {
+      // Nested sub-section — emitted only when at least one field survives.
+      const geox = config['geox-url']
+      if (geox) {
+        const built = buildGeoxUrl(geox)
+        if (built !== null) managed.set('geox-url', built)
       }
       continue
     }

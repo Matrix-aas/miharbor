@@ -8,6 +8,7 @@
 // in `extras`.
 
 import type { Document } from 'yaml'
+import { META_SECRET_SENTINEL } from 'miharbor-shared'
 
 const META_KEYS = [
   'mode',
@@ -44,7 +45,10 @@ export interface ConfigMeta {
   ipv6?: boolean
   'interface-name'?: string
   'external-controller'?: string
-  /** Bearer token — callers MUST mask this before returning to the UI. */
+  /** mihomo Bearer token. The `getMeta` projection substitutes the fixed
+   *  `META_SECRET_SENTINEL` (from `miharbor-shared`) whenever a real value
+   *  is on disk, so the JSON response never carries the raw token. The SPA
+   *  is aware of this sentinel (see `ProfileForm.vue`). */
   secret?: string
   'external-ui'?: string
   'external-ui-url'?: string
@@ -124,6 +128,15 @@ export function getMeta(doc: Document): ConfigMeta {
     if (resolved !== undefined && resolved !== null) {
       ;(meta as Record<string, unknown>)[k] = resolved
     }
+  }
+  // Scrub the Bearer token before the projection leaves the server. Any
+  // caller that needs the real value parses the draft YAML (already
+  // vault-masked with per-secret UUIDs by /api/config/draft). Using a
+  // fixed literal rather than a vault UUID keeps the `/meta` response
+  // stable across calls — polling doesn't mint fresh vault entries — and
+  // the SPA recognises this sentinel to disable its reveal-eye button.
+  if (typeof meta.secret === 'string' && meta.secret.length > 0) {
+    meta.secret = META_SECRET_SENTINEL
   }
 
   const tun = toJSON(doc.getIn(['tun']))

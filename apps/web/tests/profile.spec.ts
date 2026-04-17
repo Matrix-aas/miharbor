@@ -19,9 +19,12 @@ import { createI18n } from 'vue-i18n'
 import { parseDocument } from 'yaml'
 import type { ProfileConfig } from 'miharbor-shared'
 import {
+  META_SECRET_SENTINEL,
   parseAuthEntry,
   serialiseAuthEntry,
   validateExternalController,
+  validateGeoxUrlEntry,
+  validateInterfaceNameVsAutoDetect,
   validateIpv6Enabled,
 } from 'miharbor-shared'
 
@@ -66,6 +69,25 @@ describe('Profile guardrail helpers', () => {
   it('validateExternalController passes LAN bind with a secret', () => {
     expect(validateExternalController('192.168.1.1:9090', 'abc123')).toBeNull()
     expect(validateExternalController('0.0.0.0:9090', 'long-token')).toBeNull()
+  })
+
+  it('validateInterfaceNameVsAutoDetect flags auto-detect + explicit interface-name (v0.2.4)', () => {
+    expect(validateInterfaceNameVsAutoDetect('enp170s0', true)).toMatch(/auto-detect-interface/i)
+    expect(validateInterfaceNameVsAutoDetect('enp170s0', false)).toBeNull()
+    expect(validateInterfaceNameVsAutoDetect('', true)).toBeNull()
+    expect(validateInterfaceNameVsAutoDetect(undefined, true)).toBeNull()
+  })
+
+  it('validateGeoxUrlEntry accepts http/https URLs (v0.2.4)', () => {
+    expect(validateGeoxUrlEntry('https://example.com/geoip.dat')).toBeNull()
+    expect(validateGeoxUrlEntry('http://example.com/a.mmdb')).toBeNull()
+    expect(validateGeoxUrlEntry('')).toBeNull()
+    expect(validateGeoxUrlEntry(undefined)).toBeNull()
+  })
+
+  it('validateGeoxUrlEntry rejects malformed values (v0.2.4)', () => {
+    expect(validateGeoxUrlEntry('not-a-url')).toMatch(/URL/i)
+    expect(validateGeoxUrlEntry('ftp://example.com/a.dat')).toMatch(/URL/i)
   })
 })
 
@@ -256,6 +278,114 @@ describe('ProfileForm', () => {
     })
     expect(wrapper.find('[data-testid="profile-auth-guardrail"]').exists()).toBe(true)
   })
+
+  it('emits interface-name change (v0.2.4)', async () => {
+    const wrapper = mount(ProfileForm, {
+      props: { modelValue: {} },
+      global: { plugins: [makeI18n()] },
+    })
+    await wrapper.get('[data-testid="profile-interface-name"]').setValue('enp170s0')
+    const emitted = wrapper.emitted('update:modelValue') as unknown as Array<
+      Array<Partial<ProfileConfig>>
+    >
+    expect(emitted.at(-1)?.[0]).toEqual({ 'interface-name': 'enp170s0' })
+  })
+
+  it('shows interface-name guardrail when TUN auto-detect is enabled (v0.2.4)', () => {
+    const wrapper = mount(ProfileForm, {
+      props: {
+        modelValue: { 'interface-name': 'enp170s0' },
+        tunAutoDetectInterface: true,
+      },
+      global: { plugins: [makeI18n()] },
+    })
+    expect(wrapper.find('[data-testid="profile-interface-name-guardrail"]').exists()).toBe(true)
+  })
+
+  it('hides interface-name guardrail when TUN auto-detect is off (v0.2.4)', () => {
+    const wrapper = mount(ProfileForm, {
+      props: {
+        modelValue: { 'interface-name': 'enp170s0' },
+        tunAutoDetectInterface: false,
+      },
+      global: { plugins: [makeI18n()] },
+    })
+    expect(wrapper.find('[data-testid="profile-interface-name-guardrail"]').exists()).toBe(false)
+  })
+
+  it('emits geox-url.geoip change (v0.2.4)', async () => {
+    const wrapper = mount(ProfileForm, {
+      props: { modelValue: {} },
+      global: { plugins: [makeI18n()] },
+    })
+    await wrapper
+      .get('[data-testid="profile-geox-url-geoip"]')
+      .setValue('https://example.com/geoip.dat')
+    const emitted = wrapper.emitted('update:modelValue') as unknown as Array<
+      Array<Partial<ProfileConfig>>
+    >
+    expect(emitted.at(-1)?.[0]).toEqual({
+      'geox-url': { geoip: 'https://example.com/geoip.dat' },
+    })
+  })
+
+  it('clears a geox-url field via the reset button (v0.2.4)', async () => {
+    const wrapper = mount(ProfileForm, {
+      props: {
+        modelValue: { 'geox-url': { geoip: 'https://example.com/geoip.dat' } },
+      },
+      global: { plugins: [makeI18n()] },
+    })
+    await wrapper.get('[data-testid="profile-geox-url-geoip-reset"]').trigger('click')
+    const emitted = wrapper.emitted('update:modelValue') as unknown as Array<
+      Array<Partial<ProfileConfig>>
+    >
+    // With the single geoip entry cleared, the whole geox-url block collapses
+    // to undefined so the mutator doesn't emit `geox-url: {}`.
+    expect(emitted.at(-1)?.[0]).toEqual({ 'geox-url': undefined })
+  })
+
+  it('shows an inline error for an invalid geox-url entry (v0.2.4)', () => {
+    const wrapper = mount(ProfileForm, {
+      props: {
+        modelValue: { 'geox-url': { geoip: 'not-a-url' } },
+      },
+      global: { plugins: [makeI18n()] },
+    })
+    expect(wrapper.find('[data-testid="profile-geox-url-geoip-error"]').exists()).toBe(true)
+  })
+
+  it('disables the reveal-eye + shows hint when secret equals META_SECRET_SENTINEL (v0.2.4)', () => {
+    const wrapper = mount(ProfileForm, {
+      props: { modelValue: { secret: META_SECRET_SENTINEL } },
+      global: { plugins: [makeI18n()] },
+    })
+    const toggle = wrapper.get('[data-testid="profile-secret-toggle"]')
+    expect((toggle.element as HTMLButtonElement).disabled).toBe(true)
+    expect(wrapper.find('[data-testid="profile-secret-sentinel-hint"]').exists()).toBe(true)
+  })
+
+  it('keeps the secret input masked when sentinel is the value — click on toggle is a no-op (v0.2.4)', async () => {
+    const wrapper = mount(ProfileForm, {
+      props: { modelValue: { secret: META_SECRET_SENTINEL } },
+      global: { plugins: [makeI18n()] },
+    })
+    // The toggle is disabled; clicking must NOT flip type → text.
+    await wrapper.get('[data-testid="profile-secret-toggle"]').trigger('click')
+    expect(wrapper.get('[data-testid="profile-secret"]').attributes('type')).toBe('password')
+  })
+
+  it('typing into the secret input replaces the sentinel and emits the new value (v0.2.4)', async () => {
+    const wrapper = mount(ProfileForm, {
+      props: { modelValue: { secret: META_SECRET_SENTINEL } },
+      global: { plugins: [makeI18n()] },
+    })
+    await wrapper.get('[data-testid="profile-secret"]').setValue('new-secret-value')
+    const emitted = wrapper.emitted('update:modelValue') as unknown as Array<
+      Array<Partial<ProfileConfig>>
+    >
+    expect(emitted.at(-1)?.[0]).toEqual({ secret: 'new-secret-value' })
+  })
 })
 
 describe('AuthList', () => {
@@ -394,6 +524,41 @@ describe('yaml-mutator.setProfileConfig', () => {
     expect(out).toContain('log-level: info')
     expect(out).toContain('tun:')
   })
+
+  it('writes interface-name at the top level (v0.2.4)', () => {
+    const doc = parseDraft('mode: rule\n')
+    setProfileConfig(doc, { mode: 'rule', 'interface-name': 'enp170s0' })
+    const out = serializeDraft(doc)
+    expect(out).toContain('interface-name: enp170s0')
+  })
+
+  it('removes interface-name when unset (v0.2.4)', () => {
+    const doc = parseDraft('mode: rule\ninterface-name: eth0\n')
+    setProfileConfig(doc, { mode: 'rule' })
+    const out = serializeDraft(doc)
+    expect(out).not.toContain('interface-name:')
+  })
+
+  it('writes the geox-url sub-block (v0.2.4)', () => {
+    const doc = parseDraft('mode: rule\n')
+    setProfileConfig(doc, {
+      mode: 'rule',
+      'geox-url': {
+        geoip: 'https://example.com/geoip.dat',
+        geosite: 'https://example.com/geosite.dat',
+      },
+    })
+    const out = serializeDraft(doc)
+    expect(out).toMatch(/geox-url:\s*\n\s+geoip:\s+https:\/\/example\.com\/geoip\.dat/)
+    expect(out).toContain('geosite: https://example.com/geosite.dat')
+  })
+
+  it('removes the geox-url block when empty (v0.2.4)', () => {
+    const doc = parseDraft('mode: rule\ngeox-url:\n  geoip: https://old.example.com/x\n')
+    setProfileConfig(doc, { mode: 'rule' })
+    const out = serializeDraft(doc)
+    expect(out).not.toContain('geox-url:')
+  })
 })
 
 describe('profile-view.getProfileConfig (client mirror)', () => {
@@ -455,6 +620,15 @@ authentication:
     const yaml = `mode: rule\nfuture-knob: 42\n`
     const p = getProfileConfig(parseDocument(yaml))
     expect(p.extras?.['future-knob']).toBe(42)
+  })
+
+  it('projects interface-name + geox-url (v0.2.4)', () => {
+    const yaml = `mode: rule\ninterface-name: enp170s0\ngeox-url:\n  geoip: https://example.com/geoip.dat\n  asn: https://example.com/asn.mmdb\n`
+    const p = getProfileConfig(parseDocument(yaml))
+    expect(p['interface-name']).toBe('enp170s0')
+    expect(p['geox-url']?.geoip).toBe('https://example.com/geoip.dat')
+    expect(p['geox-url']?.asn).toBe('https://example.com/asn.mmdb')
+    expect(p['geox-url']?.geosite).toBeUndefined()
   })
 })
 

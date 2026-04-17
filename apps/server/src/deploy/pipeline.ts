@@ -22,8 +22,13 @@
 //   - Unmask is done on a SECOND `parseDocument(draft)` pass so the masked
 //     copy (used for diff/preflight) stays untouched.
 
-import { parseDocument, type Document } from 'yaml'
-import { runSharedLinters } from 'miharbor-shared'
+import { isMap, isPair, isScalar, isSeq, parseDocument, type Document } from 'yaml'
+import {
+  META_SECRET_SENTINEL,
+  runSharedLinters,
+  WIREGUARD_PRE_SHARED_KEY_SENTINEL,
+  WIREGUARD_PRIVATE_KEY_SENTINEL,
+} from 'miharbor-shared'
 import type { Issue } from 'miharbor-shared'
 import type { AuditLog } from '../observability/audit-log.ts'
 import type { Logger } from '../observability/logger.ts'
@@ -188,6 +193,92 @@ export class DeployHealthcheckError extends Error {
 
 const NOOP_STEP: StepEvent = () => {}
 
+/**
+ * Replace read-only-view sentinels ("keep existing value" markers) in the
+ * draft with the corresponding scalars from the CURRENT on-disk config.
+ *
+ * Background: /api/config/meta substitutes the mihomo Bearer `secret:` with
+ * `META_SECRET_SENTINEL`, and /api/config/proxies substitutes WireGuard
+ * `private-key` / `pre-shared-key` with fixed key-shaped sentinels. These
+ * sentinels travel into a draft if the operator seeds the draft from one
+ * of those endpoints (or simply pastes the literal). If we wrote them to
+ * disk verbatim, mihomo would reject the reload — or worse, auth / tunnel
+ * negotiation would silently break. So: walk the draft, and for every pair
+ * whose key is `secret` / `private-key` / `pre-shared-key` with one of our
+ * sentinel scalars as the value, copy the matching scalar from the current
+ * doc.
+ *
+ * The substitution is INTENTIONALLY narrow:
+ *   - `secret` is resolved ONLY at the document root (mihomo's Bearer
+ *     token). A nested `secret: <sentinel>` under something else is
+ *     left alone (and would be caught at deploy-validation if it mattered).
+ *   - `private-key` / `pre-shared-key` are resolved ONLY inside
+ *     `proxies[*]` entries. Nodes are matched by `name`, which is the
+ *     stable identity key for mihomo proxy entries. New proxies (no
+ *     matching name in current) keep their sentinel — the linter + preflight
+ *     catch them and the operator fixes the paste.
+ *
+ * Returns the number of substitutions applied (for audit/logging).
+ */
+function resolveViewSentinels(draftDoc: Document, currentDoc: Document): number {
+  let substituted = 0
+
+  // Top-level `secret:` — single slot at doc root.
+  const draftSecret = draftDoc.get('secret', true) as unknown
+  if (
+    draftSecret &&
+    typeof draftSecret === 'object' &&
+    'value' in (draftSecret as object) &&
+    (draftSecret as { value: unknown }).value === META_SECRET_SENTINEL
+  ) {
+    const currentSecret = currentDoc.get('secret') as unknown
+    if (typeof currentSecret === 'string') {
+      ;(draftSecret as { value: unknown }).value = currentSecret
+      substituted += 1
+    }
+  }
+
+  // `proxies[*].{private-key, pre-shared-key}` — match by name.
+  const draftProxies = draftDoc.getIn(['proxies']) as unknown
+  const currentProxies = currentDoc.getIn(['proxies']) as unknown
+  if (draftProxies && isSeq(draftProxies) && currentProxies && isSeq(currentProxies)) {
+    const currentByName = new Map<string, unknown>()
+    for (const item of currentProxies.items) {
+      if (!isMap(item)) continue
+      const nameNode = item.get('name')
+      if (typeof nameNode === 'string' && nameNode.length > 0) {
+        currentByName.set(nameNode, item)
+      }
+    }
+    for (const item of draftProxies.items) {
+      if (!isMap(item)) continue
+      const nameNode = item.get('name')
+      if (typeof nameNode !== 'string' || nameNode.length === 0) continue
+      const matchingCurrent = currentByName.get(nameNode)
+      if (!matchingCurrent || !isMap(matchingCurrent)) continue
+      for (const pair of item.items) {
+        if (!isPair(pair)) continue
+        if (!isScalar(pair.key) || !isScalar(pair.value)) continue
+        const k = typeof pair.key.value === 'string' ? pair.key.value : String(pair.key.value)
+        const v = pair.value.value
+        if (typeof v !== 'string') continue
+        let expected: string | null = null
+        if (k === 'private-key') expected = WIREGUARD_PRIVATE_KEY_SENTINEL
+        else if (k === 'pre-shared-key') expected = WIREGUARD_PRE_SHARED_KEY_SENTINEL
+        else continue
+        if (v !== expected) continue
+        const currentVal = matchingCurrent.get(k)
+        if (typeof currentVal === 'string') {
+          pair.value.value = currentVal
+          substituted += 1
+        }
+      }
+    }
+  }
+
+  return substituted
+}
+
 /** Serialize a Document with the canonical options. Centralised so every step
  *  agrees on whitespace and won't produce spurious diffs. */
 function serialize(doc: Document): string {
@@ -245,6 +336,10 @@ export async function runPipeline(opts: RunPipelineOptions): Promise<RunPipeline
     ])
   }
 
+  // Parse current up front — we need it to resolve view-scope sentinels in
+  // the draft (both at diff time and at write time).
+  const currentDocForLookup = parseDocument(current.content)
+
   // =========================================================================
   // Step 1: diff (masked current vs masked draft)
   // =========================================================================
@@ -262,7 +357,11 @@ export async function runPipeline(opts: RunPipelineOptions): Promise<RunPipeline
     await ctx.vault.maskDoc(currentDocForMask)
     const currentMaskedText = serialize(currentDocForMask)
 
+    // Before vault-masking the draft for the diff, resolve view-scope
+    // sentinels so the diff doesn't spuriously show `secret: <sentinel>`
+    // as a change vs the current config.
     const draftDocForMask = parseDocument(draft)
+    resolveViewSentinels(draftDocForMask, currentDocForLookup)
     await ctx.vault.maskDoc(draftDocForMask)
     draftMaskedText = serialize(draftDocForMask)
 
@@ -377,6 +476,17 @@ export async function runPipeline(opts: RunPipelineOptions): Promise<RunPipeline
       throw new Error(
         `draft YAML parse error at write time: ${draftDocForWrite.errors[0]!.message}`,
       )
+    }
+    // Resolve read-only-view sentinels BEFORE the vault pass. The vault
+    // handles its own `$MIHARBOR_VAULT:<uuid>` markers; the view sentinels
+    // are a separate "keep existing value" convention tied to `/meta` and
+    // `/proxies`.
+    const resolvedCount = resolveViewSentinels(draftDocForWrite, currentDocForLookup)
+    if (resolvedCount > 0) {
+      ctx.logger.info({
+        msg: 'deploy: resolved view-scope sentinels',
+        count: resolvedCount,
+      })
     }
     await ctx.vault.unmaskDoc(draftDocForWrite)
     const unmaskedText = serialize(draftDocForWrite)

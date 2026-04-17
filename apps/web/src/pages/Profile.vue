@@ -35,6 +35,14 @@ onMounted(() => {
 
 const profile = computed<ProfileConfig>(() => config.profileConfig)
 
+/** Read `tun.auto-detect-interface` from the draft so the ProfileForm can
+ *  surface the cross-section guardrail when both explicit `interface-name`
+ *  and tun auto-detect are enabled. Defaults to `false` when TUN section
+ *  is absent. */
+const tunAutoDetectInterface = computed<boolean>(
+  () => config.tunConfig['auto-detect-interface'] === true,
+)
+
 function emitPatch(patch: Partial<ProfileConfig>): void {
   const merged: ProfileConfig = { ...profile.value, ...patch }
   for (const k of Object.keys(patch) as (keyof ProfileConfig)[]) {
@@ -62,7 +70,11 @@ const extras = computed<Record<string, unknown> | null>(() => {
       <p class="text-sm text-muted-foreground">{{ t('pages.profile.subtitle') }}</p>
     </header>
 
-    <ProfileForm :model-value="profile" @update:model-value="emitPatch" />
+    <ProfileForm
+      :model-value="profile"
+      :tun-auto-detect-interface="tunAutoDetectInterface"
+      @update:model-value="emitPatch"
+    />
 
     <!-- Preserved unknown top-level keys (not managed by any section view). -->
     <section

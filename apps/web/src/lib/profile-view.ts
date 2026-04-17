@@ -7,6 +7,7 @@
 
 import type { Document } from 'yaml'
 import type {
+  GeoxUrlConfig,
   ProfileConfig,
   ProfileFindProcessMode,
   ProfileLogLevel,
@@ -33,6 +34,8 @@ const KNOWN_KEYS: ReadonlySet<string> = new Set([
   'geodata-mode',
   'geo-auto-update',
   'geo-update-interval',
+  'geox-url',
+  'interface-name',
   'keep-alive-interval',
   'profile',
   'authentication',
@@ -62,6 +65,8 @@ const SECTION_KEYS: ReadonlySet<string> = new Set([
 ])
 
 const KNOWN_PROFILE_SUB_KEYS: ReadonlySet<string> = new Set(['store-selected', 'store-fake-ip'])
+
+const KNOWN_GEOX_URL_KEYS: ReadonlySet<string> = new Set(['geoip', 'geosite', 'mmdb', 'asn'])
 
 function toJSON(node: unknown): unknown {
   if (
@@ -107,6 +112,39 @@ function asLogLevel(v: unknown): ProfileLogLevel | undefined {
 function asFindProcessMode(v: unknown): ProfileFindProcessMode | undefined {
   if (v === 'off' || v === 'strict' || v === 'always') return v
   return undefined
+}
+
+function projectGeoxUrl(raw: unknown): GeoxUrlConfig | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const rec = raw as Record<string, unknown>
+  const out: GeoxUrlConfig = {}
+  const geoip = asString(rec.geoip)
+  if (geoip !== undefined) out.geoip = geoip
+  const geosite = asString(rec.geosite)
+  if (geosite !== undefined) out.geosite = geosite
+  const mmdb = asString(rec.mmdb)
+  if (mmdb !== undefined) out.mmdb = mmdb
+  const asn = asString(rec.asn)
+  if (asn !== undefined) out.asn = asn
+
+  const extras: Record<string, unknown> = {}
+  let hasExtras = false
+  for (const [k, v] of Object.entries(rec)) {
+    if (KNOWN_GEOX_URL_KEYS.has(k)) continue
+    extras[k] = v
+    hasExtras = true
+  }
+  if (hasExtras) out.extras = extras
+  if (
+    out.geoip === undefined &&
+    out.geosite === undefined &&
+    out.mmdb === undefined &&
+    out.asn === undefined &&
+    !hasExtras
+  ) {
+    return undefined
+  }
+  return out
 }
 
 function projectProfileNested(raw: unknown): ProfileNested | undefined {
@@ -171,6 +209,10 @@ export function getProfileConfig(doc: Document): ProfileConfig {
   if (geoAutoUpdate !== undefined) out['geo-auto-update'] = geoAutoUpdate
   const geoUpdateInterval = asNumber(rec['geo-update-interval'])
   if (geoUpdateInterval !== undefined) out['geo-update-interval'] = geoUpdateInterval
+  const geoxUrl = projectGeoxUrl(rec['geox-url'])
+  if (geoxUrl !== undefined) out['geox-url'] = geoxUrl
+  const interfaceName = asString(rec['interface-name'])
+  if (interfaceName !== undefined) out['interface-name'] = interfaceName
   const keepAliveInterval = asNumber(rec['keep-alive-interval'])
   if (keepAliveInterval !== undefined) out['keep-alive-interval'] = keepAliveInterval
   const profileNested = projectProfileNested(rec.profile)

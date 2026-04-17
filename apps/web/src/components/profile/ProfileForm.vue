@@ -20,13 +20,20 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Eye, EyeOff } from 'lucide-vue-next'
 import type {
+  GeoxUrlConfig,
   ProfileConfig,
   ProfileFindProcessMode,
   ProfileLogLevel,
   ProfileMode,
   ProfileNested,
 } from 'miharbor-shared'
-import { validateExternalController, validateIpv6Enabled } from 'miharbor-shared'
+import {
+  META_SECRET_SENTINEL,
+  validateExternalController,
+  validateGeoxUrlEntry,
+  validateInterfaceNameVsAutoDetect,
+  validateIpv6Enabled,
+} from 'miharbor-shared'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import GuardrailPlate from '@/components/ui/GuardrailPlate.vue'
@@ -34,6 +41,11 @@ import AuthList from './AuthList.vue'
 
 interface Props {
   modelValue: ProfileConfig
+  /** TUN's `auto-detect-interface` flag — used to surface the guardrail when
+   *  it's enabled while `interface-name` is also set. Lives on the TUN page,
+   *  threaded through from the parent so we can render the cross-section
+   *  warning inline with the interface-name input. */
+  tunAutoDetectInterface?: boolean
 }
 
 const props = defineProps<Props>()
@@ -47,6 +59,16 @@ const secretRevealed = ref(false)
 
 const secretDisplay = computed<string>(() => props.modelValue.secret ?? '')
 
+/** `true` when the current value of `secret` is the server-side meta
+ *  sentinel (the draft was seeded from /api/config/meta, not /api/config/draft,
+ *  or the operator never changed it after mount). In that case the eye
+ *  toggle is disabled — revealing `__MIHARBOR_SECRET_SET_NOT_SHOWN__`
+ *  tells the operator nothing useful, and typing into the field replaces
+ *  the sentinel with their new value. The server's deploy pipeline
+ *  substitutes the sentinel back to the current on-disk value if it
+ *  survives into the draft YAML (see deploy/pipeline.ts). */
+const secretIsSentinel = computed<boolean>(() => props.modelValue.secret === META_SECRET_SENTINEL)
+
 function onSecretInput(event: Event): void {
   const v = (event.target as HTMLInputElement).value
   const next = v.length > 0 ? v : undefined
@@ -54,6 +76,9 @@ function onSecretInput(event: Event): void {
 }
 
 function toggleSecret(): void {
+  // No-op when the displayed value is our sentinel — showing the literal
+  // marker doesn't help and the real secret is not in memory here.
+  if (secretIsSentinel.value) return
   secretRevealed.value = !secretRevealed.value
 }
 
@@ -72,6 +97,18 @@ const externalControllerWarning = computed<string | null>(() => {
     return null
   }
   return t('pages.profile.guardrails.external_controller')
+})
+
+const interfaceNameWarning = computed<string | null>(() => {
+  if (
+    validateInterfaceNameVsAutoDetect(
+      props.modelValue['interface-name'],
+      props.tunAutoDetectInterface,
+    ) === null
+  ) {
+    return null
+  }
+  return t('pages.profile.guardrails.interface_name_auto_detect')
 })
 
 // ----- dispatchers -------------------------------------------------------
@@ -112,6 +149,40 @@ function onFindProcessMode(event: Event): void {
 
 function onAuthUpdate(list: string[]): void {
   emit('update:modelValue', { authentication: list.length > 0 ? list : undefined })
+}
+
+// ----- geox-url sub-section ----------------------------------------------
+
+type GeoxUrlField = 'geoip' | 'geosite' | 'mmdb' | 'asn'
+const GEOX_URL_FIELDS: readonly GeoxUrlField[] = ['geoip', 'geosite', 'mmdb', 'asn']
+
+const geoxUrl = computed<GeoxUrlConfig>(() => props.modelValue['geox-url'] ?? {})
+
+function onGeoxUrlField(field: GeoxUrlField, value: string): void {
+  const trimmed = value.trim()
+  const current = props.modelValue['geox-url'] ?? {}
+  const next: GeoxUrlConfig = { ...current }
+  if (trimmed.length === 0) {
+    delete next[field]
+  } else {
+    next[field] = value
+  }
+  const stillHasSomething =
+    next.geoip !== undefined ||
+    next.geosite !== undefined ||
+    next.mmdb !== undefined ||
+    next.asn !== undefined ||
+    (next.extras !== undefined && Object.keys(next.extras).length > 0)
+  emit('update:modelValue', { 'geox-url': stillHasSomething ? next : undefined })
+}
+
+function onGeoxUrlReset(field: GeoxUrlField): void {
+  onGeoxUrlField(field, '')
+}
+
+function geoxUrlError(field: GeoxUrlField): string | null {
+  const v = geoxUrl.value[field]
+  return validateGeoxUrlEntry(v)
 }
 
 // ----- nested profile sub-section ----------------------------------------
@@ -253,6 +324,35 @@ const findProcessModeValue = computed<ProfileFindProcessMode | ''>(
           data-testid="profile-ipv6-guardrail"
         />
       </div>
+
+      <!-- interface-name: explicit outbound NIC bind. Mutually-exclusive-in-spirit
+           with tun.auto-detect-interface — if both are set, interface-name wins
+           but a guardrail plate reminds the operator. -->
+      <div class="space-y-1">
+        <label
+          class="block text-xs font-medium uppercase text-muted-foreground"
+          for="profile-interface-name"
+        >
+          {{ t('pages.profile.fields.interface_name') }}
+        </label>
+        <Input
+          id="profile-interface-name"
+          :model-value="modelValue['interface-name'] ?? ''"
+          :placeholder="t('pages.profile.fields.interface_name_placeholder')"
+          class="h-9"
+          :aria-label="t('pages.profile.fields.interface_name')"
+          data-testid="profile-interface-name"
+          @update:model-value="(v: string | number) => onStringField('interface-name', String(v))"
+        />
+        <p class="text-xs text-muted-foreground">
+          {{ t('pages.profile.fields.interface_name_hint') }}
+        </p>
+        <GuardrailPlate
+          v-if="interfaceNameWarning"
+          :message="interfaceNameWarning"
+          data-testid="profile-interface-name-guardrail"
+        />
+      </div>
     </section>
 
     <!-- Control plane: external-controller + secret -->
@@ -298,7 +398,7 @@ const findProcessModeValue = computed<ProfileFindProcessMode | ''>(
         <div class="flex items-center gap-2">
           <input
             id="profile-secret"
-            :type="secretRevealed ? 'text' : 'password'"
+            :type="secretRevealed && !secretIsSentinel ? 'text' : 'password'"
             :value="secretDisplay"
             :placeholder="t('pages.profile.fields.secret_placeholder')"
             class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 font-mono"
@@ -312,6 +412,7 @@ const findProcessModeValue = computed<ProfileFindProcessMode | ''>(
             type="button"
             variant="ghost"
             size="sm"
+            :disabled="secretIsSentinel"
             :aria-label="
               secretRevealed
                 ? t('pages.profile.fields.secret_hide')
@@ -320,10 +421,17 @@ const findProcessModeValue = computed<ProfileFindProcessMode | ''>(
             data-testid="profile-secret-toggle"
             @click="toggleSecret"
           >
-            <EyeOff v-if="secretRevealed" class="h-4 w-4" />
+            <EyeOff v-if="secretRevealed && !secretIsSentinel" class="h-4 w-4" />
             <Eye v-else class="h-4 w-4" />
           </Button>
         </div>
+        <p
+          v-if="secretIsSentinel"
+          class="text-xs text-muted-foreground"
+          data-testid="profile-secret-sentinel-hint"
+        >
+          {{ t('pages.profile.fields.secret_sentinel_hint') }}
+        </p>
         <GuardrailPlate
           :message="t('pages.profile.guardrails.secret')"
           data-testid="profile-secret-guardrail"
@@ -522,6 +630,54 @@ const findProcessModeValue = computed<ProfileFindProcessMode | ''>(
         <p class="text-xs text-muted-foreground">
           {{ t('pages.profile.fields.geo_update_interval_hint') }}
         </p>
+      </div>
+
+      <!-- GeoX URL overrides: geoip / geosite / mmdb / asn -->
+      <div
+        class="space-y-3 rounded-md border border-dashed border-border p-3"
+        data-testid="profile-geox-url"
+      >
+        <header class="space-y-1">
+          <h3 class="text-sm font-semibold">{{ t('pages.profile.sections.geox_url') }}</h3>
+          <p class="text-xs text-muted-foreground">{{ t('pages.profile.geox_url.description') }}</p>
+        </header>
+        <div v-for="field in GEOX_URL_FIELDS" :key="field" class="space-y-1">
+          <label
+            class="block text-xs font-medium uppercase text-muted-foreground"
+            :for="`profile-geox-url-${field}`"
+          >
+            {{ t(`pages.profile.fields.geox_url_${field}`) }}
+          </label>
+          <div class="flex items-center gap-2">
+            <Input
+              :id="`profile-geox-url-${field}`"
+              :model-value="geoxUrl[field] ?? ''"
+              :placeholder="t(`pages.profile.fields.geox_url_${field}_placeholder`)"
+              class="h-9 flex-1"
+              :aria-label="t(`pages.profile.fields.geox_url_${field}`)"
+              :data-testid="`profile-geox-url-${field}`"
+              @update:model-value="(v: string | number) => onGeoxUrlField(field, String(v))"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              :disabled="geoxUrl[field] === undefined || geoxUrl[field] === ''"
+              :aria-label="t('pages.profile.geox_url.reset', { field })"
+              :data-testid="`profile-geox-url-${field}-reset`"
+              @click="onGeoxUrlReset(field)"
+            >
+              {{ t('pages.profile.geox_url.reset_label') }}
+            </Button>
+          </div>
+          <p
+            v-if="geoxUrlError(field)"
+            class="text-xs text-destructive"
+            :data-testid="`profile-geox-url-${field}-error`"
+          >
+            {{ t('pages.profile.geox_url.invalid_url') }}
+          </p>
+        </div>
       </div>
     </section>
 
