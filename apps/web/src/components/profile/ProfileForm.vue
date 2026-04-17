@@ -28,6 +28,7 @@ import type {
   ProfileNested,
 } from 'miharbor-shared'
 import {
+  META_SECRET_SENTINEL,
   validateExternalController,
   validateGeoxUrlEntry,
   validateInterfaceNameVsAutoDetect,
@@ -58,6 +59,16 @@ const secretRevealed = ref(false)
 
 const secretDisplay = computed<string>(() => props.modelValue.secret ?? '')
 
+/** `true` when the current value of `secret` is the server-side meta
+ *  sentinel (the draft was seeded from /api/config/meta, not /api/config/draft,
+ *  or the operator never changed it after mount). In that case the eye
+ *  toggle is disabled — revealing `__MIHARBOR_SECRET_SET_NOT_SHOWN__`
+ *  tells the operator nothing useful, and typing into the field replaces
+ *  the sentinel with their new value. The server's deploy pipeline
+ *  substitutes the sentinel back to the current on-disk value if it
+ *  survives into the draft YAML (see deploy/pipeline.ts). */
+const secretIsSentinel = computed<boolean>(() => props.modelValue.secret === META_SECRET_SENTINEL)
+
 function onSecretInput(event: Event): void {
   const v = (event.target as HTMLInputElement).value
   const next = v.length > 0 ? v : undefined
@@ -65,6 +76,9 @@ function onSecretInput(event: Event): void {
 }
 
 function toggleSecret(): void {
+  // No-op when the displayed value is our sentinel — showing the literal
+  // marker doesn't help and the real secret is not in memory here.
+  if (secretIsSentinel.value) return
   secretRevealed.value = !secretRevealed.value
 }
 
@@ -384,7 +398,7 @@ const findProcessModeValue = computed<ProfileFindProcessMode | ''>(
         <div class="flex items-center gap-2">
           <input
             id="profile-secret"
-            :type="secretRevealed ? 'text' : 'password'"
+            :type="secretRevealed && !secretIsSentinel ? 'text' : 'password'"
             :value="secretDisplay"
             :placeholder="t('pages.profile.fields.secret_placeholder')"
             class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 font-mono"
@@ -398,6 +412,7 @@ const findProcessModeValue = computed<ProfileFindProcessMode | ''>(
             type="button"
             variant="ghost"
             size="sm"
+            :disabled="secretIsSentinel"
             :aria-label="
               secretRevealed
                 ? t('pages.profile.fields.secret_hide')
@@ -406,10 +421,17 @@ const findProcessModeValue = computed<ProfileFindProcessMode | ''>(
             data-testid="profile-secret-toggle"
             @click="toggleSecret"
           >
-            <EyeOff v-if="secretRevealed" class="h-4 w-4" />
+            <EyeOff v-if="secretRevealed && !secretIsSentinel" class="h-4 w-4" />
             <Eye v-else class="h-4 w-4" />
           </Button>
         </div>
+        <p
+          v-if="secretIsSentinel"
+          class="text-xs text-muted-foreground"
+          data-testid="profile-secret-sentinel-hint"
+        >
+          {{ t('pages.profile.fields.secret_sentinel_hint') }}
+        </p>
         <GuardrailPlate
           :message="t('pages.profile.guardrails.secret')"
           data-testid="profile-secret-guardrail"

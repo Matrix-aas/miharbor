@@ -59,6 +59,17 @@ test('GET /api/config/meta returns top-level settings', async () => {
   expect(body.mode).toBe('rule')
 })
 
+test('GET /api/config/meta MASKS secret with META_SECRET_SENTINEL (v0.2.4)', async () => {
+  const { app } = await buildApp()
+  const r = await app.handle(new Request('http://localhost/api/config/meta'))
+  expect(r.status).toBe(200)
+  const body = (await r.json()) as { secret?: string }
+  // Real golden secret value NEVER leaks via /meta.
+  expect(body.secret).not.toBe('0000000000000000000000000000000000000000000000000000000000000000')
+  // Sentinel surfaces instead so the SPA can disable reveal.
+  expect(body.secret).toBe('__MIHARBOR_SECRET_SET_NOT_SHOWN__')
+})
+
 test('GET /api/config/raw returns MASKED YAML (H4)', async () => {
   const { app } = await buildApp()
   const r = await app.handle(new Request('http://localhost/api/config/raw'))

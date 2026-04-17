@@ -677,6 +677,7 @@
         "secret_placeholder": "64 hex chars (use `openssl rand -hex 32`)",
         "secret_show": "Show secret",
         "secret_hide": "Hide secret",
+        "secret_sentinel_hint": "Secret is set — enter a new value to change it. Cannot reveal from the UI.",
         "interface_name": "Interface name (outbound bind)",
         "interface_name_placeholder": "eth0 / en0 / enp170s0",
         "interface_name_hint": "Forces outbound traffic to leave via this NIC. Recommended pattern on multi-homed hosts instead of `tun.auto-detect-interface`.",

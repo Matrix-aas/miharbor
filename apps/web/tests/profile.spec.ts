@@ -19,6 +19,7 @@ import { createI18n } from 'vue-i18n'
 import { parseDocument } from 'yaml'
 import type { ProfileConfig } from 'miharbor-shared'
 import {
+  META_SECRET_SENTINEL,
   parseAuthEntry,
   serialiseAuthEntry,
   validateExternalController,
@@ -352,6 +353,38 @@ describe('ProfileForm', () => {
       global: { plugins: [makeI18n()] },
     })
     expect(wrapper.find('[data-testid="profile-geox-url-geoip-error"]').exists()).toBe(true)
+  })
+
+  it('disables the reveal-eye + shows hint when secret equals META_SECRET_SENTINEL (v0.2.4)', () => {
+    const wrapper = mount(ProfileForm, {
+      props: { modelValue: { secret: META_SECRET_SENTINEL } },
+      global: { plugins: [makeI18n()] },
+    })
+    const toggle = wrapper.get('[data-testid="profile-secret-toggle"]')
+    expect((toggle.element as HTMLButtonElement).disabled).toBe(true)
+    expect(wrapper.find('[data-testid="profile-secret-sentinel-hint"]').exists()).toBe(true)
+  })
+
+  it('keeps the secret input masked when sentinel is the value — click on toggle is a no-op (v0.2.4)', async () => {
+    const wrapper = mount(ProfileForm, {
+      props: { modelValue: { secret: META_SECRET_SENTINEL } },
+      global: { plugins: [makeI18n()] },
+    })
+    // The toggle is disabled; clicking must NOT flip type → text.
+    await wrapper.get('[data-testid="profile-secret-toggle"]').trigger('click')
+    expect(wrapper.get('[data-testid="profile-secret"]').attributes('type')).toBe('password')
+  })
+
+  it('typing into the secret input replaces the sentinel and emits the new value (v0.2.4)', async () => {
+    const wrapper = mount(ProfileForm, {
+      props: { modelValue: { secret: META_SECRET_SENTINEL } },
+      global: { plugins: [makeI18n()] },
+    })
+    await wrapper.get('[data-testid="profile-secret"]').setValue('new-secret-value')
+    const emitted = wrapper.emitted('update:modelValue') as unknown as Array<
+      Array<Partial<ProfileConfig>>
+    >
+    expect(emitted.at(-1)?.[0]).toEqual({ secret: 'new-secret-value' })
   })
 })
 

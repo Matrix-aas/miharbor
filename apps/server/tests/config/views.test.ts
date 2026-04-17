@@ -4,6 +4,7 @@ import { parseDocument } from 'yaml'
 import { getServices } from '../../src/config/views/services.ts'
 import { getProxies } from '../../src/config/views/proxies.ts'
 import { getMeta } from '../../src/config/views/meta.ts'
+import { META_SECRET_SENTINEL } from 'miharbor-shared'
 
 const GOLDEN = readFileSync('apps/server/tests/fixtures/config-golden.yaml', 'utf8')
 
@@ -90,4 +91,34 @@ test('getMeta handles a minimal doc', () => {
   expect(meta['interface-name']).toBe('eth0')
   expect(meta.tun?.enable).toBe(true)
   expect(meta.dns?.listen).toBe('127.0.0.1:1053')
+})
+
+test('getMeta substitutes secret with META_SECRET_SENTINEL (v0.2.4)', () => {
+  const doc = parseDocument(GOLDEN)
+  const meta = getMeta(doc)
+  // Real value NEVER leaks through /api/config/meta response.
+  expect(meta.secret).not.toBe('0000000000000000000000000000000000000000000000000000000000000000')
+  expect(meta.secret).toBe(META_SECRET_SENTINEL)
+})
+
+test('getMeta leaves absent secret alone — no sentinel injected (v0.2.4)', () => {
+  // An operator with `external-controller` on loopback and no secret must
+  // NOT get a sentinel that implies a value is set.
+  const yaml = `
+mode: rule
+external-controller: 127.0.0.1:9090
+`
+  const meta = getMeta(parseDocument(yaml))
+  expect(meta.secret).toBeUndefined()
+})
+
+test('getMeta leaves empty-string secret alone (v0.2.4)', () => {
+  // Edge case: explicit empty secret. We don't inject the sentinel because
+  // that would claim a value is set when it isn't.
+  const yaml = `
+mode: rule
+secret: ""
+`
+  const meta = getMeta(parseDocument(yaml))
+  expect(meta.secret).toBe('')
 })

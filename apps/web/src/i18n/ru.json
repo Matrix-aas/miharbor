@@ -677,6 +677,7 @@
         "secret_placeholder": "64 hex-символа (сгенерировать: `openssl rand -hex 32`)",
         "secret_show": "Показать",
         "secret_hide": "Скрыть",
+        "secret_sentinel_hint": "Секрет задан — введите новое значение, чтобы изменить его. Показать текущее значение из UI нельзя.",
         "interface_name": "Имя интерфейса (исходящий интерфейс)",
         "interface_name_placeholder": "eth0 / en0 / enp170s0",
         "interface_name_hint": "Принудительно отправлять исходящий трафик через указанный NIC. Рекомендуется на хостах с несколькими интерфейсами вместо `tun.auto-detect-interface`.",
