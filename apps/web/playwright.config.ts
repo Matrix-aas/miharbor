@@ -65,6 +65,7 @@ export default defineConfig({
       url: `http://127.0.0.1:${MOCK_MIHOMO_PORT}/mock/ping`,
       env: {
         MOCK_MIHOMO_PORT: String(MOCK_MIHOMO_PORT),
+        MOCK_MIHOMO_VERSION: process.env.MOCK_MIHOMO_VERSION || '1.19.23',
       },
       reuseExistingServer: !process.env.CI,
       // Cold-start of bun can exceed 15s on CI runners under contention; bumped to 60s.

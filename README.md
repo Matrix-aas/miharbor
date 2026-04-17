@@ -96,6 +96,18 @@ Miharbor never edits the mihomo process directly — it writes `/config/config.y
 
 CI smoke-tests aim for the current three: **1.18.x, 1.19.x, 1.20.x**. In practice any post-1.18 build that keeps the `/configs` REST endpoint works. Older `clash.meta` builds may work but aren't tested.
 
+### Compatibility Matrix
+
+<!-- compat-matrix-start -->
+
+| mihomo version | CI Status | Notes                                    |
+| -------------- | --------- | ---------------------------------------- |
+| `1.18.10`      | ✅ Pass   | Tested via mock-mihomo in CI smoke tests |
+| `1.19.11`      | ✅ Pass   | Tested via mock-mihomo in CI smoke tests |
+| `1.19.23`      | ✅ Pass   | Tested via mock-mihomo in CI smoke tests |
+
+<!-- compat-matrix-end -->
+
 ## Configuration
 
 All configuration is via environment variables. Defaults shown are what Miharbor falls back to if the variable is unset.
