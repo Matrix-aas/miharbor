@@ -173,3 +173,40 @@ geo-update-interval: banana
   expect(p['mixed-port']).toBeUndefined()
   expect(p['geo-update-interval']).toBeUndefined()
 })
+
+test('getProfileConfig projects interface-name (v0.2.4)', () => {
+  const p = getProfileConfig(parseDocument(GOLDEN))
+  expect(p['interface-name']).toBe('enp170s0')
+})
+
+test('getProfileConfig projects geox-url block with known subfields (v0.2.4)', () => {
+  const yaml = `
+geox-url:
+  geoip: https://example.com/geoip.dat
+  geosite: https://example.com/geosite.dat
+  mmdb: https://example.com/Country.mmdb
+  asn: https://example.com/ASN.mmdb
+`
+  const p = getProfileConfig(parseDocument(yaml))
+  expect(p['geox-url']?.geoip).toBe('https://example.com/geoip.dat')
+  expect(p['geox-url']?.geosite).toBe('https://example.com/geosite.dat')
+  expect(p['geox-url']?.mmdb).toBe('https://example.com/Country.mmdb')
+  expect(p['geox-url']?.asn).toBe('https://example.com/ASN.mmdb')
+})
+
+test('getProfileConfig preserves unknown sub-keys on geox-url via extras (v0.2.4)', () => {
+  const yaml = `
+geox-url:
+  geoip: https://example.com/geoip.dat
+  experimental-source: https://example.com/future.dat
+`
+  const p = getProfileConfig(parseDocument(yaml))
+  expect(p['geox-url']?.geoip).toBe('https://example.com/geoip.dat')
+  expect(p['geox-url']?.extras?.['experimental-source']).toBe('https://example.com/future.dat')
+})
+
+test('getProfileConfig omits geox-url entirely when block is empty (v0.2.4)', () => {
+  const yaml = `mode: rule\n`
+  const p = getProfileConfig(parseDocument(yaml))
+  expect(p['geox-url']).toBeUndefined()
+})

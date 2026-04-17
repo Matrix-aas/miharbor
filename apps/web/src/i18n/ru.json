@@ -656,6 +656,7 @@
         "control_plane": "Панель управления",
         "behavior": "Поведение",
         "geo": "Геоданные",
+        "geox_url": "GeoX: URL-переопределения",
         "profile_nested": "Подсекция profile",
         "authentication": "Аутентификация",
         "extras": "Неизвестные поля"
@@ -676,6 +677,17 @@
         "secret_placeholder": "64 hex-символа (сгенерировать: `openssl rand -hex 32`)",
         "secret_show": "Показать",
         "secret_hide": "Скрыть",
+        "interface_name": "Имя интерфейса (исходящий интерфейс)",
+        "interface_name_placeholder": "eth0 / en0 / enp170s0",
+        "interface_name_hint": "Принудительно отправлять исходящий трафик через указанный NIC. Рекомендуется на хостах с несколькими интерфейсами вместо `tun.auto-detect-interface`.",
+        "geox_url_geoip": "URL GeoIP",
+        "geox_url_geoip_placeholder": "https://…/geoip.dat",
+        "geox_url_geosite": "URL GeoSite",
+        "geox_url_geosite_placeholder": "https://…/geosite.dat",
+        "geox_url_mmdb": "URL MMDB",
+        "geox_url_mmdb_placeholder": "https://…/Country.mmdb",
+        "geox_url_asn": "URL ASN",
+        "geox_url_asn_placeholder": "https://…/GeoLite2-ASN.mmdb",
         "external_ui": "Путь External UI",
         "external_ui_placeholder": "./zash",
         "external_ui_name": "Имя External UI",
@@ -701,6 +713,12 @@
       "nested": {
         "description": "Вложенная секция `profile:` mihomo — это runtime-настройки, а не политика роутинга."
       },
+      "geox_url": {
+        "description": "Переопределить URL, откуда mihomo загружает геоданные. Пустое поле — использовать встроенный по умолчанию URL. Периодичность обновления задаётся `geo-auto-update`.",
+        "reset_label": "Сбросить",
+        "reset": "Сбросить URL {field} до значения по умолчанию",
+        "invalid_url": "Введите корректный URL вида http:// или https://."
+      },
       "auth": {
         "description": "Записи аутентификации HTTP-прокси (user:pass). Имена показаны ниже; пароли записываются один раз — редактирование позволяет задать новый пароль, но старые значения не отображаются.",
         "list_aria": "Записи аутентификации",
@@ -725,7 +743,8 @@
         "ipv6": "IPv6 включён. Runbook рекомендует держать IPv6 отключённым до полного тестирования — NAT и rule-плоскость ещё не проверены на IPv6.",
         "external_controller": "External controller привязан не к loopback и секрет не задан. Любой хост в LAN может управлять mihomo. Задайте 64-символьный hex-секрет.",
         "secret": "Секрет — это Bearer-токен управляющего API mihomo. Храните как пароль: не коммитьте, ротируйте после подозрения на утечку (`openssl rand -hex 32`, перезапуск mihomo, обновление в дашборде).",
-        "authentication": "Пароли записываются в конфиг mihomo как есть. После сохранения UI показывает только имена — если забыли пароль, удалите запись и добавьте пользователя заново."
+        "authentication": "Пароли записываются в конфиг mihomo как есть. После сохранения UI показывает только имена — если забыли пароль, удалите запись и добавьте пользователя заново.",
+        "interface_name_auto_detect": "`interface-name` переопределяет `auto-detect-interface`; на хостах с несколькими интерфейсами это рекомендуемый режим."
       },
       "extras": {
         "note": "Неизвестные поля сохранены как есть из YAML — редактируйте их в Raw YAML."

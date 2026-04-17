@@ -31,6 +31,19 @@ export interface ProfileNested {
   extras?: Record<string, unknown>
 }
 
+/** `geox-url:` nested block — per-database override URLs for geodata downloads.
+ *  All four fields are optional; omitted fields fall back to mihomo's compiled
+ *  defaults. Auto-refresh is controlled by `geo-auto-update` / `geo-update-interval`
+ *  on the top-level Profile. */
+export interface GeoxUrlConfig {
+  geoip?: string
+  geosite?: string
+  mmdb?: string
+  asn?: string
+  /** Unknown sub-keys preserved verbatim. */
+  extras?: Record<string, unknown>
+}
+
 export interface ProfileConfig {
   mode?: ProfileMode
   'log-level'?: ProfileLogLevel
@@ -57,6 +70,13 @@ export interface ProfileConfig {
   'geo-auto-update'?: boolean
   /** Hours between geodata refreshes. */
   'geo-update-interval'?: number
+  /** Per-database URL overrides for the geodata downloader. See
+   *  `GeoxUrlConfig`. */
+  'geox-url'?: GeoxUrlConfig
+  /** Outbound interface bind — mihomo routes all outbound traffic through
+   *  the named interface. Recommended pattern on multi-homed hosts where
+   *  `auto-detect-interface: true` would otherwise pick the wrong NIC. */
+  'interface-name'?: string
   'keep-alive-interval'?: number
   /** mihomo's nested `profile:` sub-section. */
   profile?: ProfileNested
@@ -101,6 +121,17 @@ export const ProfileNestedSchema = Type.Object(
   { additionalProperties: true },
 )
 
+export const GeoxUrlConfigSchema = Type.Object(
+  {
+    geoip: Type.Optional(Type.String()),
+    geosite: Type.Optional(Type.String()),
+    mmdb: Type.Optional(Type.String()),
+    asn: Type.Optional(Type.String()),
+    extras: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+  },
+  { additionalProperties: true },
+)
+
 export const ProfileConfigSchema = Type.Object(
   {
     mode: Type.Optional(ProfileModeSchema),
@@ -121,6 +152,8 @@ export const ProfileConfigSchema = Type.Object(
     'geodata-mode': Type.Optional(Type.Boolean()),
     'geo-auto-update': Type.Optional(Type.Boolean()),
     'geo-update-interval': Type.Optional(Type.Number()),
+    'geox-url': Type.Optional(GeoxUrlConfigSchema),
+    'interface-name': Type.Optional(Type.String()),
     'keep-alive-interval': Type.Optional(Type.Number()),
     profile: Type.Optional(ProfileNestedSchema),
     authentication: Type.Optional(Type.Array(Type.String())),
@@ -164,6 +197,39 @@ export function validateExternalController(
     return 'external-controller is not localhost-only — set a secret to avoid an open control plane'
   }
   return null
+}
+
+/** `interface-name` is set AND tun.auto-detect-interface is true — the explicit
+ *  bind wins at runtime, but keeping both configured confuses operators. The UI
+ *  surfaces this so they can either clear one or confirm that the explicit
+ *  bind is the intended winner on their multi-homed host. */
+export function validateInterfaceNameVsAutoDetect(
+  interfaceName: string | undefined,
+  autoDetect: boolean | undefined,
+): string | null {
+  if (!interfaceName || interfaceName.trim().length === 0) return null
+  if (autoDetect === true) {
+    return 'interface-name overrides auto-detect-interface; explicit bind is recommended on multi-homed hosts'
+  }
+  return null
+}
+
+/** Valid `http://` or `https://` URL, per the UI's lightweight check. Empty /
+ *  undefined → null (unset is always valid). Whitespace-only → invalid. Bare
+ *  URL-parse failure → invalid. */
+export function validateGeoxUrlEntry(url: string | undefined): string | null {
+  if (url === undefined) return null
+  const trimmed = url.trim()
+  if (trimmed.length === 0) return null
+  try {
+    const parsed = new URL(trimmed)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return 'geox-url entry must be an http:// or https:// URL'
+    }
+    return null
+  } catch {
+    return 'geox-url entry is not a valid URL'
+  }
 }
 
 /** Split a single authentication entry "user:pass" → { user, hasPassword }.
