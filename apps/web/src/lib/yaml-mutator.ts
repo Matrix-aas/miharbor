@@ -24,6 +24,8 @@ import {
 } from 'yaml'
 import {
   type DnsConfig,
+  type ProfileConfig,
+  type ProfileNested,
   type ProxyNode,
   type Rule,
   serializeRule,
@@ -512,6 +514,146 @@ export function setSnifferConfig(doc: Document, config: SnifferConfig): void {
   }
   const node = doc.createNode(raw)
   doc.setIn(['sniffer'], node)
+}
+
+// ----- profile: top-level scalars mutator --------------------------------
+
+/** Canonical ordering for the top-level scalar keys Miharbor's profile view
+ *  owns. When a key is NEW to the document (wasn't present before) the
+ *  mutator appends it in this order AFTER the last existing known key (or
+ *  at the top of the doc when none of the known keys existed). Keys that
+ *  already exist keep their original position — we only rewrite their
+ *  values in place. */
+const PROFILE_KEY_ORDER: readonly string[] = [
+  'mode',
+  'log-level',
+  'mixed-port',
+  'allow-lan',
+  'bind-address',
+  'ipv6',
+  'tcp-concurrent',
+  'unified-delay',
+  'geodata-mode',
+  'geo-auto-update',
+  'geo-update-interval',
+  'keep-alive-interval',
+  'find-process-mode',
+  'global-client-fingerprint',
+  'external-controller',
+  'secret',
+  'external-ui',
+  'external-ui-name',
+  'external-ui-url',
+  'authentication',
+  'profile',
+]
+
+/** Nested `profile:` sub-section key order. */
+const PROFILE_NESTED_KEY_ORDER: readonly string[] = ['store-selected', 'store-fake-ip']
+
+const PROFILE_MANAGED_KEYS: ReadonlySet<string> = new Set(PROFILE_KEY_ORDER)
+
+function buildProfileNested(cfg: ProfileNested): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const k of PROFILE_NESTED_KEY_ORDER) {
+    const v = (cfg as Record<string, unknown>)[k]
+    if (v === undefined) continue
+    out[k] = v
+  }
+  if (cfg.extras) {
+    const extraKeys = Object.keys(cfg.extras).sort()
+    for (const k of extraKeys) {
+      out[k] = cfg.extras[k]
+    }
+  }
+  return out
+}
+
+/** Replace the top-level profile fields in `doc` with the values from
+ *  `config`. Unknown keys on `config.extras` are preserved (appended after
+ *  the managed keys, sorted). Reserved sections (dns/tun/sniffer/rules/…)
+ *  are never touched — this mutator only edits the keys declared in
+ *  `PROFILE_KEY_ORDER` plus any `extras` the operator already had.
+ *
+ *  Keys already present in the document keep their original position so the
+ *  operator's YAML layout is preserved. Keys NEW to the document are
+ *  appended in `PROFILE_KEY_ORDER`. */
+export function setProfileConfig(doc: Document, config: ProfileConfig): void {
+  const root = doc.contents
+  if (!root || !isMap(root as Node)) {
+    // Doc has no mapping at the root — bootstrap one.
+    const node = doc.createNode({}) as YAMLMap
+    doc.contents = node
+  }
+  const rootMap = doc.contents as YAMLMap
+
+  // 1. Update or remove every managed scalar key.
+  const managed = new Map<string, unknown>()
+  for (const k of PROFILE_KEY_ORDER) {
+    const v = (config as Record<string, unknown>)[k]
+    if (k === 'profile') {
+      // Nested sub-section: emitted only when the sub-config is non-empty.
+      const nested = config.profile
+      if (
+        nested &&
+        (nested['store-selected'] !== undefined ||
+          nested['store-fake-ip'] !== undefined ||
+          (nested.extras && Object.keys(nested.extras).length > 0))
+      ) {
+        managed.set('profile', buildProfileNested(nested))
+      }
+      continue
+    }
+    if (k === 'authentication') {
+      const auth = config.authentication
+      if (auth && auth.length > 0) managed.set('authentication', auth)
+      continue
+    }
+    if (v === undefined) continue
+    managed.set(k, v)
+  }
+  // Unknown extras (sorted for determinism).
+  if (config.extras) {
+    for (const k of Object.keys(config.extras).sort()) {
+      managed.set(k, config.extras[k])
+    }
+  }
+
+  // 2. Remove managed keys that are no longer present.
+  const toRemove: string[] = []
+  for (const item of rootMap.items) {
+    if (!(item instanceof Pair)) continue
+    const keyNode = item.key as Scalar | { value?: unknown }
+    const key =
+      keyNode instanceof Scalar
+        ? String(keyNode.value)
+        : String((keyNode as { value?: unknown }).value ?? '')
+    if (!key) continue
+    // Only remove keys we manage — leave nested sections (dns/tun/…) alone.
+    if (
+      !PROFILE_MANAGED_KEYS.has(key) &&
+      !(config.extras && Object.prototype.hasOwnProperty.call(config.extras, key))
+    ) {
+      // Skip — not managed.
+      continue
+    }
+    if (!managed.has(key)) toRemove.push(key)
+  }
+  for (const k of toRemove) {
+    rootMap.delete(k)
+  }
+
+  // 3. Update existing keys in place, and append newly-added ones at the end.
+  for (const [k, v] of managed) {
+    if (rootMap.has(k)) {
+      rootMap.set(k, doc.createNode(v))
+    } else {
+      // New key — append. The YAMLMap preserves insertion order, so we just
+      // add with .set(). (Canonical order is advisory when the original doc
+      // is brand-new; existing docs keep their layout.)
+      rootMap.set(k, doc.createNode(v))
+    }
+  }
 }
 
 /** Collect proxy-server IPs from the current doc. Used by the Tun page to

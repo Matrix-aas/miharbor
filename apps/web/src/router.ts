@@ -43,8 +43,9 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/profile',
     name: 'profile',
-    component: Placeholder,
-    props: { pageKey: 'pages.profile' },
+    // Lazy-loaded — Profile.vue pulls its subcomponent tree (auth dialog,
+    // form sections) only when the operator actually navigates here.
+    component: () => import('@/pages/Profile.vue'),
   },
   {
     path: '/raw-yaml',

@@ -19,6 +19,7 @@ import type { Document } from 'yaml'
 import type {
   DnsConfig,
   Issue,
+  ProfileConfig,
   ProxyNode,
   Rule,
   Service,
@@ -40,6 +41,7 @@ import {
   serializeDraft,
   setDnsConfig,
   setGroupDirection,
+  setProfileConfig,
   setSnifferConfig,
   setTunConfig,
   upsertProxyNode,
@@ -50,6 +52,7 @@ import {
 import { getDnsConfig } from '@/lib/dns-view'
 import { getTunConfig } from '@/lib/tun-view'
 import { getSnifferConfig } from '@/lib/sniffer-view'
+import { getProfileConfig } from '@/lib/profile-view'
 import type { Node, YAMLSeq } from 'yaml'
 import { parseRulesFromDoc } from 'miharbor-shared'
 
@@ -240,6 +243,18 @@ export const useConfigStore = defineStore('config', () => {
     if (!draftText.value) return {}
     try {
       return getSnifferConfig(parseDraft(draftText.value))
+    } catch {
+      return {}
+    }
+  })
+
+  /** Typed view of the top-level profile fields (mode, log-level,
+   *  external-controller, secret, authentication, ...). Same contract as the
+   *  other structured views. */
+  const profileConfig = computed<ProfileConfig>(() => {
+    if (!draftText.value) return {}
+    try {
+      return getProfileConfig(parseDraft(draftText.value))
     } catch {
       return {}
     }
@@ -479,6 +494,20 @@ export const useConfigStore = defineStore('config', () => {
     await commitDoc(doc)
   }
 
+  /** Rewrite the top-level profile fields in the draft (mode, log-level,
+   *  external-controller, secret, authentication, ...). Reserved sections
+   *  (dns/tun/sniffer/rules/proxies/…) are preserved verbatim. Same contract
+   *  as the nested-section draft setters. */
+  async function setProfileConfigDraft(config: ProfileConfig): Promise<void> {
+    if (!draftText.value) {
+      if (rawLive.value === null) throw new Error('no live config to bootstrap draft from')
+      draftText.value = rawLive.value
+    }
+    const doc = parseDraft(draftText.value)
+    setProfileConfig(doc, config)
+    await commitDoc(doc)
+  }
+
   // Initial lint on first load.
   watch(
     () => draftText.value,
@@ -510,6 +539,7 @@ export const useConfigStore = defineStore('config', () => {
     dnsConfig,
     tunConfig,
     snifferConfig,
+    profileConfig,
     // lifecycle
     loadAll,
     fetchLiveProxyState,
@@ -527,5 +557,6 @@ export const useConfigStore = defineStore('config', () => {
     setDnsConfigDraft,
     setTunConfigDraft,
     setSnifferConfigDraft,
+    setProfileConfigDraft,
   }
 })

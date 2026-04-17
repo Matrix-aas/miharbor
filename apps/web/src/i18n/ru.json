@@ -487,7 +487,86 @@
     },
     "profile": {
       "title": "Профиль",
-      "placeholder": "Редактор профиля появится на этапе 2."
+      "subtitle": "Верхнеуровневые поля mihomo — mode, log-level, external-controller, secret и связанные настройки.",
+      "sections": {
+        "general": "Общие",
+        "control_plane": "Панель управления",
+        "behavior": "Поведение",
+        "geo": "Геоданные",
+        "profile_nested": "Подсекция profile",
+        "authentication": "Аутентификация",
+        "extras": "Неизвестные поля"
+      },
+      "fields": {
+        "mode": "Режим",
+        "log_level": "Уровень логов",
+        "mixed_port": "Mixed port (HTTP + SOCKS5)",
+        "mixed_port_placeholder": "7890",
+        "allow_lan": "allow-lan (слушатели привязаны к LAN)",
+        "bind_address": "Bind address",
+        "bind_address_placeholder": "*",
+        "ipv6": "Включить IPv6",
+        "external_controller": "External controller",
+        "external_controller_placeholder": "127.0.0.1:9090",
+        "external_controller_hint": "host:port управляющего API mihomo. Привязывайте к 127.0.0.1 если возможно; привязка к LAN/WAN ТРЕБУЕТ секрет.",
+        "secret": "Секрет (Bearer-токен)",
+        "secret_placeholder": "64 hex-символа (сгенерировать: `openssl rand -hex 32`)",
+        "secret_show": "Показать секрет",
+        "secret_hide": "Скрыть секрет",
+        "external_ui": "Путь к External UI",
+        "external_ui_placeholder": "./zash",
+        "external_ui_name": "Имя External UI",
+        "external_ui_url": "URL для загрузки External UI",
+        "tcp_concurrent": "tcp-concurrent",
+        "unified_delay": "unified-delay",
+        "find_process_mode": "find-process-mode",
+        "global_client_fingerprint": "global-client-fingerprint",
+        "global_client_fingerprint_placeholder": "chrome",
+        "geodata_mode": "geodata-mode",
+        "geo_auto_update": "geo-auto-update",
+        "geo_update_interval": "geo-update-interval (часы)",
+        "geo_update_interval_hint": "Как часто mihomo обновляет базы GeoIP / GeoSite.",
+        "keep_alive_interval": "keep-alive-interval (секунды)",
+        "store_selected": "Запоминать вручную выбранный прокси по сервису",
+        "store_fake_ip": "Сохранять fake-IP кеш между перезапусками"
+      },
+      "mode": {
+        "rule": "rule (использовать rule-engine)",
+        "global": "global (весь трафик через PROXY)",
+        "direct": "direct (без проксирования)"
+      },
+      "nested": {
+        "description": "Вложенная секция `profile:` mihomo — это runtime-настройки, а не политика роутинга."
+      },
+      "auth": {
+        "description": "Записи аутентификации HTTP-прокси (user:pass). Имена пользователей показаны ниже; пароли записываются «в один конец» — открытие строки для редактирования позволяет задать новый пароль, но старые значения UI не показывает.",
+        "list_aria": "Записи аутентификации",
+        "add": "Добавить пользователя",
+        "empty": "Записей пока нет.",
+        "has_password": "пароль задан",
+        "no_password": "без пароля",
+        "edit_aria": "Сменить пароль для {user}",
+        "remove_aria": "Удалить пользователя {user}",
+        "dialog_add_title": "Добавить пользователя аутентификации",
+        "dialog_edit_title": "Сменить пароль",
+        "dialog_description": "Пароли записываются напрямую в конфиг mihomo. Храните их в своём менеджере паролей — UI не покажет их повторно после сохранения.",
+        "dialog_guardrail": "UI не возвращает пароли после сохранения. Если забыли — удалите запись и создайте пользователя заново.",
+        "user_label": "Имя пользователя",
+        "user_placeholder": "operator",
+        "password_label": "Пароль",
+        "password_placeholder": "надёжный пароль",
+        "user_taken": "Пользователь с таким именем уже есть.",
+        "user_colon_invalid": "Имя пользователя не может содержать `:` (это разделитель)."
+      },
+      "guardrails": {
+        "ipv6": "IPv6 включён. Runbook держит IPv6 выключенным до полной обкатки — NAT / rule-плоскость ещё не проверена под IPv6.",
+        "external_controller": "External controller привязан не к loopback и секрет не задан. Любой хост в LAN может управлять mihomo. Задайте секрет длиной 64 hex-символа.",
+        "secret": "Секрет — это Bearer-токен управляющего API mihomo. Храните как пароль: не коммитьте, ротируйте после подозрения на утечку (`openssl rand -hex 32`, перезапуск mihomo, обновление значения в дашборде).",
+        "authentication": "Пароли записываются в конфиг mihomo как есть. После сохранения UI показывает только имена пользователей — если забыли пароль, удалите запись и добавьте пользователя заново."
+      },
+      "extras": {
+        "note": "Неизвестные поля сохранены как есть из YAML — редактируйте их в Raw YAML."
+      }
     },
     "raw_yaml": {
       "title": "Raw YAML",

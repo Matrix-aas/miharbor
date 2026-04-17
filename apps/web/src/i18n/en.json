@@ -487,7 +487,86 @@
     },
     "profile": {
       "title": "Profile",
-      "placeholder": "Profile editor ships in stage 2."
+      "subtitle": "Top-level mihomo config — mode, log-level, external-controller, secret, and related knobs.",
+      "sections": {
+        "general": "General",
+        "control_plane": "Control plane",
+        "behavior": "Behavior",
+        "geo": "Geodata",
+        "profile_nested": "Profile sub-section",
+        "authentication": "Authentication",
+        "extras": "Unknown fields"
+      },
+      "fields": {
+        "mode": "Mode",
+        "log_level": "Log level",
+        "mixed_port": "Mixed port (HTTP + SOCKS5)",
+        "mixed_port_placeholder": "7890",
+        "allow_lan": "allow-lan (listeners bind to LAN)",
+        "bind_address": "Bind address",
+        "bind_address_placeholder": "*",
+        "ipv6": "Enable IPv6",
+        "external_controller": "External controller",
+        "external_controller_placeholder": "127.0.0.1:9090",
+        "external_controller_hint": "host:port for mihomo's control API. Bind to 127.0.0.1 when possible; LAN/WAN binds REQUIRE a secret.",
+        "secret": "Secret (Bearer token)",
+        "secret_placeholder": "64 hex chars (use `openssl rand -hex 32`)",
+        "secret_show": "Show secret",
+        "secret_hide": "Hide secret",
+        "external_ui": "External UI path",
+        "external_ui_placeholder": "./zash",
+        "external_ui_name": "External UI name",
+        "external_ui_url": "External UI download URL",
+        "tcp_concurrent": "tcp-concurrent",
+        "unified_delay": "unified-delay",
+        "find_process_mode": "find-process-mode",
+        "global_client_fingerprint": "global-client-fingerprint",
+        "global_client_fingerprint_placeholder": "chrome",
+        "geodata_mode": "geodata-mode",
+        "geo_auto_update": "geo-auto-update",
+        "geo_update_interval": "geo-update-interval (hours)",
+        "geo_update_interval_hint": "How often mihomo refreshes the GeoIP / GeoSite databases.",
+        "keep_alive_interval": "keep-alive-interval (seconds)",
+        "store_selected": "Remember manually-selected proxy per service",
+        "store_fake_ip": "Persist fake-IP cache across restarts"
+      },
+      "mode": {
+        "rule": "rule (use rule engine)",
+        "global": "global (route everything through PROXY)",
+        "direct": "direct (no proxying)"
+      },
+      "nested": {
+        "description": "mihomo's nested `profile:` map. These are persisted runtime preferences, not routing policy."
+      },
+      "auth": {
+        "description": "HTTP proxy authentication entries (user:pass). Usernames are shown below; passwords are write-only — edit a row to set a new password, but previously-saved passwords are never echoed back in the UI.",
+        "list_aria": "Authentication entries",
+        "add": "Add user",
+        "empty": "No authentication entries.",
+        "has_password": "password set",
+        "no_password": "no password",
+        "edit_aria": "Edit password for {user}",
+        "remove_aria": "Remove user {user}",
+        "dialog_add_title": "Add authentication user",
+        "dialog_edit_title": "Change password",
+        "dialog_description": "Passwords are written directly into the mihomo config. Keep a copy of them in your own password manager — the UI will not display them again after save.",
+        "dialog_guardrail": "Passwords are never echoed back in the UI after save. If you forget one, remove the entry and re-add the user.",
+        "user_label": "Username",
+        "user_placeholder": "operator",
+        "password_label": "Password",
+        "password_placeholder": "set a strong password",
+        "user_taken": "A user with this name already exists.",
+        "user_colon_invalid": "Username cannot contain `:` (it's the delimiter)."
+      },
+      "guardrails": {
+        "ipv6": "IPv6 is enabled. The runbook keeps IPv6 disabled until extended burn-in — the NAT / rule plane has not been stressed for IPv6 yet.",
+        "external_controller": "External controller is bound to a non-loopback address without a secret. Any LAN host can control mihomo. Set a 64-char hex secret.",
+        "secret": "The secret is the Bearer token for mihomo's control API. Treat it like a password: never commit it, rotate after suspected leaks (`openssl rand -hex 32`, then restart mihomo and re-enter in your dashboard).",
+        "authentication": "Passwords are written verbatim to the mihomo config file. After save, the UI only shows usernames — if you forget a password, you must remove the entry and re-add the user."
+      },
+      "extras": {
+        "note": "Unknown fields preserved verbatim from the YAML — edit them in Raw YAML."
+      }
     },
     "raw_yaml": {
       "title": "Raw YAML",
