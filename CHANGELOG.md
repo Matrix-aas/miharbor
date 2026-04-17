@@ -4,6 +4,33 @@ All notable changes to Miharbor are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [semver](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] — 2026-04-17
+
+Regression fix for v0.2.0: `reloadConfig()` was sending an empty request
+body, which real mihomo (1.19.x) rejects with HTTP 400 "Body invalid".
+
+### Fixed
+
+- **`reloadConfig()` now sends a valid JSON body (`{}`)** instead of an empty
+  body. Mihomo requires a valid JSON body on PUT `/configs`, even if empty.
+  The empty body caused a 400 error on the live router. The `{}` body reloads
+  from the currently loaded config path on disk (no need to pass path, which
+  would require container context).
+- **`SshTransport` now honours `MIHARBOR_CONFIG_WRITE_MODE` for remote config
+  writes.** Symmetric to the v0.2.1 `LocalFsTransport` fix: the remote
+  `config.yaml` is now written with mode 0o644 by default (or overridden via
+  the env var), allowing hardened mihomo processes (with `CAP_DAC_OVERRIDE`
+  dropped) running under a different UID to still read the config after atomic
+  rename. The temporary config upload remains 0o600 (restrictive until rename).
+
+### Tests
+
+- 646 tests maintained. Added two tests asserting SSH config write mode defaults
+  to 0o644 and that the override is honoured. Updated `FakeSshAdapter` to
+  capture and expose `writeFileModes` for mode assertion in tests.
+
+---
+
 ## [0.2.1] — 2026-04-17
 
 Hotfix for two v0.2.0 deploy blockers discovered during the first

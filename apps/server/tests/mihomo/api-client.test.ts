@@ -109,15 +109,28 @@ test('other HTTP errors throw MihomoApiError with status + endpoint', async () =
   expect((err as MihomoApiError).endpoint).toBe('/version')
 })
 
-test('reloadConfig uses PUT /configs?force=true', async () => {
+test('reloadConfig uses PUT /configs?force=true with JSON body', async () => {
   mock.stop()
+  let receivedBody = ''
+  let receivedContentType = ''
   mock = startMockServer({
-    'PUT /configs': () => new Response(null, { status: 204 }),
+    'PUT /configs': (req) => {
+      receivedContentType = req.headers.get('content-type') ?? ''
+      // Bun's req.body is a ReadableStream; we need to read it for tests.
+      // The mock server doesn't auto-parse, so we capture the raw bytes.
+      return req.text().then((body) => {
+        receivedBody = body
+        return new Response(null, { status: 204 })
+      })
+    },
   })
   const api = createMihomoApi({ baseUrl: mock.baseUrl, secret: 's' })
   await api.reloadConfig()
   expect(mock.received[0]!.method).toBe('PUT')
   expect(mock.received[0]!.url).toContain('/configs?force=true')
+  expect(mock.received[0]!.auth).toBe('Bearer s') // Auth still present
+  expect(receivedContentType).toBe('application/json')
+  expect(receivedBody).toBe('{}')
 })
 
 test('listProxies returns parsed JSON object', async () => {

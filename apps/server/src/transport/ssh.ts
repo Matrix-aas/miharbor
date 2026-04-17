@@ -69,6 +69,16 @@ export interface SshTransportOptions {
   mihomoApiSecret: string
   connectTimeoutMs: number
   keepaliveIntervalMs: number
+  /** POSIX mode applied to the remote config.yaml path *after* the atomic
+   *  rename. Defaults to 0o644 so mihomo (and any other well-behaved reader
+   *  sharing the remote filesystem) can still read the file when it runs under a
+   *  different UID and its capability set omits CAP_DAC_OVERRIDE. Override
+   *  via `MIHARBOR_CONFIG_WRITE_MODE` when you need a stricter regime on an
+   *  unusual deployment (e.g. same-UID-only, 0o600). Internal files
+   *  (.miharbor.lock, .miharbor.tmp.*, test-config uploads) keep their
+   *  restrictive owner-only modes — this knob only affects the single "public"
+   *  config path. */
+  configWriteMode?: number
   /** Host-key verification policy. When `adapter` is supplied (tests) this
    *  may be omitted — the adapter short-circuits `buildConnectConfig`. In
    *  production the policy is built from env vars in `createSshTransport`
@@ -120,6 +130,7 @@ export async function createSshTransport(opts: {
   /** When `true` AND `knownHostsPath` is empty, pass the `insecure`
    *  policy through. Explicit opt-in; logs a per-connect warning. */
   hostKeyInsecure?: boolean
+  configWriteMode?: number
   logger?: Pick<Logger, 'info' | 'warn' | 'debug' | 'error'>
   adapter?: SshAdapter
 }): Promise<SshTransport> {
@@ -139,6 +150,7 @@ export async function createSshTransport(opts: {
   if (privateKey !== undefined) ctorOpts.privateKey = privateKey
   if (opts.passphrase !== undefined) ctorOpts.passphrase = opts.passphrase
   if (opts.agentSocket !== undefined) ctorOpts.agentSocket = opts.agentSocket
+  if (opts.configWriteMode !== undefined) ctorOpts.configWriteMode = opts.configWriteMode
   if (opts.logger !== undefined) ctorOpts.logger = opts.logger
   if (opts.adapter !== undefined) ctorOpts.adapter = opts.adapter
 
@@ -184,6 +196,7 @@ export class SshTransport implements Transport {
   readonly #snapshotsDir: string
   readonly #mihomoUrl: string
   readonly #mihomoSecret: string
+  readonly #configWriteMode: number
   readonly #logger: Pick<Logger, 'info' | 'warn' | 'debug' | 'error'>
 
   constructor(opts: SshTransportOptions) {
@@ -193,6 +206,7 @@ export class SshTransport implements Transport {
     this.#snapshotsDir = join(this.#dataDir, 'snapshots')
     this.#mihomoUrl = opts.mihomoApiUrl
     this.#mihomoSecret = opts.mihomoApiSecret
+    this.#configWriteMode = opts.configWriteMode ?? 0o644
     this.#logger = opts.logger ?? NOOP_LOGGER
 
     if (opts.adapter) {
@@ -281,10 +295,14 @@ export class SshTransport implements Transport {
     const dir = dirname(this.#remoteConfigPath)
     const tmpName = `.miharbor.tmp.${basename(this.#remoteConfigPath)}`
     const tmpPath = `${dir}/${tmpName}`
+    // Use 0o600 for the tmp file — restrictive until atomic rename.
     await this.#adapter.sftpWriteFile(tmpPath, Buffer.from(content, 'utf8'), 0o600)
     // `sync` forces the upload to hit durable storage before we atomically
     // rename. `mv` within the same filesystem is `rename(2)` on POSIX.
-    const mvCmd = `sync && mv ${shQuote(tmpPath)} ${shQuote(this.#remoteConfigPath)}`
+    // Apply #configWriteMode after the rename so readers (e.g. hardened
+    // mihomo with CAP_DAC_OVERRIDE dropped) can still read the file.
+    const octalMode = '0' + this.#configWriteMode.toString(8)
+    const mvCmd = `sync && mv ${shQuote(tmpPath)} ${shQuote(this.#remoteConfigPath)} && chmod ${octalMode} ${shQuote(this.#remoteConfigPath)}`
     const res = await this.#adapter.exec(mvCmd)
     if (res.code !== 0) {
       throw new Error(
@@ -377,6 +395,8 @@ export class SshTransport implements Transport {
         raw_output: mkdirRes.stderr || mkdirRes.stdout,
       }
     }
+    // Use 0o600 for test config — validation is read-only, so the mode
+    // doesn't affect the validation outcome. Restrictive mode is safer.
     await this.#adapter.sftpWriteFile(testFile, Buffer.from(content, 'utf8'), 0o600)
     const res = await this.#adapter.exec(`mihomo -t -d ${shQuote(testDir)}`)
     const combined = `${res.stdout}\n${res.stderr}`.trim()

@@ -133,6 +133,7 @@ export async function wireApp(
       mihomoApiSecret: env.MIHOMO_API_SECRET,
       connectTimeoutMs: env.MIHARBOR_SSH_CONNECT_TIMEOUT_MS,
       keepaliveIntervalMs: env.MIHARBOR_SSH_KEEPALIVE_INTERVAL_MS,
+      configWriteMode: env.MIHARBOR_CONFIG_WRITE_MODE,
       knownHostsPath: env.MIHARBOR_SSH_KNOWN_HOSTS || undefined,
       hostKeyInsecure: env.MIHARBOR_SSH_HOST_KEY_INSECURE,
       logger,

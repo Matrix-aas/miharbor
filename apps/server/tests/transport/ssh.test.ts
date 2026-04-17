@@ -58,6 +58,7 @@ class FakeSshAdapter implements SshAdapter {
   public execLog: string[] = []
   public connectCount = 0
   public endCount = 0
+  public writeFileModes: Map<string, number> = new Map()
   #alive = false
   readonly #opts: FakeOptions
   #flockPid = 10_000
@@ -131,8 +132,8 @@ class FakeSshAdapter implements SshAdapter {
       return ok('', '', 0)
     }
 
-    // 6) atomic rename: `sync && mv <tmp> <target>`
-    const mvMatch = /^sync && mv '([^']+)' '([^']+)'$/.exec(command)
+    // 6) atomic rename: `sync && mv <tmp> <target> && chmod <mode> <target>`
+    const mvMatch = /^sync && mv '([^']+)' '([^']+)'(?: && chmod \d+ '([^']+)')?$/.exec(command)
     if (mvMatch) {
       const [, src, dst] = mvMatch
       if (!src || !dst || this.fs[src] === undefined) {
@@ -161,9 +162,12 @@ class FakeSshAdapter implements SshAdapter {
     throw new Error(`FakeSshAdapter: unhandled command: ${command}`)
   }
 
-  async sftpWriteFile(path: string, data: Buffer): Promise<void> {
+  async sftpWriteFile(path: string, data: Buffer, mode?: number): Promise<void> {
     await this.connect()
     this.fs[path] = data.toString('utf8')
+    if (mode !== undefined) {
+      this.writeFileModes.set(path, mode)
+    }
   }
 
   async sftpReadFile(path: string): Promise<Buffer> {
@@ -461,6 +465,46 @@ test('concurrent writeConfig calls do not corrupt remote file', async () => {
   const final = adapter.fs['/etc/mihomo/config.yaml']
   expect(final).toBeDefined()
   expect(['a: 1\n', 'a: 2\n', 'a: 3\n']).toContain(final!)
+})
+
+// ---------- configWriteMode ----------
+
+test('writeConfig applies default configWriteMode 0o644 to remote config', async () => {
+  const { t, adapter } = makeTransport({
+    initialFs: { '/etc/mihomo/config.yaml': 'old\n' },
+  })
+  // When configWriteMode is not specified, default to 0o644.
+  await t.writeConfig('new\n', '/unused')
+  // The chmod command in the mv pipeline should have been called with the
+  // default mode. Extract from execLog and verify.
+  const mvCmd = adapter.execLog.find((c) => c.includes('sync && mv'))
+  expect(mvCmd).toBeDefined()
+  expect(mvCmd).toMatch(/chmod 0?644/)
+})
+
+test('writeConfig honours configWriteMode option override', async () => {
+  const adapter = new FakeSshAdapter({
+    initialFs: { '/etc/mihomo/config.yaml': 'old\n' },
+  })
+  const t = new SshTransport({
+    host: 'test.invalid',
+    port: 22,
+    username: 'u',
+    remoteConfigPath: '/etc/mihomo/config.yaml',
+    remoteLockPath: '/etc/mihomo/.miharbor.lock',
+    dataDir,
+    mihomoApiUrl: 'http://x',
+    mihomoApiSecret: '',
+    connectTimeoutMs: 1000,
+    keepaliveIntervalMs: 5000,
+    configWriteMode: 0o600, // Explicit override
+    adapter,
+  })
+  await t.writeConfig('new\n', '/unused')
+  // The mv command should use the overridden mode.
+  const mvCmd = adapter.execLog.find((c) => c.includes('sync && mv'))
+  expect(mvCmd).toBeDefined()
+  expect(mvCmd).toMatch(/chmod 0?600/)
 })
 
 // ---------- verifyAndWrite (TOCTOU) ----------
