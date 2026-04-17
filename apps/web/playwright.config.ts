@@ -79,7 +79,7 @@ export default defineConfig({
       url: `http://127.0.0.1:${MIHARBOR_PORT}/health`,
       env: {
         MIHARBOR_PORT: String(MIHARBOR_PORT),
-        MIHARBOR_TRANSPORT: 'ssh', // uses InMemoryTransport — no FS writes
+        MIHARBOR_TRANSPORT: 'memory', // InMemoryTransport — no FS writes, no SSH (dedicated test-only literal)
         MIHARBOR_AUTH_DISABLED: 'true',
         MIHARBOR_DATA_DIR: DATA_DIR,
         MIHARBOR_CONFIG_PATH: `${DATA_DIR}/config.yaml`,
