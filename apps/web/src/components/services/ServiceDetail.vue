@@ -19,6 +19,7 @@ import RuleRow from './RuleRow.vue'
 import RuleEditor from './RuleEditor.vue'
 import LogicalRuleEditor from './LogicalRuleEditor.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
+import IssueList from '@/components/linter/IssueList.vue'
 
 interface Props {
   service: Service
@@ -194,6 +195,17 @@ function ruleKey(pair: { index: number; rule: Rule }): string {
       <p v-if="!isSelectType" class="mt-2 text-xs text-muted-foreground">
         {{ t('services.direction_not_select') }}
       </p>
+    </div>
+
+    <div
+      v-if="service.issues.length > 0"
+      class="border-b border-border px-4 py-3"
+      data-testid="service-issues"
+    >
+      <p class="mb-2 text-xs font-medium uppercase text-muted-foreground">
+        {{ t('services.issues_label') }}
+      </p>
+      <IssueList :issues="service.issues" />
     </div>
 
     <div class="flex-1 space-y-2 overflow-y-auto p-4" data-testid="rules-list">

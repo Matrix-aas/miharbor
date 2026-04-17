@@ -744,17 +744,68 @@
       "placeholder": "Password + runtime settings arrive in a later task."
     }
   },
-  "suggestions": {
-    "unreachable_rule_after_match": "This rule can never execute because a MATCH rule above it will catch all traffic. Either remove this rule or move it before the MATCH rule at #{covered_by_index}.",
-    "unreachable_rule_shadowed": "This rule is shadowed by rule #{covered_by_index} which covers a strictly wider set of inputs. Either remove this rule or reorder them.",
-    "duplicate_rule": "This rule is a duplicate of rule #{duplicate_of_index}. Remove one of them.",
-    "dangling_group_reference": "The target proxy-group '{target}' does not exist. Create it in the proxy-groups section, or change the target to an existing group or DIRECT/REJECT.",
-    "dangling_node_reference": "The proxy node '{ref}' does not exist in the proxies section or as another group. Add it to the proxies section, or remove the reference from group '{group}'.",
-    "dangling_ruleset_reference": "The rule-provider '{provider}' does not exist. Add it to the rule-providers section, or change the rule to reference an existing provider.",
-    "intra_group_duplicate": "This rule is a duplicate of rule #{duplicate_of_index} (same type and value, both targeting '{group}'). Remove one of them.",
-    "cross_group_duplicate": "This rule has the same type and value as rule #{firstAt}, but targets a different group ('{currentTarget}' vs '{firstTarget}'). This is sometimes intentional but often indicates an inconsistency.",
-    "rule_parse_error": "Could not parse the rules section. The error was: {message}. Check the YAML syntax — rules should be a list of items in the format TYPE,VALUE,TARGET[,modifiers].",
-    "universal_invariant": "This configuration violates a built-in invariant (id: {id}). Review the config requirements in your runbook or admin guide. For details, see the main error message.",
-    "user_invariant": "This violates a custom invariant: {name}. {description}. Review your invariants configuration and make the necessary changes."
+  "suggestion_unreachable_rule_after_match": "This rule can never execute because a MATCH rule above it will catch all traffic. Either remove this rule or move it before the MATCH rule at #{covered_by_index}.",
+  "suggestion_unreachable_rule_shadowed": "This rule is shadowed by rule #{covered_by_index} which covers a strictly wider set of inputs. Either remove this rule or reorder them.",
+  "suggestion_duplicate_rule": "This rule is a duplicate of rule #{duplicate_of_index}. Remove one of them.",
+  "suggestion_dangling_group_reference": "The target proxy-group '{target}' does not exist. Create it in the proxy-groups section, or change the target to an existing group or DIRECT/REJECT.",
+  "suggestion_dangling_node_reference": "The proxy node '{ref}' does not exist in the proxies section or as another group. Add it to the proxies section, or remove the reference from group '{group}'.",
+  "suggestion_dangling_ruleset_reference": "The rule-provider '{provider}' does not exist. Add it to the rule-providers section, or change the rule to reference an existing provider.",
+  "suggestion_intra_group_duplicate": "This rule is a duplicate of rule #{duplicate_of_index} (same type and value, both targeting '{group}'). Remove one of them.",
+  "suggestion_cross_group_duplicate": "This rule has the same type and value as rule #{firstAt}, but targets a different group ('{currentTarget}' vs '{firstTarget}'). This is sometimes intentional but often indicates an inconsistency.",
+  "suggestion_rule_parse_error": "Could not parse the rules section. The error was: {message}. Check the YAML syntax — rules should be a list of items in the format TYPE,VALUE,TARGET[,modifiers].",
+  "suggestion_universal_invariant": "This configuration violates a built-in invariant (id: {id}). Review the config requirements in your runbook or admin guide. For details, see the main error message.",
+  "suggestion_user_invariant": "This violates a custom invariant: {name}. {description}. Review your invariants configuration and make the necessary changes.",
+  "issues": {
+    "empty": "No issues.",
+    "severity_error": "Error",
+    "severity_warning": "Warning",
+    "severity_info": "Info",
+    "suggestion_prefix": "Suggestion",
+    "aria_item": "{severity}: {message}"
+  },
+  "linter": {
+    "issues": {
+      "LINTER_UNREACHABLE_RULE": {
+        "message": "Rule #{covered_by_index} at the same position makes this rule unreachable.",
+        "message_match_above": "A MATCH rule at #{covered_by_index} above catches all traffic — this rule is unreachable.",
+        "message_shadowed": "Rule #{covered_by_index} covers a strictly wider set of inputs, shadowing this one."
+      },
+      "LINTER_DUPLICATE_RULE": {
+        "message": "Duplicate of rule #{duplicate_of_index}."
+      },
+      "LINTER_DANGLING_GROUP_REFERENCE": {
+        "message": "Rule targets proxy-group '{target}' which is not defined."
+      },
+      "LINTER_DANGLING_NODE_REFERENCE": {
+        "message": "Proxy-group '{group}' references node '{ref}' which is not defined."
+      },
+      "LINTER_DANGLING_RULESET_REFERENCE": {
+        "message": "Rule references rule-provider '{provider}' which is not defined."
+      },
+      "LINTER_INTRA_GROUP_DUPLICATE": {
+        "message": "Duplicate within group '{group}' (matches rule #{duplicate_of_index})."
+      },
+      "LINTER_CROSS_GROUP_DUPLICATE": {
+        "message": "Same predicate as rule #{firstAt} but different target ('{currentTarget}' vs '{firstTarget}')."
+      },
+      "LINTER_RULE_PARSE_ERROR": {
+        "message": "Could not parse rule: {message}"
+      },
+      "INVARIANT_SECRET_TOO_SHORT": {
+        "message": "Secret must be at least {min} characters (current: {actual})."
+      },
+      "INVARIANT_DNS_LISTEN_ZERO53": {
+        "message": "DNS listen '{value}' exposes resolver on the wildcard address; use a specific interface."
+      },
+      "INVARIANT_TUN_NEEDS_INTERFACE": {
+        "message": "TUN is enabled but interface-name is not set — required for reliable route selection."
+      },
+      "INVARIANT_TUN_DNS_HIJACK_MUST_BE_ARRAY": {
+        "message": "tun.dns-hijack must be a list."
+      },
+      "USER_INVARIANT": {
+        "message": "Custom invariant violated: {name} ({reason})."
+      }
+    }
   }
 }

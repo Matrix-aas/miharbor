@@ -95,12 +95,16 @@ describe('TemplateSuggester', () => {
     expect(match?.rules[0]?.type).toBe('DOMAIN-SUFFIX')
   })
 
-  it('exposes list role with localized aria-label', () => {
+  it('exposes a labelled list for screen readers', () => {
+    // `<ul>` has an implicit role=list so we intentionally do NOT add
+    // `role="list"` (eslint-plugin-vuejs-accessibility / WAI-ARIA flag it
+    // as redundant). Screen readers still announce the element as a list;
+    // we verify only the localized aria-label.
     const wrapper = mount(TemplateSuggester, {
       props: { query: 'github' },
       global: { plugins: [makeI18n()] },
     })
-    const list = wrapper.find('ul[role="list"]')
+    const list = wrapper.find('ul')
     expect(list.exists()).toBe(true)
     expect(list.attributes('aria-label')).toBe('Service template suggestions')
   })

@@ -744,17 +744,68 @@
       "placeholder": "Смена пароля появится позже."
     }
   },
-  "suggestions": {
-    "unreachable_rule_after_match": "Это правило никогда не сработает, так как правило MATCH выше перехватит весь трафик. Удалите его или переместите перед правилом MATCH #{covered_by_index}.",
-    "unreachable_rule_shadowed": "Это правило затенено правилом #{covered_by_index}, которое охватывает намного более широкий набор входов. Удалите его или переупорядочьте.",
-    "duplicate_rule": "Это правило дублирует правило #{duplicate_of_index}. Удалите одно из них.",
-    "dangling_group_reference": "Целевая группа прокси '{target}' не существует. Создайте её в разделе proxy-groups или измените цель на существующую группу либо DIRECT/REJECT.",
-    "dangling_node_reference": "Узел прокси '{ref}' не найден в разделе proxies и не является другой группой. Добавьте его в proxies или удалите ссылку из группы '{group}'.",
-    "dangling_ruleset_reference": "Поставщик правил '{provider}' не существует. Добавьте его в rule-providers или измените правило на существующего поставщика.",
-    "intra_group_duplicate": "Это правило дублирует правило #{duplicate_of_index} (один тип и значение, оба нацелены на '{group}'). Удалите одно из них.",
-    "cross_group_duplicate": "Это правило имеет тот же тип и значение, что и правило #{firstAt}, но нацелено на другую группу ('{currentTarget}' против '{firstTarget}'). Обычно это ошибка.",
-    "rule_parse_error": "Не удалось разобрать раздел rules. Ошибка: {message}. Проверьте YAML-синтаксис — rules должны быть списком элементов вида TYPE,VALUE,TARGET[,modifiers].",
-    "universal_invariant": "Этот конфиг нарушает встроенное правило (id: {id}). Проверьте требования конфига в документации. Подробнее см. основное сообщение об ошибке.",
-    "user_invariant": "Нарушение пользовательского правила: {name}. {description}. Проверьте конфигурацию правил и внесите необходимые изменения."
+  "suggestion_unreachable_rule_after_match": "Это правило никогда не сработает, так как правило MATCH выше перехватит весь трафик. Удалите его или переместите перед правилом MATCH #{covered_by_index}.",
+  "suggestion_unreachable_rule_shadowed": "Это правило затенено правилом #{covered_by_index}, которое охватывает намного более широкий набор входов. Удалите его или переупорядочьте.",
+  "suggestion_duplicate_rule": "Это правило дублирует правило #{duplicate_of_index}. Удалите одно из них.",
+  "suggestion_dangling_group_reference": "Целевая группа прокси '{target}' не существует. Создайте её в разделе proxy-groups или измените цель на существующую группу либо DIRECT/REJECT.",
+  "suggestion_dangling_node_reference": "Узел прокси '{ref}' не найден в разделе proxies и не является другой группой. Добавьте его в proxies или удалите ссылку из группы '{group}'.",
+  "suggestion_dangling_ruleset_reference": "Поставщик правил '{provider}' не существует. Добавьте его в rule-providers или измените правило на существующего поставщика.",
+  "suggestion_intra_group_duplicate": "Это правило дублирует правило #{duplicate_of_index} (один тип и значение, оба нацелены на '{group}'). Удалите одно из них.",
+  "suggestion_cross_group_duplicate": "Это правило имеет тот же тип и значение, что и правило #{firstAt}, но нацелено на другую группу ('{currentTarget}' против '{firstTarget}'). Обычно это ошибка.",
+  "suggestion_rule_parse_error": "Не удалось разобрать раздел rules. Ошибка: {message}. Проверьте YAML-синтаксис — rules должны быть списком элементов вида TYPE,VALUE,TARGET[,modifiers].",
+  "suggestion_universal_invariant": "Этот конфиг нарушает встроенное правило (id: {id}). Проверьте требования конфига в документации. Подробнее см. основное сообщение об ошибке.",
+  "suggestion_user_invariant": "Нарушение пользовательского правила: {name}. {description}. Проверьте конфигурацию правил и внесите необходимые изменения.",
+  "issues": {
+    "empty": "Нет проблем.",
+    "severity_error": "Ошибка",
+    "severity_warning": "Предупреждение",
+    "severity_info": "Информация",
+    "suggestion_prefix": "Подсказка",
+    "aria_item": "{severity}: {message}"
+  },
+  "linter": {
+    "issues": {
+      "LINTER_UNREACHABLE_RULE": {
+        "message": "Правило #{covered_by_index} в той же позиции делает это правило недостижимым.",
+        "message_match_above": "Правило MATCH #{covered_by_index} выше перехватывает весь трафик — это правило недостижимо.",
+        "message_shadowed": "Правило #{covered_by_index} охватывает строго более широкий набор входов, затеняя это."
+      },
+      "LINTER_DUPLICATE_RULE": {
+        "message": "Дубликат правила #{duplicate_of_index}."
+      },
+      "LINTER_DANGLING_GROUP_REFERENCE": {
+        "message": "Правило ссылается на прокси-группу '{target}', которой не существует."
+      },
+      "LINTER_DANGLING_NODE_REFERENCE": {
+        "message": "Прокси-группа '{group}' ссылается на узел '{ref}', которого не существует."
+      },
+      "LINTER_DANGLING_RULESET_REFERENCE": {
+        "message": "Правило ссылается на rule-provider '{provider}', которого не существует."
+      },
+      "LINTER_INTRA_GROUP_DUPLICATE": {
+        "message": "Дубликат внутри группы '{group}' (совпадает с правилом #{duplicate_of_index})."
+      },
+      "LINTER_CROSS_GROUP_DUPLICATE": {
+        "message": "Тот же предикат, что и у правила #{firstAt}, но другая цель ('{currentTarget}' против '{firstTarget}')."
+      },
+      "LINTER_RULE_PARSE_ERROR": {
+        "message": "Не удалось разобрать правило: {message}"
+      },
+      "INVARIANT_SECRET_TOO_SHORT": {
+        "message": "Секрет должен быть не менее {min} символов (сейчас: {actual})."
+      },
+      "INVARIANT_DNS_LISTEN_ZERO53": {
+        "message": "DNS listen '{value}' открывает резолвер на wildcard-адресе; укажите конкретный интерфейс."
+      },
+      "INVARIANT_TUN_NEEDS_INTERFACE": {
+        "message": "TUN включён, но interface-name не задан — обязателен для корректного выбора маршрутов."
+      },
+      "INVARIANT_TUN_DNS_HIJACK_MUST_BE_ARRAY": {
+        "message": "tun.dns-hijack должен быть списком."
+      },
+      "USER_INVARIANT": {
+        "message": "Нарушено пользовательское правило: {name} ({reason})."
+      }
+    }
   }
 }
