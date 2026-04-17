@@ -229,7 +229,8 @@
       "save": "Save node",
       "name_taken": "A proxy with this name already exists.",
       "name_required": "Name is required.",
-      "key_invalid": "Not a valid WireGuard key (base64, ≥40 chars)."
+      "key_invalid": "Not a valid WireGuard key (base64, ≥40 chars).",
+      "key_sentinel_hint": "Key is set on the server — enter a new value to rotate, or leave unchanged to keep the current one. The UI cannot reveal the stored key."
     }
   },
   "raw_yaml": {

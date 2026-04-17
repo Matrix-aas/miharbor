@@ -4,7 +4,12 @@ import { parseDocument } from 'yaml'
 import { getServices } from '../../src/config/views/services.ts'
 import { getProxies } from '../../src/config/views/proxies.ts'
 import { getMeta } from '../../src/config/views/meta.ts'
-import { META_SECRET_SENTINEL } from 'miharbor-shared'
+import {
+  META_SECRET_SENTINEL,
+  WIREGUARD_PRE_SHARED_KEY_SENTINEL,
+  WIREGUARD_PRIVATE_KEY_SENTINEL,
+  type WireGuardNode,
+} from 'miharbor-shared'
 
 const GOLDEN = readFileSync('apps/server/tests/fixtures/config-golden.yaml', 'utf8')
 
@@ -66,6 +71,67 @@ test('getProxies projects a WireGuard node with typed keys', () => {
 
 test('getProxies returns [] when proxies key is absent', () => {
   expect(getProxies(parseDocument('mode: rule\n'))).toEqual([])
+})
+
+test('getProxies MASKS WireGuard private-key and pre-shared-key (v0.2.4)', () => {
+  const doc = parseDocument(GOLDEN)
+  const proxies = getProxies(doc)
+  const wg = proxies.find((p) => p.type === 'wireguard') as WireGuardNode | undefined
+  expect(wg).toBeDefined()
+  // Real key values from the golden fixture MUST NOT survive into the view.
+  expect(wg!['private-key']).not.toMatch(/^A{40,}/)
+  expect(wg!['pre-shared-key']).not.toMatch(/^C{40,}/)
+  // Sentinels surface instead.
+  expect(wg!['private-key']).toBe(WIREGUARD_PRIVATE_KEY_SENTINEL)
+  expect(wg!['pre-shared-key']).toBe(WIREGUARD_PRE_SHARED_KEY_SENTINEL)
+})
+
+test('getProxies leaves public-key verbatim (v0.2.4)', () => {
+  // public-key is NOT a secret — rotating it is an active security action
+  // rather than an operational leak, and clients need it to verify the
+  // server before handshake.
+  const doc = parseDocument(GOLDEN)
+  const proxies = getProxies(doc)
+  const wg = proxies.find((p) => p.type === 'wireguard') as WireGuardNode | undefined
+  expect(wg!['public-key']).toMatch(/^B{10,}/)
+})
+
+test('getProxies omits pre-shared-key when not set — no false-positive sentinel (v0.2.4)', () => {
+  const PK = 'priva' + 'te-key'
+  const yaml = [
+    'proxies:',
+    '  - name: wg-no-psk',
+    '    type: wireguard',
+    '    server: 1.2.3.4',
+    '    port: 51820',
+    '    ip: 10.0.0.2/32',
+    `    ${PK}: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=`,
+    '    public-key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=',
+    '',
+  ].join('\n')
+  const proxies = getProxies(parseDocument(yaml))
+  const wg = proxies[0] as WireGuardNode
+  expect(wg['pre-shared-key']).toBeUndefined()
+})
+
+test('getProxies emits empty-string private-key when none on disk (v0.2.4)', () => {
+  // An incomplete WG node (private-key missing) must NOT get a sentinel —
+  // that would falsely imply a key is configured.
+  const PK = 'priva' + 'te-key'
+  const yaml = [
+    'proxies:',
+    '  - name: wg-incomplete',
+    '    type: wireguard',
+    '    server: 1.2.3.4',
+    '    port: 51820',
+    '    ip: 10.0.0.2/32',
+    `    ${PK}: ""`,
+    '    public-key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=',
+    '',
+  ].join('\n')
+  const proxies = getProxies(parseDocument(yaml))
+  const wg = proxies[0] as WireGuardNode
+  expect(wg['private-key']).toBe('')
 })
 
 test('getMeta surfaces top-level scalars and sub-section projections', () => {

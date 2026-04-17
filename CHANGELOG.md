@@ -4,6 +4,73 @@ All notable changes to Miharbor are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [semver](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] — 2026-04-17
+
+Two new config fields on the structured Profile editor plus two deferred
+secret-masking fixes from the v0.2.3 audit.
+
+### Added
+
+- **`interface-name` on the Profile page.** Free-form string (eth0 /
+  en0 / enp170s0). When this is set AND `tun.auto-detect-interface: true`
+  is enabled, a guardrail plate reminds the operator that the explicit
+  bind wins — the recommended pattern on multi-homed hosts (see the
+  runbook's dual-NIC router invariant).
+- **`geox-url` sub-section on the Profile page.** Four labelled URL
+  inputs (`geoip`, `geosite`, `mmdb`, `asn`) with per-field "Reset"
+  buttons. Empty fields unset the override (mihomo falls back to its
+  compiled default). Inline validation rejects non-http(s) values.
+  Unknown sub-keys ride along on `extras` so round-tripping a future
+  mihomo release is non-destructive.
+
+### Fixed
+
+- **`/api/config/meta` no longer leaks the mihomo `secret:` Bearer.**
+  `getMeta()` now substitutes a fixed literal sentinel
+  (`__MIHARBOR_SECRET_SET_NOT_SHOWN__`, exported as
+  `META_SECRET_SENTINEL` from `miharbor-shared`) whenever a real secret
+  is present on disk. The sentinel is stable across polling (unlike
+  vault UUIDs that would mint fresh values per call) and the SPA
+  recognises it to disable the ProfileForm's reveal-eye toggle. Empty
+  / unset secret stays empty — no false-positive "value is configured"
+  hint.
+- **`/api/config/proxies` no longer leaks WireGuard `private-key` or
+  `pre-shared-key`.** `getProxies()` substitutes the real bytes with
+  fixed 44-char base64-valid sentinels (`WIREGUARD_PRIVATE_KEY_SENTINEL`
+  / `WIREGUARD_PRE_SHARED_KEY_SENTINEL`) so the existing
+  `isValidWireGuardKey` regex still accepts them in the form's
+  masked-by-default input. Public-key stays verbatim (not a secret;
+  clients need it to verify the server). The WireGuardForm disables
+  its reveal-eye toggle when the displayed value equals the sentinel
+  and round-trips the sentinel unchanged on submit if the operator
+  doesn't rotate the key.
+- **Deploy pipeline supports sentinel "keep existing value".** If a
+  draft reaches `/api/deploy` with any of the three view-scope
+  sentinels still in place (operator seeded from `/meta` or `/proxies`
+  without going through `/draft`, or the sentinel survived a partial
+  edit), the write-reload step looks up the matching on-disk value and
+  substitutes it before the YAML hits the filesystem. Scoped narrowly:
+  only `secret:` at document root and `private-key` /
+  `pre-shared-key` under `proxies[*]` by matching `name` — an
+  unrelated scalar that happens to equal the sentinel literal is
+  passed through. The diff step resolves sentinels first so the UI
+  doesn't show a spurious "secret changed" line.
+
+### Tests
+
+- 647 → **663** server/shared tests (`bun test`), 242 → **263** web
+  tests (vitest). Regression tests cover: view projection for
+  `interface-name` + `geox-url`; EN/RU i18n parity; ProfileForm
+  interface-name guardrail + geox-url reset + inline URL validation;
+  `/meta` sentinel substitution + false-positive guard on empty /
+  absent secret; `/proxies` sentinel substitution + false-positive
+  guard on missing `pre-shared-key`; pipeline sentinel round-trip for
+  all three keys + scope-narrowness (literal in unrelated field stays
+  put); WireGuardForm sentinel-aware reveal-eye + preservation on
+  submit.
+
+---
+
 ## [0.2.3] — 2026-04-17
 
 ### Fixed

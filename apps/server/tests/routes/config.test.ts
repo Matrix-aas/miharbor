@@ -51,6 +51,26 @@ test('GET /api/config/proxies returns ProxyNode[]', async () => {
   expect(body.some((p) => p.type === 'wireguard')).toBe(true)
 })
 
+test('GET /api/config/proxies MASKS WireGuard key material with key-shaped sentinels (v0.2.4)', async () => {
+  const { app } = await buildApp()
+  const r = await app.handle(new Request('http://localhost/api/config/proxies'))
+  expect(r.status).toBe(200)
+  const body = (await r.json()) as Array<
+    Record<string, unknown> & { type: string; 'private-key'?: string; 'pre-shared-key'?: string }
+  >
+  const wg = body.find((p) => p.type === 'wireguard')
+  expect(wg).toBeDefined()
+  // Real bytes from the golden fixture NEVER reach the response.
+  const rawText = await (
+    await app.handle(new Request('http://localhost/api/config/proxies'))
+  ).text()
+  expect(rawText).not.toContain('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=')
+  expect(rawText).not.toContain('CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=')
+  // Sentinels (44 base64 chars) surface instead.
+  expect(wg!['private-key']).toBe('MIHARBORMASKEDPRIVATEKEYREENTERTOCHANGE1234=')
+  expect(wg!['pre-shared-key']).toBe('MIHARBORMASKEDPRESHAREDKEYREENTERTOCHANGE12=')
+})
+
 test('GET /api/config/meta returns top-level settings', async () => {
   const { app } = await buildApp()
   const r = await app.handle(new Request('http://localhost/api/config/meta'))
