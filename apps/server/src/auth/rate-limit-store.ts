@@ -73,10 +73,12 @@ interface PersistedFile {
 
 /** Atomic write: write tmp sibling, fsync, rename onto target. `rename(2)`
  *  is atomic within a single filesystem so readers never see a partial file.
+ *  Ensures parent directory exists (mkdir recursive 0700) before writing.
  *  Mirrors the helper in `transport/local-fs.ts` (kept local so this module
  *  has no cross-subsystem coupling). */
 async function atomicWriteJson(targetPath: string, data: unknown, mode = 0o600): Promise<void> {
   const dir = dirname(targetPath)
+  await fsp.mkdir(dir, { recursive: true, mode: 0o700 })
   const tmp = join(dir, `.${crypto.randomUUID()}.miharbor.rl.tmp`)
   const payload = JSON.stringify(data)
   const fh = await fsp.open(tmp, 'w', mode)
@@ -208,6 +210,15 @@ export function createFileStore(opts: FileStoreOptions): RateLimitStore {
         return out
       }
       const p = parsed as Partial<PersistedFile>
+      if (typeof p.version !== 'number' || p.version !== FILE_VERSION) {
+        warn({
+          msg: 'rate-limit state file has unknown version — starting with empty state',
+          path,
+          got: p.version,
+          expected: FILE_VERSION,
+        })
+        return out
+      }
       if (!p.entries || typeof p.entries !== 'object' || Array.isArray(p.entries)) {
         warn({
           msg: 'rate-limit state file is corrupt (entries missing or not an object)',

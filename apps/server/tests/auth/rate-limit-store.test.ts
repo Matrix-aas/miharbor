@@ -265,6 +265,32 @@ test('FileStore: load() skips individual entries missing required fields', async
   await store.dispose()
 })
 
+test('FileStore: load() rejects unknown version and returns empty Map + warns', async () => {
+  const path = join(dir, 'rl.json')
+  writeFileSync(
+    path,
+    JSON.stringify({
+      version: 2,
+      savedAt: 0,
+      entries: {
+        ip1: { fails: 5, firstFailAt: 100, lockedUntil: 0 },
+      },
+    }),
+    'utf8',
+  )
+  const { warnings, logger } = captureWarnings()
+  const store = createFileStore({ path, debounceMs: 10, logger })
+  const loaded = await store.load()
+  expect(loaded.size).toBe(0)
+  expect(warnings.length).toBeGreaterThan(0)
+  const w = warnings[0]!
+  expect(typeof w.msg).toBe('string')
+  expect((w.msg as string).toLowerCase()).toContain('unknown version')
+  expect(w.got).toBe(2)
+  expect(w.expected).toBe(1)
+  await store.dispose()
+})
+
 // ---------- FileStore: atomic write ----------
 
 test('FileStore: atomic write leaves no partial file on write failure', async () => {
