@@ -4,6 +4,26 @@ All notable changes to Miharbor are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [semver](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] — 2026-04-17
+
+Regression fix for v0.2.0: `reloadConfig()` was sending an empty request
+body, which real mihomo (1.19.x) rejects with HTTP 400 "Body invalid".
+
+### Fixed
+
+- **`reloadConfig()` now sends a valid JSON body (`{}`)** instead of an empty
+  body. Mihomo requires a valid JSON body on PUT `/configs`, even if empty.
+  The empty body caused a 400 error on the live router. The `{}` body reloads
+  from the currently loaded config path on disk (no need to pass path, which
+  would require container context).
+
+### Tests
+
+- 644 tests maintained. Updated `reloadConfig` test now verifies correct body
+  (`{}`), content-type header (`application/json`), and preserves Authorization.
+
+---
+
 ## [0.2.1] — 2026-04-17
 
 Hotfix for two v0.2.0 deploy blockers discovered during the first

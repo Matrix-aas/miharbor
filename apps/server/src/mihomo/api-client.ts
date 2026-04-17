@@ -149,8 +149,15 @@ export function createMihomoApi(opts: MihomoApiClientOptions): MihomoApi {
     },
 
     async reloadConfig() {
-      // PUT with no body — mihomo reloads from MIHOMO_CONFIG_PATH on disk.
-      await call('/configs?force=true', { method: 'PUT' })
+      // mihomo PUT /configs requires a valid JSON body. `{}` reloads from
+      // the currently loaded config path on disk; no need to pass path
+      // (which would require knowing mihomo's host-side view of the path
+      // when miharbor runs in a container).
+      await call('/configs?force=true', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      })
     },
 
     listProxies() {
