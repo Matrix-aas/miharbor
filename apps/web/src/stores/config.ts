@@ -22,6 +22,7 @@ import type {
   ProfileConfig,
   ProxyNode,
   Rule,
+  RuleProvidersConfig,
   Service,
   SnifferConfig,
   TunConfig,
@@ -42,6 +43,7 @@ import {
   setDnsConfig,
   setGroupDirection,
   setProfileConfig,
+  setProvidersConfig,
   setSnifferConfig,
   setTunConfig,
   upsertProxyNode,
@@ -53,6 +55,7 @@ import { getDnsConfig } from '@/lib/dns-view'
 import { getTunConfig } from '@/lib/tun-view'
 import { getSnifferConfig } from '@/lib/sniffer-view'
 import { getProfileConfig } from '@/lib/profile-view'
+import { getProvidersConfig } from '@/lib/providers-view'
 import type { Node, YAMLSeq } from 'yaml'
 import { parseRulesFromDoc } from 'miharbor-shared'
 
@@ -255,6 +258,17 @@ export const useConfigStore = defineStore('config', () => {
     if (!draftText.value) return {}
     try {
       return getProfileConfig(parseDraft(draftText.value))
+    } catch {
+      return {}
+    }
+  })
+
+  /** Typed view of the `rule-providers:` section from the draft. Same
+   *  contract as the other structured views. */
+  const providersConfig = computed<RuleProvidersConfig>(() => {
+    if (!draftText.value) return {}
+    try {
+      return getProvidersConfig(parseDraft(draftText.value))
     } catch {
       return {}
     }
@@ -508,6 +522,18 @@ export const useConfigStore = defineStore('config', () => {
     await commitDoc(doc)
   }
 
+  /** Replace the entire `rule-providers:` section in the draft. Same
+   *  contract as the other section draft setters. */
+  async function setProvidersConfigDraft(config: RuleProvidersConfig): Promise<void> {
+    if (!draftText.value) {
+      if (rawLive.value === null) throw new Error('no live config to bootstrap draft from')
+      draftText.value = rawLive.value
+    }
+    const doc = parseDraft(draftText.value)
+    setProvidersConfig(doc, config)
+    await commitDoc(doc)
+  }
+
   // Initial lint on first load.
   watch(
     () => draftText.value,
@@ -540,6 +566,7 @@ export const useConfigStore = defineStore('config', () => {
     tunConfig,
     snifferConfig,
     profileConfig,
+    providersConfig,
     // lifecycle
     loadAll,
     fetchLiveProxyState,
@@ -558,5 +585,6 @@ export const useConfigStore = defineStore('config', () => {
     setTunConfigDraft,
     setSnifferConfigDraft,
     setProfileConfigDraft,
+    setProvidersConfigDraft,
   }
 })

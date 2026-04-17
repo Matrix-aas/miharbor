@@ -6,7 +6,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import Services from '@/pages/Services.vue'
 import Proxies from '@/pages/Proxies.vue'
-import Placeholder from '@/pages/Placeholder.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/services' },
@@ -16,8 +15,10 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/providers',
     name: 'providers',
-    component: Placeholder,
-    props: { pageKey: 'pages.providers' },
+    // Lazy-loaded — Providers.vue pulls its subcomponent tree (ProviderList,
+    // ProviderForm, InlineRulesEditor) only when the operator actually
+    // navigates here.
+    component: () => import('@/pages/Providers.vue'),
   },
   {
     path: '/dns',

@@ -41,6 +41,7 @@ import { healthRoutes } from './routes/health.ts'
 import { authRoutes } from './routes/auth.ts'
 import { lintRoutes } from './routes/lint.ts'
 import { mihomoRoutes } from './routes/mihomo.ts'
+import { providersRoutes } from './routes/providers.ts'
 import { settingsRoutes } from './routes/settings.ts'
 import { onboardingRoutes } from './routes/onboarding.ts'
 import { join, normalize, resolve } from 'node:path'
@@ -232,6 +233,7 @@ export async function wireApp(
     .use(healthRoutes({ monitor }))
     .use(authRoutes({ authStore, audit }))
     .use(mihomoRoutes({ mihomoApi }))
+    .use(providersRoutes({ mihomoApi, transport }))
     .use(settingsRoutes({ env, rawEnv }))
     .use(
       onboardingRoutes({

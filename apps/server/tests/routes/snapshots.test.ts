@@ -43,6 +43,8 @@ async function buildApp() {
       getProxyDelay: async () => ({ delay: 1 }),
       listProviders: async () => ({}),
       refreshProvider: async () => {},
+      listRuleProviders: async () => ({}),
+      refreshRuleProvider: async () => {},
       listRules: async () => [],
     },
     logger: { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} },

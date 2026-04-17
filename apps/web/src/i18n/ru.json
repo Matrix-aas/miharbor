@@ -282,7 +282,78 @@
     },
     "providers": {
       "title": "Rule-providers",
-      "placeholder": "Управление rule-providers появится на этапе 2."
+      "subtitle": "Внешние rule-sets (adblock-списки, GeoSite, inline-правила) — ссылаются из `rules:` как `RULE-SET,<name>,…`.",
+      "add": "Добавить provider",
+      "list": {
+        "title": "Настроенные providers",
+        "empty": "Providers ещё не настроены. Нажмите «Добавить provider», чтобы создать.",
+        "table_aria": "Настроенные rule-providers",
+        "col_name": "Имя",
+        "col_type": "Тип",
+        "col_behavior": "Behavior",
+        "col_format": "Формат",
+        "col_interval": "Интервал (сек)",
+        "col_updated": "Последнее обновление",
+        "col_actions": "Действия",
+        "refresh": "Обновить provider {name} сейчас",
+        "edit": "Редактировать provider {name}",
+        "delete": "Удалить provider {name}",
+        "updating": "обновляется",
+        "never_updated": "—"
+      },
+      "types": {
+        "http": "http (удалённый URL)",
+        "file": "file (локальный путь)",
+        "inline": "inline (правила внутри конфига)"
+      },
+      "behaviors": {
+        "domain": "domain",
+        "ipcidr": "ipcidr",
+        "classical": "classical"
+      },
+      "form": {
+        "add_title": "Новый rule-provider",
+        "edit_title": "Редактирование rule-provider «{name}»",
+        "name": "Имя",
+        "name_placeholder": "adblock",
+        "name_taken": "Provider с таким именем уже существует.",
+        "type": "Тип",
+        "behavior": "Behavior",
+        "format": "Формат",
+        "url": "URL",
+        "url_placeholder": "https://example.com/adblock.yaml",
+        "interval": "Интервал обновления (секунды)",
+        "interval_placeholder": "86400",
+        "interval_hint": "Как часто mihomo автоматически перекачивает rule-set. Ручное обновление доступно всегда.",
+        "proxy": "Скачивать через прокси",
+        "proxy_placeholder": "PROXY",
+        "proxy_hint": "Необязательно: через какую proxy-group mihomo скачивает файл (для заблокированных источников). Пусто — напрямую.",
+        "path": "Путь",
+        "path_placeholder": "./rules/my-rules.txt",
+        "path_hint": "Относительно config-директории mihomo.",
+        "payload": "Правила (payload)",
+        "payload_hint": "По одному правилу на строку — например, «DOMAIN-SUFFIX,example.com», «IP-CIDR,10.0.0.0/8,no-resolve». Префикс «RULE-SET,NAME,» НЕ указывайте (mihomo добавит сам).",
+        "err_url_required": "URL обязателен для http-providers.",
+        "err_interval_required": "Интервал > 0 обязателен для http-providers.",
+        "err_path_required": "Путь обязателен для file-providers.",
+        "err_payload_required": "Inline-provider требует минимум одно правило."
+      },
+      "inline": {
+        "placeholder": "DOMAIN-SUFFIX,example.com",
+        "empty": "Inline-правил пока нет.",
+        "add": "Добавить правило",
+        "remove": "Удалить правило",
+        "aria_label": "Список inline-правил",
+        "entry_aria": "Inline-правило № {index}"
+      },
+      "toast": {
+        "refresh_ok": "Обновление «{name}» запущено.",
+        "refresh_err": "Ошибка обновления «{name}»: {msg}"
+      },
+      "extras": {
+        "title": "Непрочитанные записи",
+        "note": "Эти записи не удалось полностью разобрать, но они сохранены в YAML как есть — редактируйте их в Raw YAML."
+      }
     },
     "dns": {
       "title": "DNS",

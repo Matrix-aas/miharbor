@@ -59,6 +59,8 @@ function makeMihomoApi(failReload = false): FakeMihomoApi {
     getProxyDelay: async () => ({ delay: 42 }),
     listProviders: async () => ({}),
     refreshProvider: async () => {},
+    listRuleProviders: async () => ({}),
+    refreshRuleProvider: async () => {},
     listRules: async () => [],
     failReload,
   }

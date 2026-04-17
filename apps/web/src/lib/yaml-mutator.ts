@@ -28,6 +28,8 @@ import {
   type ProfileNested,
   type ProxyNode,
   type Rule,
+  type RuleProviderConfig,
+  type RuleProvidersConfig,
   serializeRule,
   type SnifferConfig,
   type SnifferProtocol,
@@ -654,6 +656,69 @@ export function setProfileConfig(doc: Document, config: ProfileConfig): void {
       rootMap.set(k, doc.createNode(v))
     }
   }
+}
+
+// ----- rule-providers: section mutators ----------------------------------
+
+/** Canonical per-provider key order. Matches the typical mihomo example
+ *  layout: type/behavior/format first, then transport-specific fields. The
+ *  specific key subset written depends on `type` — for http we emit
+ *  url/interval/proxy; for file just path; for inline the payload. */
+const PROVIDER_KEY_ORDER: readonly (keyof RuleProviderConfig)[] = [
+  'type',
+  'behavior',
+  'format',
+  'url',
+  'interval',
+  'proxy',
+  'path',
+  'payload',
+]
+
+function buildProviderMap(cfg: RuleProviderConfig): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const k of PROVIDER_KEY_ORDER) {
+    const v = cfg[k]
+    if (v === undefined) continue
+    out[k] = v
+  }
+  if (cfg.extras) {
+    const extraKeys = Object.keys(cfg.extras).sort()
+    for (const k of extraKeys) {
+      out[k] = cfg.extras[k]
+    }
+  }
+  return out
+}
+
+/** Replace the entire `rule-providers:` section with `config`. Providers are
+ *  written in the insertion order of `config.providers`; top-level extras
+ *  (malformed entries round-tripped from the view projection) are appended
+ *  after, sorted by key for determinism. An empty config removes the
+ *  section entirely rather than emitting `rule-providers: {}`. */
+export function setProvidersConfig(doc: Document, config: RuleProvidersConfig): void {
+  const raw: Record<string, unknown> = {}
+  if (config.providers) {
+    for (const [name, cfg] of Object.entries(config.providers)) {
+      raw[name] = buildProviderMap(cfg)
+    }
+  }
+  if (config.extras) {
+    const extraKeys = Object.keys(config.extras).sort()
+    for (const k of extraKeys) {
+      // Don't overwrite a real provider with an extras entry of the same
+      // name — defensive, shouldn't happen on normal round-trip because
+      // the projection never emits a name to both buckets.
+      if (k in raw) continue
+      raw[k] = config.extras[k]
+    }
+  }
+  if (Object.keys(raw).length === 0) {
+    doc.deleteIn(['rule-providers'])
+    return
+  }
+  const node = doc.createNode(raw)
+  doc.setIn(['rule-providers'], node)
 }
 
 /** Collect proxy-server IPs from the current doc. Used by the Tun page to

@@ -24,6 +24,8 @@ function makeApi(overrides: Partial<MihomoApi> = {}): MihomoApi {
     getProxyDelay: async () => ({ delay: 42 }),
     listProviders: async () => ({}),
     refreshProvider: async () => {},
+    listRuleProviders: async () => ({}),
+    refreshRuleProvider: async () => {},
     listRules: async () => [{ type: 'MATCH', target: 'DIRECT' }],
     ...overrides,
   }

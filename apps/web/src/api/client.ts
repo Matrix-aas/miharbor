@@ -186,4 +186,10 @@ export const endpoints = {
       )
     },
   },
+  providers: {
+    refresh: (name: string) =>
+      api<{ ok: true; name: string }>(`/api/providers/${encodeURIComponent(name)}/refresh`, {
+        method: 'POST',
+      }),
+  },
 }

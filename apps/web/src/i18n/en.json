@@ -282,7 +282,78 @@
     },
     "providers": {
       "title": "Rule providers",
-      "placeholder": "Rule-providers management ships in stage 2."
+      "subtitle": "External rule-sets (adblock lists, GeoSite, inline rules) referenced from `rules:` as `RULE-SET,<name>,…`.",
+      "add": "Add provider",
+      "list": {
+        "title": "Configured providers",
+        "empty": "No rule providers configured yet. Use \"Add provider\" to define one.",
+        "table_aria": "Configured rule providers",
+        "col_name": "Name",
+        "col_type": "Type",
+        "col_behavior": "Behavior",
+        "col_format": "Format",
+        "col_interval": "Interval (s)",
+        "col_updated": "Last updated",
+        "col_actions": "Actions",
+        "refresh": "Refresh provider {name} now",
+        "edit": "Edit provider {name}",
+        "delete": "Delete provider {name}",
+        "updating": "updating",
+        "never_updated": "—"
+      },
+      "types": {
+        "http": "http (remote URL)",
+        "file": "file (local path)",
+        "inline": "inline (embedded rules)"
+      },
+      "behaviors": {
+        "domain": "domain",
+        "ipcidr": "ipcidr",
+        "classical": "classical"
+      },
+      "form": {
+        "add_title": "New rule provider",
+        "edit_title": "Edit rule provider \"{name}\"",
+        "name": "Name",
+        "name_placeholder": "adblock",
+        "name_taken": "A provider with this name already exists.",
+        "type": "Type",
+        "behavior": "Behavior",
+        "format": "Format",
+        "url": "URL",
+        "url_placeholder": "https://example.com/adblock.yaml",
+        "interval": "Refresh interval (seconds)",
+        "interval_placeholder": "86400",
+        "interval_hint": "How often mihomo automatically re-fetches the ruleset. Manual refresh is always available.",
+        "proxy": "Fetch through proxy",
+        "proxy_placeholder": "PROXY",
+        "proxy_hint": "Optional: which proxy group mihomo routes the fetch through (for geo-blocked sources). Leave empty to fetch directly.",
+        "path": "Path",
+        "path_placeholder": "./rules/my-rules.txt",
+        "path_hint": "Relative to mihomo's config directory.",
+        "payload": "Payload rules",
+        "payload_hint": "One rule body per line — e.g. \"DOMAIN-SUFFIX,example.com\", \"IP-CIDR,10.0.0.0/8,no-resolve\". Do NOT include the \"RULE-SET,NAME,\" prefix (mihomo adds it automatically).",
+        "err_url_required": "URL is required for http providers.",
+        "err_interval_required": "A refresh interval greater than 0 is required for http providers.",
+        "err_path_required": "Path is required for file providers.",
+        "err_payload_required": "Inline providers need at least one rule."
+      },
+      "inline": {
+        "placeholder": "DOMAIN-SUFFIX,example.com",
+        "empty": "No inline rules yet.",
+        "add": "Add rule",
+        "remove": "Remove rule",
+        "aria_label": "Inline rule payload",
+        "entry_aria": "Inline rule {index}"
+      },
+      "toast": {
+        "refresh_ok": "Refresh triggered for \"{name}\".",
+        "refresh_err": "Refresh failed for \"{name}\": {msg}"
+      },
+      "extras": {
+        "title": "Preserved entries",
+        "note": "These entries couldn't be fully parsed but are preserved verbatim in the YAML — edit them in Raw YAML."
+      }
     },
     "dns": {
       "title": "DNS",

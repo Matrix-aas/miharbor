@@ -69,8 +69,13 @@ export interface MihomoApi {
   getProxyDelay(name: string, opts?: { url?: string; timeout?: number }): Promise<{ delay: number }>
   /** `GET /providers/proxies` — proxy providers. */
   listProviders(): Promise<Record<string, unknown>>
-  /** `PUT /providers/proxies/:name` — refresh a provider. */
+  /** `PUT /providers/proxies/:name` — refresh a proxy provider. */
   refreshProvider(name: string): Promise<void>
+  /** `GET /providers/rules` — rule providers (adblock-lists, geosite, etc.). */
+  listRuleProviders(): Promise<Record<string, unknown>>
+  /** `PUT /providers/rules/:name` — refresh a rule provider. Same semantics
+   *  as `refreshProvider` but targets the rule-provider namespace. */
+  refreshRuleProvider(name: string): Promise<void>
   /** `GET /rules` — parsed rules array. */
   listRules(): Promise<unknown[]>
 }
@@ -167,6 +172,14 @@ export function createMihomoApi(opts: MihomoApiClientOptions): MihomoApi {
 
     async refreshProvider(name) {
       await call(`/providers/proxies/${encodeURIComponent(name)}`, { method: 'PUT' })
+    },
+
+    listRuleProviders() {
+      return callJson<Record<string, unknown>>('/providers/rules')
+    },
+
+    async refreshRuleProvider(name) {
+      await call(`/providers/rules/${encodeURIComponent(name)}`, { method: 'PUT' })
     },
 
     async listRules() {
