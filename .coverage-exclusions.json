@@ -34,8 +34,8 @@
     }
   },
   "overall_coverage": {
-    "apps_server_src": 91.17,
-    "all_files": 91.17,
+    "apps_server_src": 89.98,
+    "all_files": 89.98,
     "threshold": 80,
     "status": "PASS"
   },
