@@ -69,7 +69,7 @@ export default defineConfig({
       },
       reuseExistingServer: !process.env.CI,
       // Cold-start of bun can exceed 15s on CI runners under contention; bumped to 60s.
-      timeout: 60_000,
+      timeout: 120_000,
       stdout: 'pipe',
       stderr: 'pipe',
     },
@@ -92,7 +92,7 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       // Cold-start of bun imports (Elysia + ssh2 + yaml + argon2 + ...) can exceed 20s
       // on GitHub Actions runners under contention. Bumped to 60s for stability.
-      timeout: 60_000,
+      timeout: 120_000,
       stdout: 'pipe',
       stderr: 'pipe',
     },
