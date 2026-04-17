@@ -178,6 +178,14 @@ function makeIssue(inv: UserInvariant, path: string[], reason: string): Issue {
       reason,
       rule_kind: inv.rule.kind,
     },
+    suggestion: {
+      key: 'suggestion_user_invariant',
+      params: {
+        id: inv.id,
+        name: inv.name,
+        description: inv.description ?? '',
+      },
+    },
   }
 }
 

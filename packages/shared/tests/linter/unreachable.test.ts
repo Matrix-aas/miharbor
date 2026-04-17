@@ -97,6 +97,27 @@ test('only flags nearest (first-seen) covering rule, not every ancestor', () => 
   expect((issues[0]!.params as { covered_by_index: number }).covered_by_index).toBe(0)
 })
 
+// --- Suggestions (Task 49) ---
+
+test('unreachable rule issue includes suggestion', () => {
+  const issues = detectUnreachable(rules(['DOMAIN-SUFFIX,com,A', 'DOMAIN-SUFFIX,example.com,B']))
+  expect(issues.length).toBe(1)
+  const issue = issues[0]!
+  expect(issue.suggestion).toBeDefined()
+  expect(issue.suggestion?.key).toBe('suggestion_unreachable_rule_shadowed')
+  expect(issue.suggestion?.params).toEqual({ covered_by_index: 0 })
+})
+
+test('duplicate rule issue includes suggestion', () => {
+  const issues = detectUnreachable(rules(['DOMAIN-SUFFIX,x.ru,A', 'DOMAIN-SUFFIX,x.ru,A']))
+  expect(issues.length).toBe(1)
+  const issue = issues[0]!
+  expect(issue.code).toBe('LINTER_DUPLICATE_RULE')
+  expect(issue.suggestion).toBeDefined()
+  expect(issue.suggestion?.key).toBe('suggestion_duplicate_rule')
+  expect(issue.suggestion?.params).toEqual({ duplicate_of_index: 0 })
+})
+
 // --- Edge cases specific to the suffix-trie implementation ---------------
 // These guard against accidental false positives introduced by the HF3
 // trie optimisation. The reference nested-loop version trivially handled

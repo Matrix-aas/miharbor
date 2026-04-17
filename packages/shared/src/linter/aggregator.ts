@@ -42,6 +42,10 @@ export function runSharedLinters(doc: Document, opts: SharedLinterOptions = {}):
       code: 'LINTER_RULE_PARSE_ERROR',
       path: ['rules'],
       params: { message: err instanceof Error ? err.message : String(err) },
+      suggestion: {
+        key: 'suggestion_rule_parse_error',
+        params: { message: err instanceof Error ? err.message : String(err) },
+      },
     })
   }
 

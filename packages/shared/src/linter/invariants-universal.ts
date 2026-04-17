@@ -93,6 +93,10 @@ function runCheck(doc: Document, inv: InvariantDef): Issue | null {
         code: inv.message_key,
         path: [...inv.path],
         params: { id: inv.id, min: check.min, actual: val.length },
+        suggestion: {
+          key: 'suggestion_universal_invariant',
+          params: { id: inv.id, min: check.min },
+        },
       }
     }
     return null
@@ -106,6 +110,10 @@ function runCheck(doc: Document, inv: InvariantDef): Issue | null {
         code: inv.message_key,
         path: [...inv.path],
         params: { id: inv.id, value: val, forbidden: check.forbidden },
+        suggestion: {
+          key: 'suggestion_universal_invariant',
+          params: { id: inv.id, value: val },
+        },
       }
     }
     return null
@@ -124,6 +132,10 @@ function runCheck(doc: Document, inv: InvariantDef): Issue | null {
         code: inv.message_key,
         path: [...check.then_required],
         params: { id: inv.id, when_path: check.when, when_value: when },
+        suggestion: {
+          key: 'suggestion_universal_invariant',
+          params: { id: inv.id },
+        },
       }
     }
     return null
@@ -142,6 +154,10 @@ function runCheck(doc: Document, inv: InvariantDef): Issue | null {
         code: inv.message_key,
         path: [...inv.path],
         params: { id: inv.id },
+        suggestion: {
+          key: 'suggestion_universal_invariant',
+          params: { id: inv.id },
+        },
       }
     }
     return null

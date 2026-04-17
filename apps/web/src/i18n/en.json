@@ -742,5 +742,18 @@
       "title": "Settings",
       "placeholder": "Password + runtime settings arrive in a later task."
     }
+  },
+  "suggestions": {
+    "unreachable_rule_after_match": "This rule can never execute because a MATCH rule above it will catch all traffic. Either remove this rule or move it before the MATCH rule at #{covered_by_index}.",
+    "unreachable_rule_shadowed": "This rule is shadowed by rule #{covered_by_index} which covers a strictly wider set of inputs. Either remove this rule or reorder them.",
+    "duplicate_rule": "This rule is a duplicate of rule #{duplicate_of_index}. Remove one of them.",
+    "dangling_group_reference": "The target proxy-group '{target}' does not exist. Create it in the proxy-groups section, or change the target to an existing group or DIRECT/REJECT.",
+    "dangling_node_reference": "The proxy node '{ref}' does not exist in the proxies section or as another group. Add it to the proxies section, or remove the reference from group '{group}'.",
+    "dangling_ruleset_reference": "The rule-provider '{provider}' does not exist. Add it to the rule-providers section, or change the rule to reference an existing provider.",
+    "intra_group_duplicate": "This rule is a duplicate of rule #{duplicate_of_index} (same type and value, both targeting '{group}'). Remove one of them.",
+    "cross_group_duplicate": "This rule has the same type and value as rule #{firstAt}, but targets a different group ('{currentTarget}' vs '{firstTarget}'). This is sometimes intentional but often indicates an inconsistency.",
+    "rule_parse_error": "Could not parse the rules section. The error was: {message}. Check the YAML syntax — rules should be a list of items in the format TYPE,VALUE,TARGET[,modifiers].",
+    "universal_invariant": "This configuration violates a built-in invariant (id: {id}). Review the config requirements in your runbook or admin guide. For details, see the main error message.",
+    "user_invariant": "This violates a custom invariant: {name}. {description}. Review your invariants configuration and make the necessary changes."
   }
 }

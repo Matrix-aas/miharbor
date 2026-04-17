@@ -15,6 +15,12 @@ export const IssueSchema = Type.Object({
   code: Type.String(), // i18n key, e.g. "LINTER_UNREACHABLE_RULE"
   path: Type.Array(Type.Union([Type.String(), Type.Number()])), // YAML path
   params: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+  suggestion: Type.Optional(
+    Type.Object({
+      key: Type.String(), // i18n key for the suggestion text
+      params: Type.Optional(Type.Record(Type.String(), Type.Unknown())), // i18n params
+    }),
+  ),
   autofix: Type.Optional(
     Type.Object({
       label: Type.String(),

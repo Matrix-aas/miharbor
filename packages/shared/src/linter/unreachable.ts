@@ -213,6 +213,10 @@ export function detectUnreachable(rules: IndexedRule[]): Issue[] {
           code: 'LINTER_UNREACHABLE_RULE',
           path: ['rules', cur.index],
           params: { covered_by_index: rules[best]!.index, reason: 'match_above' },
+          suggestion: {
+            key: 'suggestion_unreachable_rule_after_match',
+            params: { covered_by_index: rules[best]!.index },
+          },
         })
       } else if (best === dupPos) {
         issues.push({
@@ -220,6 +224,10 @@ export function detectUnreachable(rules: IndexedRule[]): Issue[] {
           code: 'LINTER_DUPLICATE_RULE',
           path: ['rules', cur.index],
           params: { duplicate_of_index: rules[best]!.index },
+          suggestion: {
+            key: 'suggestion_duplicate_rule',
+            params: { duplicate_of_index: rules[best]!.index },
+          },
         })
       } else {
         issues.push({
@@ -227,6 +235,10 @@ export function detectUnreachable(rules: IndexedRule[]): Issue[] {
           code: 'LINTER_UNREACHABLE_RULE',
           path: ['rules', cur.index],
           params: { covered_by_index: rules[best]!.index },
+          suggestion: {
+            key: 'suggestion_unreachable_rule_shadowed',
+            params: { covered_by_index: rules[best]!.index },
+          },
         })
       }
     }

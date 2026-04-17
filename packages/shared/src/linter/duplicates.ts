@@ -149,6 +149,10 @@ export function detectDuplicates(doc: Document, rules: IndexedRule[]): Issue[] {
         code: 'LINTER_DANGLING_NODE_REFERENCE',
         path: ['proxy-groups', name, 'proxies'],
         params: { ref, group: name },
+        suggestion: {
+          key: 'suggestion_dangling_node_reference',
+          params: { ref, group: name },
+        },
       })
     }
   }
@@ -165,6 +169,10 @@ export function detectDuplicates(doc: Document, rules: IndexedRule[]): Issue[] {
         code: 'LINTER_DANGLING_GROUP_REFERENCE',
         path: ['rules', index],
         params: { target },
+        suggestion: {
+          key: 'suggestion_dangling_group_reference',
+          params: { target },
+        },
       })
     }
     if (rule.kind === 'simple' && rule.type === 'RULE-SET') {
@@ -174,6 +182,10 @@ export function detectDuplicates(doc: Document, rules: IndexedRule[]): Issue[] {
           code: 'LINTER_DANGLING_RULESET_REFERENCE',
           path: ['rules', index],
           params: { provider: rule.value },
+          suggestion: {
+            key: 'suggestion_dangling_ruleset_reference',
+            params: { provider: rule.value },
+          },
         })
       }
     }
@@ -205,6 +217,10 @@ export function detectDuplicates(doc: Document, rules: IndexedRule[]): Issue[] {
         code: 'LINTER_INTRA_GROUP_DUPLICATE',
         path: ['rules', index],
         params: { group: s.target, key, duplicate_of_index: priorIdx },
+        suggestion: {
+          key: 'suggestion_intra_group_duplicate',
+          params: { group: s.target, duplicate_of_index: priorIdx },
+        },
       })
     } else {
       groupMap.set(key, index)
@@ -223,6 +239,14 @@ export function detectDuplicates(doc: Document, rules: IndexedRule[]): Issue[] {
             firstTarget: first.target,
             currentTarget: s.target,
             key,
+          },
+          suggestion: {
+            key: 'suggestion_cross_group_duplicate',
+            params: {
+              firstAt: first.index,
+              firstTarget: first.target,
+              currentTarget: s.target,
+            },
           },
         })
       }
