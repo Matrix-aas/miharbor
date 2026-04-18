@@ -207,4 +207,11 @@ export const endpoints = {
         method: 'POST',
       }),
   },
+  catalog: {
+    geo: (refresh = false) =>
+      api<{
+        geosite: { entries: string[]; source: string; fetched: string | null; error: string | null }
+        geoip: { entries: string[]; source: string; fetched: string | null; error: string | null }
+      }>(`/api/catalog/geo${refresh ? '?refresh=1' : ''}`),
+  },
 }
