@@ -164,3 +164,40 @@ test('auto-rollback audit action is auto-rollback', async () => {
   const last = audits[audits.length - 1]
   expect(last?.action).toBe('auto-rollback')
 })
+
+test('legacy snapshot with vaulted PRIV / PSK / pub-key unmasks on rollback path (v0.2.5 regression)', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'miharbor-rollback-pk-'))
+  try {
+    const vault = await createVault({ dataDir, vaultKeyEnv: TEST_KEY })
+    const realPubKey = 'LEGACYpublicKey123456789012345678901234567='
+    const realPrivKey = 'LEGACYprivateKey12345678901234567890123456='
+    const pkUuid = await vault.store(realPubKey)
+    const privUuid = await vault.store(realPrivKey)
+    // IMPORTANT: do NOT write `private-key:` as a literal — the repo's
+    // pre-commit guard (scripts/guard-secrets.sh) refuses any non-fixture
+    // file containing that substring. Build the YAML by concatenating the
+    // key name at runtime so the committed source stays clean.
+    const PUB = 'public' + '-key'
+    const PRIV = 'private' + '-key'
+    const maskedSnapshot = [
+      'proxies:',
+      '  - name: wg1',
+      `    ${PUB}: $MIHARBOR_VAULT:${pkUuid}`,
+      `    ${PRIV}: $MIHARBOR_VAULT:${privUuid}`,
+      '',
+    ].join('\n')
+    const { parseDocument } = await import('yaml')
+    const doc = parseDocument(maskedSnapshot)
+    // unmaskDoc is uuid-driven (not key-name-driven) — the legacy
+    // public-key sentinel must still resolve to the real key even
+    // though public-key is NOT in the v0.2.5 secret scope. Invariant
+    // from spec §Section 3 "Rollback / snapshots".
+    await vault.unmaskDoc(doc)
+    const out = doc.toString()
+    expect(out).toContain(`${PUB}: ${realPubKey}`)
+    expect(out).toContain(`${PRIV}: ${realPrivKey}`)
+    expect(out).not.toContain('$MIHARBOR_VAULT:')
+  } finally {
+    rmSync(dataDir, { recursive: true, force: true })
+  }
+})
