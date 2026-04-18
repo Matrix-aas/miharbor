@@ -20,6 +20,11 @@
           "id": "6",
           "subject": "Task 4: Wire migration into GET /api/config/draft + audit log",
           "blockedBy": ["1", "3"]
+        },
+        {
+          "id": "16",
+          "subject": "Task 4.5: Legacy-snapshot rollback regression test",
+          "blockedBy": ["6"]
         }
       ]
     },

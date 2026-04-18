@@ -208,8 +208,8 @@ In `apps/web/src/i18n/ru.json`, append the Russian counterpart:
 Create `apps/web/tests/pending-changes-dialog.spec.ts`:
 
 ```ts
-import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import { createPinia, setActivePinia } from 'pinia'
 import en from '../src/i18n/en.json'
@@ -228,18 +228,33 @@ function makeI18n() {
   })
 }
 
+// Dialog content is teleported by radix-vue into document.body, so we attach
+// the wrapper there and query against document — mirrors the pattern in
+// apps/web/tests/template-suggester.spec.ts.
 function mountDialog() {
   return mount(PendingChangesDialog, {
     props: { open: true },
+    attachTo: document.body,
     global: { plugins: [makeI18n()] },
   })
 }
 
 describe('PendingChangesDialog', () => {
+  let wrappers: Array<VueWrapper<unknown>> = []
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.restoreAllMocks()
+    wrappers = []
   })
+  afterEach(() => {
+    for (const w of wrappers) w.unmount()
+    document.body.innerHTML = ''
+  })
+
+  function track(w: VueWrapper<unknown>) {
+    wrappers.push(w)
+    return w
+  }
 
   it('renders "no changes" when hasDraft=false', async () => {
     vi.spyOn(apiClient.endpoints.config, 'draftDiff').mockResolvedValue({
@@ -248,11 +263,14 @@ describe('PendingChangesDialog', () => {
       removed: 0,
       hasDraft: false,
     })
-    const wrapper = mountDialog()
+    track(mountDialog())
     await flushPromises()
-    expect(wrapper.html()).toContain('No changes')
-    const resetBtn = wrapper.find('[data-testid="pending-reset-button"]')
-    expect(resetBtn.attributes('disabled')).toBeDefined()
+    expect(document.body.innerHTML).toContain('No changes')
+    const resetBtn = document.querySelector<HTMLButtonElement>(
+      '[data-testid="pending-reset-button"]',
+    )
+    expect(resetBtn).toBeTruthy()
+    expect(resetBtn!.disabled).toBe(true)
   })
 
   it('fetches + renders diff2html output with line stats', async () => {
@@ -270,25 +288,27 @@ describe('PendingChangesDialog', () => {
       removed: 1,
       hasDraft: true,
     })
-    const wrapper = mountDialog()
+    track(mountDialog())
     await flushPromises()
     // diff2html emits `<span class="d2h-ins">` for adds; we don't assert
-    // the exact HTML but do confirm content landed.
-    expect(wrapper.html()).toContain('mode: global')
-    expect(wrapper.html()).toContain('+1')
-    expect(wrapper.html()).toContain('−1')
+    // the exact HTML but do confirm content + stats landed.
+    expect(document.body.innerHTML).toContain('mode: global')
+    expect(document.body.innerHTML).toContain('+1')
+    expect(document.body.innerHTML).toContain('−1')
   })
 
   it('shows error banner + retry when fetch fails', async () => {
     const spy = vi.spyOn(apiClient.endpoints.config, 'draftDiff')
     spy.mockRejectedValueOnce(new Error('boom'))
-    const wrapper = mountDialog()
+    track(mountDialog())
     await flushPromises()
-    expect(wrapper.html()).toContain('Failed to load diff')
+    expect(document.body.innerHTML).toContain('Failed to load diff')
     spy.mockResolvedValueOnce({ patch: '', added: 0, removed: 0, hasDraft: false })
-    await wrapper.get('[data-testid="pending-retry"]').trigger('click')
+    const retry = document.querySelector<HTMLButtonElement>('[data-testid="pending-retry"]')
+    expect(retry).toBeTruthy()
+    retry!.click()
     await flushPromises()
-    expect(wrapper.html()).toContain('No changes')
+    expect(document.body.innerHTML).toContain('No changes')
   })
 
   it('clicking reset → confirm → calls config.clearDraft + emits close', async () => {
@@ -300,13 +320,17 @@ describe('PendingChangesDialog', () => {
     })
     const store = useConfigStore()
     const clearSpy = vi.spyOn(store, 'clearDraft').mockResolvedValue()
-    const wrapper = mountDialog()
+    const wrapper = track(mountDialog())
     await flushPromises()
-    await wrapper.get('[data-testid="pending-reset-button"]').trigger('click')
+    const resetBtn = document.querySelector<HTMLButtonElement>(
+      '[data-testid="pending-reset-button"]',
+    )
+    expect(resetBtn).toBeTruthy()
+    resetBtn!.click()
     await flushPromises()
     // ConfirmDialog emits 'confirm' from its primary button. We find the
-    // ConfirmDialog component instance and trigger the event directly,
-    // which matches how the parent listens (`@confirm="confirmReset"`).
+    // ConfirmDialog component instance inside the wrapper tree and trigger
+    // the event directly — matches how the parent listens (@confirm).
     const confirmDialog = wrapper.findComponent({ name: 'ConfirmDialog' })
     expect(confirmDialog.exists()).toBe(true)
     await confirmDialog.vm.$emit('confirm')
@@ -316,6 +340,8 @@ describe('PendingChangesDialog', () => {
   })
 })
 ```
+
+Note: `useConfigStore().clearDraft` is a setup-store action (Pinia composition API), and `vi.spyOn(store, 'clearDraft').mockResolvedValue()` works because setup stores expose actions as regular fields on the store object — no `createTestingPinia` needed. If a future Pinia upgrade wraps actions in read-only accessors, switch the test to `vi.spyOn(store, 'clearDraft' as any).mockImplementation(async () => {})` or use `createTestingPinia({ stubActions: false })`.
 
 - [ ] **Step 4: Run tests to verify they fail**
 
@@ -573,12 +599,12 @@ and offers a destructive reset-all action wired to config.clearDraft()."
 
 **Acceptance Criteria:**
 
-- [ ] Badge is a `<button>` when `dirtyCount === 1` AND both `rawLive` / `draftText` are loaded.
-- [ ] Badge click opens `PendingChangesDialog` (asserts `open` prop becomes `true`).
-- [ ] When `rawLive === null || draftText === null`, button is disabled — `aria-disabled` + cannot open dialog.
+- [ ] Clickable `<button>` badge appears when `dirtyCount === 1` (which already implies `rawLive !== null && draftText !== null`, per the store's computed guard).
+- [ ] Badge click sets `pendingOpen = true`, which renders `PendingChangesDialog`.
 - [ ] Label text is `t('header.pending_changes')`, never a count.
-- [ ] Old `header.changes_count` key removed from both locales.
-- [ ] No visual regression on the `dirtyCount === 0` case — still renders `header.no_changes` muted badge.
+- [ ] Old `header.changes_count` key removed from both locales AND no other reference survives (`grep -r "header\.changes_count" apps/web` is empty).
+- [ ] `dirtyCount === 0` case still renders `header.no_changes` muted badge.
+- [ ] During initial load (`rawLive` / `draftText` both null), `dirtyCount` is already 0 by the store's logic (`apps/web/src/stores/config.ts:172-176`), so the muted badge shows — NOT a spurious "Pending changes" button. This is the intended UX for the load race.
 
 **Verify:** `bun x vitest run apps/web/tests/header.spec.ts` → all pass.
 
@@ -603,8 +629,8 @@ In `apps/web/src/i18n/ru.json`, in the `"header"` block:
 Create `apps/web/tests/header.spec.ts`:
 
 ```ts
-import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import { createPinia, setActivePinia } from 'pinia'
 import en from '../src/i18n/en.json'
@@ -624,8 +650,11 @@ function makeI18n() {
   })
 }
 
+// Header mounts PendingChangesDialog whose content is portaled to
+// document.body (radix-vue), so we attach + query there.
 function mountHeader() {
   return mount(Header, {
+    attachTo: document.body,
     global: {
       plugins: [makeI18n()],
       stubs: { 'router-link': true, HealthBadge: true },
@@ -634,6 +663,8 @@ function mountHeader() {
 }
 
 describe('Header dirty badge', () => {
+  let wrappers: Array<VueWrapper<unknown>> = []
+
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.spyOn(apiClient.endpoints.config, 'draftDiff').mockResolvedValue({
@@ -642,53 +673,59 @@ describe('Header dirty badge', () => {
       removed: 0,
       hasDraft: false,
     })
-    // Stub deploy store open/startDeploy so the Apply button in Header
-    // doesn't blow up during render.
-    const _deploy = useDeployStore()
-    vi.spyOn(_deploy, 'open').mockImplementation(() => {})
-    vi.spyOn(_deploy, 'startDeploy').mockResolvedValue()
-    vi.spyOn(_deploy, 'reset').mockImplementation(() => {})
+    const deploy = useDeployStore()
+    vi.spyOn(deploy, 'open').mockImplementation(() => {})
+    vi.spyOn(deploy, 'startDeploy').mockResolvedValue()
+    vi.spyOn(deploy, 'reset').mockImplementation(() => {})
+    wrappers = []
   })
+
+  afterEach(() => {
+    for (const w of wrappers) w.unmount()
+    document.body.innerHTML = ''
+  })
+
+  function track(w: VueWrapper<unknown>) {
+    wrappers.push(w)
+    return w
+  }
 
   it('renders "No changes" badge when dirtyCount is 0', async () => {
     const store = useConfigStore()
     store.rawLive = 'mode: rule\n'
     store.draftText = 'mode: rule\n'
-    const wrapper = mountHeader()
+    const wrapper = track(mountHeader())
     await flushPromises()
     expect(wrapper.html()).toContain('No changes')
     expect(wrapper.find('[data-testid="header-pending-badge"]').exists()).toBe(false)
   })
 
-  it('renders clickable "Pending changes" badge when dirty', async () => {
+  it('renders clickable "Pending changes" badge when dirty; click opens dialog', async () => {
     const store = useConfigStore()
     store.rawLive = 'mode: rule\n'
     store.draftText = 'mode: global\n'
-    const wrapper = mountHeader()
+    const wrapper = track(mountHeader())
     await flushPromises()
     const badge = wrapper.get('[data-testid="header-pending-badge"]')
     expect(badge.text()).toContain('Pending changes')
-    expect(badge.attributes('disabled')).toBeUndefined()
     await badge.trigger('click')
-    expect(
-      wrapper.find('[data-testid="pending-stats"]').exists() ||
-        wrapper.html().includes('Loading diff'),
-    ).toBe(true)
+    await flushPromises()
+    // Dialog content is portaled to document.body — look there for the
+    // mocked draftDiff response's "no changes" empty state.
+    expect(document.body.innerHTML).toMatch(/No changes|Loading diff/)
   })
 
-  it('disables badge when rawLive is null (initial load)', async () => {
+  it('during initial load (rawLive=null), dirtyCount=0 so no pending button renders', async () => {
+    // dirtyCount short-circuits to 0 when rawLive OR draftText is null
+    // (apps/web/src/stores/config.ts:172-176). Header should render the
+    // muted "No changes" badge instead of a clickable pending button.
     const store = useConfigStore()
     store.rawLive = null
     store.draftText = 'mode: global\n'
-    const wrapper = mountHeader()
+    const wrapper = track(mountHeader())
     await flushPromises()
-    const badge = wrapper.find('[data-testid="header-pending-badge"]')
-    // Either the element doesn't render OR it's disabled.
-    if (badge.exists()) {
-      expect(badge.attributes('disabled')).toBeDefined()
-    } else {
-      expect(wrapper.html()).toContain('No changes')
-    }
+    expect(wrapper.find('[data-testid="header-pending-badge"]').exists()).toBe(false)
+    expect(wrapper.html()).toContain('No changes')
   })
 })
 ```
@@ -708,31 +745,29 @@ In `apps/web/src/components/layout/Header.vue`:
 import PendingChangesDialog from './PendingChangesDialog.vue'
 ```
 
-2. Inside `<script setup>`, add dialog state + badge-ready computed:
+2. Inside `<script setup>`, add dialog state (no extra computed needed — `canApply` already implies `rawLive/draftText` are both non-null thanks to the store's `dirtyCount` definition):
 
 ```ts
 const pendingOpen = ref(false)
-const badgeReady = computed(() => config.rawLive !== null && config.draftText !== null)
 ```
 
 3. Replace the existing badge block (around line 129-132 — the `<Badge v-if="canApply" …>` / `<Badge v-else …>`) with:
 
 ```vue
 <button
-  v-if="canApply && badgeReady"
+  v-if="canApply"
   type="button"
   data-testid="header-pending-badge"
-  class="inline-flex items-center rounded-md bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
   :title="t('header.pending_tooltip')"
+  class="rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
   @click="pendingOpen = true"
 >
-          {{ t('header.pending_changes') }}
-        </button>
-<Badge v-else-if="canApply" variant="muted" :disabled="true" aria-disabled="true">
-          {{ t('header.pending_changes') }}
-        </Badge>
+  <Badge variant="secondary">{{ t('header.pending_changes') }}</Badge>
+</button>
 <Badge v-else variant="muted">{{ t('header.no_changes') }}</Badge>
 ```
+
+Wrapping `<Badge>` inside a `<button>` preserves the Badge component's styling (shadcn conventions) and avoids the "raw button + tailwind classes" divergence. No `v-else-if` branch is needed: `dirtyCount` returns `0` whenever `rawLive` or `draftText` is null, so `canApply` already guards against the load-race case — the muted "No changes" badge renders during initial load as the intended UX.
 
 4. At the bottom of `<template>`, just before the closing `</div>` that wraps the canonicalized-banner, mount the dialog:
 
@@ -740,17 +775,23 @@ const badgeReady = computed(() => config.rawLive !== null && config.draftText !=
 <PendingChangesDialog v-model:open="pendingOpen" />
 ```
 
-5. Drop the `t('header.changes_count', { count: dirtyCount }, dirtyCount)` call from all remaining code paths (search the file for `changes_count` — should be zero after edits).
+5. Repo-wide sanity check — ensure no stale references to the removed key:
+
+```bash
+grep -rn "header\\.changes_count" apps/web/src apps/web/tests
+```
+
+Expected: no output. If anything surfaces, fix that call site BEFORE moving on.
 
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `bun x vitest run apps/web/tests/header.spec.ts`
 Expected: all pass.
 
-Run full web suite to ensure no regressions (i18n key removal might break other components):
+Run full web suite to ensure no regressions:
 
 Run: `bun x vitest run`
-Expected: all pass. If any file errors on `header.changes_count`, grep for it and update.
+Expected: all pass.
 
 - [ ] **Step 6: Commit**
 
@@ -768,18 +809,22 @@ Disabled during initial load when rawLive/draftText are still null."
 
 ---
 
-## Task 8: Delete the placeholder `DiffViewer.vue`
+## Task 8: Delete the placeholder `DiffViewer.vue` and orphan i18n keys
 
-**Goal:** The old `apps/web/src/components/layout/DiffViewer.vue` was a placeholder for an earlier task and has zero call sites after this section lands. Remove it to keep the layout directory honest.
+**Goal:** The old `apps/web/src/components/layout/DiffViewer.vue` was a placeholder for an earlier task and has zero call sites after this section lands. Remove it AND the orphan `diff.title` / `diff.placeholder` i18n keys it used.
 
 **Files:**
 
 - Delete: `apps/web/src/components/layout/DiffViewer.vue`
+- Modify: `apps/web/src/i18n/en.json` (remove `"diff": { ... }` block)
+- Modify: `apps/web/src/i18n/ru.json` (remove `"diff": { ... }` block)
 
 **Acceptance Criteria:**
 
-- [ ] File removed.
-- [ ] `grep -r 'DiffViewer' apps/web/src` returns no matches.
+- [ ] Component file removed.
+- [ ] `grep -rn 'DiffViewer' apps/web/src apps/web/tests` returns no matches.
+- [ ] `grep -rn "t(['\"]diff\\.(title|placeholder)" apps/web/src` returns no matches.
+- [ ] Both locale files no longer contain the top-level `"diff"` block.
 - [ ] `bun x vitest run` still passes.
 
 **Verify:** `bun x vitest run` → all pass.
@@ -793,22 +838,52 @@ Expected: no output (the component was never imported anywhere).
 
 If there are matches, STOP and reclassify — the file isn't dead yet.
 
-- [ ] **Step 2: Delete the file**
+- [ ] **Step 2: Delete the component**
 
 ```bash
-rm apps/web/src/components/layout/DiffViewer.vue
+git rm apps/web/src/components/layout/DiffViewer.vue
 ```
 
-- [ ] **Step 3: Run the suite**
+- [ ] **Step 3: Remove orphan i18n keys**
+
+In `apps/web/src/i18n/en.json`, find and delete the top-level block:
+
+```jsonc
+"diff": {
+  "title": "Diff",
+  "placeholder": "Monaco diff viewer arrives in a later task."
+},
+```
+
+In `apps/web/src/i18n/ru.json`, delete the Russian counterpart:
+
+```jsonc
+"diff": {
+  "title": "Diff",
+  "placeholder": "Monaco-diff появится позже."
+},
+```
+
+Verify no other component references these keys:
+
+```bash
+grep -rn "t(['\"]diff\\.\\(title\\|placeholder\\)" apps/web/src apps/web/tests
+```
+
+Expected: no output.
+
+- [ ] **Step 4: Run the suite**
 
 Run: `bun x vitest run`
 Expected: all pass.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add -A apps/web/src/components/layout/DiffViewer.vue
-git commit -m "chore(ui): remove unused DiffViewer placeholder"
+git add apps/web/src/components/layout/DiffViewer.vue \
+        apps/web/src/i18n/en.json \
+        apps/web/src/i18n/ru.json
+git commit -m "chore(ui): remove unused DiffViewer placeholder + i18n keys"
 ```
 
 ---
