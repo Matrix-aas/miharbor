@@ -240,3 +240,47 @@ test('GET /api/config/draft: non-legacy draft triggers no migration or audit', a
   expect(after).toBe(before) // put() never called — `updated` unchanged
   expect(auditRecords).toHaveLength(0)
 })
+
+test('GET /api/config/draft/diff returns empty patch when no draft exists', async () => {
+  const { app } = await buildApp()
+  const r = await app.handle(new Request('http://localhost/api/config/draft/diff'))
+  expect(r.status).toBe(200)
+  const body = (await r.json()) as {
+    patch: string
+    added: number
+    removed: number
+    hasDraft: boolean
+  }
+  expect(body.hasDraft).toBe(false)
+  expect(body.patch).toBe('')
+  expect(body.added).toBe(0)
+  expect(body.removed).toBe(0)
+})
+
+test('GET /api/config/draft/diff returns unified patch with line counters', async () => {
+  const { app, draftStore } = await buildApp()
+  // Grab the masked live text (same form the UI sees) and build a draft that
+  // changes one scalar. Using the existing /draft endpoint to get the masked
+  // bytes avoids coupling the test to the internal mask memoisation.
+  const liveR = await app.handle(new Request('http://localhost/api/config/draft'))
+  const liveBody = (await liveR.json()) as { text: string }
+  const live = liveBody.text
+  const draft = live.replace('mode: rule', 'mode: global')
+  draftStore.put('anonymous', draft)
+
+  const r = await app.handle(new Request('http://localhost/api/config/draft/diff'))
+  expect(r.status).toBe(200)
+  const body = (await r.json()) as {
+    patch: string
+    added: number
+    removed: number
+    hasDraft: boolean
+  }
+  expect(body.hasDraft).toBe(true)
+  expect(body.patch).toContain('--- live')
+  expect(body.patch).toContain('+++ draft')
+  expect(body.patch).toContain('-mode: rule')
+  expect(body.patch).toContain('+mode: global')
+  expect(body.added).toBe(1)
+  expect(body.removed).toBe(1)
+})

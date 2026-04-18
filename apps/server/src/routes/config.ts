@@ -22,6 +22,7 @@ import { getProxies } from '../config/views/proxies.ts'
 import { getMeta } from '../config/views/meta.ts'
 import { getAuthUser } from '../auth/basic-auth.ts'
 import { migrateDraftPublicKeys } from '../vault/migrate-public-keys.ts'
+import { unifiedDiff } from '../deploy/diff.ts'
 import type { AuditLog } from '../observability/audit-log.ts'
 import type { Logger } from '../observability/logger.ts'
 
@@ -128,5 +129,18 @@ export function configRoutes(deps: ConfigRoutesDeps) {
       const user = getAuthUser(request) ?? 'anonymous'
       deps.draftStore.clear(user)
       return { ok: true }
+    })
+    .get('/draft/diff', async ({ request }) => {
+      const user = getAuthUser(request) ?? 'anonymous'
+      const draftEntry = deps.draftStore.get(user)
+      if (!draftEntry) {
+        return { patch: '', added: 0, removed: 0, hasDraft: false as const }
+      }
+      const liveMasked = await maskedLiveText()
+      const { patch, added, removed } = unifiedDiff(liveMasked, draftEntry.text, {
+        from: 'live',
+        to: 'draft',
+      })
+      return { patch, added, removed, hasDraft: true as const }
     })
 }
