@@ -84,10 +84,6 @@
     },
     "skeleton_note": "Live streaming wires up in a later task."
   },
-  "diff": {
-    "title": "Pending changes",
-    "placeholder": "Monaco diff viewer arrives in a later task."
-  },
   "services": {
     "search_placeholder": "Search services…",
     "filter_all": "All",

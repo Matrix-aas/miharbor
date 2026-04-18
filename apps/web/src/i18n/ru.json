@@ -84,10 +84,6 @@
     },
     "skeleton_note": "Реальный стрим событий подключится позже."
   },
-  "diff": {
-    "title": "Изменения",
-    "placeholder": "Monaco-diff появится позже."
-  },
   "services": {
     "search_placeholder": "Поиск сервисов…",
     "filter_all": "Все",
