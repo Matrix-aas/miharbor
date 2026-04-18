@@ -324,7 +324,7 @@ export async function wireApp(
     )
     .get('/health', () => ({ status: 'ok' }))
     .use(lintRoutes({ userInvariants: () => userInvariantsState.current }))
-    .use(configRoutes({ transport, draftStore, vault }))
+    .use(configRoutes({ transport, draftStore, vault, logger, audit }))
     .use(snapshotRoutes({ snapshots, deployCtx }))
     .use(deployRoutes({ draftStore, deployCtx }))
     .use(healthRoutes({ monitor }))

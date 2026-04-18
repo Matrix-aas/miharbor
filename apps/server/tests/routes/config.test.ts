@@ -11,6 +11,7 @@ import { InMemoryTransport } from '../../src/transport/in-memory.ts'
 import { createDraftStore } from '../../src/draft-store.ts'
 import { createVault } from '../../src/vault/vault.ts'
 import { configRoutes } from '../../src/routes/config.ts'
+import type { AuditLog, AuditRecord } from '../../src/observability/audit-log.ts'
 
 const GOLDEN_CFG = readFileSync('apps/server/tests/fixtures/config-golden.yaml', 'utf8')
 const REAL_LOOKING_KEY = 'kEYA0FWkeJj3fTGt0WlBCQhMErX/u/rt82v+8NLtCEo='
@@ -29,8 +30,15 @@ async function buildApp() {
   const transport = new InMemoryTransport({ initialConfig: GOLDEN_CFG })
   const draftStore = createDraftStore()
   const vault = await createVault({ dataDir, vaultKeyEnv: TEST_KEY })
-  const app = new Elysia().use(configRoutes({ transport, draftStore, vault }))
-  return { app, transport, draftStore, vault }
+  const logger = { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} }
+  const auditRecords: AuditRecord[] = []
+  const audit: AuditLog = {
+    async record(r) {
+      auditRecords.push(r)
+    },
+  }
+  const app = new Elysia().use(configRoutes({ transport, draftStore, vault, logger, audit }))
+  return { app, transport, draftStore, vault, auditRecords }
 }
 
 test('GET /api/config/services returns Service[]', async () => {
@@ -171,4 +179,64 @@ test('DELETE /api/config/draft clears the draft', async () => {
   expect(draftStore.size()).toBe(1)
   await app.handle(new Request('http://localhost/api/config/draft', { method: 'DELETE' }))
   expect(draftStore.size()).toBe(0)
+})
+
+test('GET /api/config/draft migrates legacy public-key sentinels (v0.2.5)', async () => {
+  const { app, draftStore, vault, auditRecords } = await buildApp()
+  const user = 'anonymous'
+  const realKey = 'ABCdef123456789012345678901234567890abcdEF='
+  const uuid = await vault.store(realKey)
+  const legacyDraft = `proxies:\n  - name: wg1\n    public-key: $MIHARBOR_VAULT:${uuid}\n`
+  draftStore.put(user, legacyDraft)
+
+  const r = await app.handle(new Request('http://localhost/api/config/draft'))
+  expect(r.status).toBe(200)
+  const body = (await r.json()) as { source: string; text: string }
+  expect(body.source).toBe('draft')
+  expect(body.text).toContain(`public-key: ${realKey}`)
+  expect(body.text).not.toContain('$MIHARBOR_VAULT:')
+
+  // DraftStore was updated so subsequent reads don't re-migrate.
+  const stored = draftStore.get(user)
+  expect(stored?.text).toContain(realKey)
+  expect(stored?.text).not.toContain('$MIHARBOR_VAULT:')
+
+  // Audit log recorded the migration with an accurate count.
+  expect(auditRecords).toHaveLength(1)
+  const rec = auditRecords[0]!
+  expect(rec.action).toBe('migrate')
+  expect(rec.user).toBe(user)
+  expect((rec.extra as { target: string; count: number }).target).toBe('public-key')
+  expect((rec.extra as { target: string; count: number }).count).toBe(1)
+})
+
+test('GET /api/config/draft is idempotent — no second migrate after already-clean draft', async () => {
+  const { app, draftStore, vault, auditRecords } = await buildApp()
+  const user = 'anonymous'
+  const realKey = 'ABCdef123456789012345678901234567890abcdEF='
+  const uuid = await vault.store(realKey)
+
+  // First GET migrates the legacy sentinel.
+  draftStore.put(user, `proxies:\n  - name: wg1\n    public-key: $MIHARBOR_VAULT:${uuid}\n`)
+  await app.handle(new Request('http://localhost/api/config/draft'))
+  const firstUpdated = draftStore.get(user)!.updated
+
+  // Second GET on the now-clean draft should NOT call draftStore.put again.
+  await app.handle(new Request('http://localhost/api/config/draft'))
+  expect(draftStore.get(user)!.updated).toBe(firstUpdated)
+  // And only one audit record total.
+  expect(auditRecords).toHaveLength(1)
+})
+
+test('GET /api/config/draft: non-legacy draft triggers no migration or audit', async () => {
+  const { app, draftStore, auditRecords } = await buildApp()
+  const user = 'anonymous'
+  const cleanDraft = `mode: rule\nproxies:\n  - name: wg1\n    public-key: real=\n`
+  draftStore.put(user, cleanDraft)
+  const before = draftStore.get(user)!.updated
+
+  await app.handle(new Request('http://localhost/api/config/draft'))
+  const after = draftStore.get(user)!.updated
+  expect(after).toBe(before) // put() never called — `updated` unchanged
+  expect(auditRecords).toHaveLength(0)
 })
