@@ -136,8 +136,17 @@ export function configRoutes(deps: ConfigRoutesDeps) {
       if (!draftEntry) {
         return { patch: '', added: 0, removed: 0, hasDraft: false as const }
       }
+      // Apply legacy-sentinel migration for the diff view only — we don't
+      // persist the migrated text here (GET /draft is the writer of record).
+      // This avoids spurious diff noise when a pre-v0.2.5 draft hasn't yet
+      // been read through /draft (where the persistent migration happens).
+      const { text: draftForDiff } = await migrateDraftPublicKeys(
+        draftEntry.text,
+        deps.vault,
+        deps.logger,
+      )
       const liveMasked = await maskedLiveText()
-      const { patch, added, removed } = unifiedDiff(liveMasked, draftEntry.text, {
+      const { patch, added, removed } = unifiedDiff(liveMasked, draftForDiff, {
         from: 'live',
         to: 'draft',
       })

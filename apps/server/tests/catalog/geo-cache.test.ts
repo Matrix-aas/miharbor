@@ -67,7 +67,7 @@ describe('createGeoCache', () => {
 
   it('stale-on-error — keeps previous entries when refresh fails', async () => {
     let mode: 'ok' | 'err' = 'ok'
-    const fetchImpl: FetchImpl = async (url) => {
+    const fetchImpl: FetchImpl = async (_url) => {
       if (mode === 'ok') return { ok: true, status: 200, body: buildTinyDat(['ru']) }
       throw new Error('later-broke')
     }

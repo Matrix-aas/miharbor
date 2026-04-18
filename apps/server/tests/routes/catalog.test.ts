@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from 'bun:test'
+import { expect, test } from 'bun:test'
 import { Elysia } from 'elysia'
 import { InMemoryTransport } from '../../src/transport/in-memory.ts'
 import { createGeoCache, type FetchImpl } from '../../src/catalog/geo-cache.ts'
