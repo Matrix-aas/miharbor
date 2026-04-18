@@ -374,6 +374,11 @@
     "reset_confirm_action": "Сбросить",
     "close": "Закрыть"
   },
+  "geo_catalog": {
+    "refresh": "Обновить каталог",
+    "offline": "Офлайн",
+    "offline_hint": "Каталог недоступен — приём свободного ввода"
+  },
   "pages": {
     "services": {
       "title": "Сервисы",

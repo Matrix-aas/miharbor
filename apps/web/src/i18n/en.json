@@ -374,6 +374,11 @@
     "reset_confirm_action": "Reset",
     "close": "Close"
   },
+  "geo_catalog": {
+    "refresh": "Refresh catalog",
+    "offline": "Offline",
+    "offline_hint": "Geo catalog unavailable — accepting free-form input"
+  },
   "pages": {
     "services": {
       "title": "Services",
