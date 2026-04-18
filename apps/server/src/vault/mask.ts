@@ -35,12 +35,16 @@ export const DEFAULT_SECRET_FIELDS = Object.freeze([
   'private-key',
   'pre-shared-key',
   'password',
-  'public-key',
   'uuid',
   'api_key',
   'api-key',
   'token',
 ])
+
+/** Keys that LOOK like secrets (match `-key` suffix or share a name) but
+ *  are explicitly NOT confidential. Checked BEFORE `DEFAULT_SECRET_FIELDS`
+ *  and `SECRET_SUFFIXES` so `public-key` doesn't re-match `-key`. */
+export const KNOWN_NON_SECRET_KEYS = Object.freeze(['public-key'])
 
 /** Field-name suffixes that mark a secret-bearing key regardless of prefix. */
 export const SECRET_SUFFIXES = Object.freeze(['-key', '-password', '-token', '-secret'])
@@ -62,10 +66,12 @@ export function resolveSecretFields(envValue: string | undefined): Set<string> {
   return set
 }
 
-/** `true` iff `key` is recognised as a secret-bearing field, per the
- *  exact-match list + suffix rules. `key` must be a plain string; scalar
- *  nodes with non-string keys are never secrets in our schema. */
+/** `true` iff `key` is recognised as a secret-bearing field.
+ *  Precedence: negative list → exact match → suffix match. `key` must
+ *  be a plain string; scalar nodes with non-string keys are never secrets
+ *  in our schema. */
 export function isSecretKey(key: string, fields: Set<string>): boolean {
+  if (KNOWN_NON_SECRET_KEYS.includes(key)) return false
   if (fields.has(key)) return true
   for (const suf of SECRET_SUFFIXES) {
     if (key.endsWith(suf)) return true
