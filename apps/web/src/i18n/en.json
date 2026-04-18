@@ -364,6 +364,19 @@
     "health_canonicalized_banner": "Config was canonicalized on startup — see History",
     "dismiss": "Dismiss"
   },
+  "pending_changes": {
+    "title": "Pending changes",
+    "stats": "+{added} / −{removed}",
+    "no_changes": "No changes",
+    "loading": "Loading diff…",
+    "retry": "Retry",
+    "error_generic": "Failed to load diff",
+    "reset_button": "Reset all changes",
+    "reset_confirm_title": "Reset local edits?",
+    "reset_confirm_body": "All changes will be discarded. The draft will be re-seeded from the current mihomo config. This cannot be undone.",
+    "reset_confirm_action": "Reset",
+    "close": "Close"
+  },
   "pages": {
     "services": {
       "title": "Services",

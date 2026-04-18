@@ -157,6 +157,10 @@ export const endpoints = {
         body: { yaml },
       }),
     clearDraft: () => api<{ ok: true }>('/api/config/draft', { method: 'DELETE' }),
+    draftDiff: () =>
+      api<{ patch: string; added: number; removed: number; hasDraft: boolean }>(
+        '/api/config/draft/diff',
+      ),
   },
   snapshots: {
     list: () => api<SnapshotMeta[]>('/api/snapshots'),

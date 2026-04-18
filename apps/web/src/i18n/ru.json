@@ -364,6 +364,19 @@
     "health_canonicalized_banner": "Конфиг был переформатирован при запуске — смотреть историю",
     "dismiss": "Закрыть"
   },
+  "pending_changes": {
+    "title": "Ожидающие изменения",
+    "stats": "+{added} / −{removed}",
+    "no_changes": "Изменений нет",
+    "loading": "Загрузка диффа…",
+    "retry": "Повторить",
+    "error_generic": "Не удалось загрузить дифф",
+    "reset_button": "Сбросить все изменения",
+    "reset_confirm_title": "Сбросить локальные правки?",
+    "reset_confirm_body": "Все изменения будут удалены. Draft снова будет собран из актуального mihomo-конфига. Действие необратимо.",
+    "reset_confirm_action": "Сбросить",
+    "close": "Закрыть"
+  },
   "pages": {
     "services": {
       "title": "Сервисы",
