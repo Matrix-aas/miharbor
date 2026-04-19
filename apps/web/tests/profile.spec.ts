@@ -574,6 +574,37 @@ describe('yaml-mutator.setProfileConfig', () => {
     expect(out).not.toContain('geox-url:')
   })
 
+  it('preserves unchanged geox-url sub-map verbatim when only a neighbour toggles (v0.2.8)', () => {
+    // Same class of regression as the scalar-quote preservation, but for
+    // nested maps: `geox-url:` has `geosite` first and `geoip` second on
+    // disk, both double-quoted. Toggling `allow-lan` used to rebuild the
+    // whole profile section — `buildGeoxUrl` reorders keys alphabetically
+    // and mints PLAIN scalars. The result was a spurious 2-line delete /
+    // 2-line add on every unrelated edit.
+    const src = [
+      'mode: rule',
+      'geox-url:',
+      '  geosite: "https://example.com/geosite.dat"',
+      '  geoip: "https://example.com/geoip.dat"',
+      '',
+    ].join('\n')
+    const doc = parseDraft(src)
+    setProfileConfig(doc, {
+      mode: 'rule',
+      'allow-lan': true,
+      'geox-url': {
+        geosite: 'https://example.com/geosite.dat',
+        geoip: 'https://example.com/geoip.dat',
+      },
+    })
+    const out = serializeDraft(doc)
+    // Order and quotes survive identically.
+    expect(out).toContain('geosite: "https://example.com/geosite.dat"')
+    expect(out).toContain('geoip: "https://example.com/geoip.dat"')
+    // And the new key appears somewhere.
+    expect(out).toContain('allow-lan: true')
+  })
+
   it('preserves existing quote style on unchanged scalars (v0.2.8)', () => {
     // Regression guard: before v0.2.8 `setProfileConfig` rebuilt EVERY
     // managed key through `doc.createNode()`, which minted fresh PLAIN

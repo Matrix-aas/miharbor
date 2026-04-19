@@ -682,28 +682,53 @@ export function setProfileConfig(doc: Document, config: ProfileConfig): void {
   }
 
   // 3. Update existing keys in place, and append newly-added ones at the end.
-  //    We skip the `rootMap.set` when the existing node already carries an
-  //    identical primitive value — `doc.createNode()` mints a fresh Scalar
-  //    with default (PLAIN) style, so blindly replacing loses the operator's
-  //    original quote style / inline comments. Re-emitting would produce a
-  //    diff on every toggle even when only ONE scalar actually changed.
+  //    We skip the `rootMap.set` when the existing node is structurally
+  //    equivalent to the incoming value — `doc.createNode()` mints fresh
+  //    nodes with default (PLAIN) style / canonical key order, so blindly
+  //    replacing loses the operator's original quote style, inline
+  //    comments, and map-key layout. Re-emitting would produce a diff on
+  //    every toggle even when only ONE scalar actually changed.
   for (const [k, v] of managed) {
     const existing = rootMap.get(k, true) as unknown
-    if (isScalarEquivalent(existing, v)) continue
+    if (isNodeEquivalent(existing, v)) continue
     rootMap.set(k, doc.createNode(v))
   }
 }
 
-/** `true` when `node` is a yaml Scalar whose `.value` is strictly equal to
- *  `value`. Covers the common idempotent-set case — updates where the
- *  operator hasn't actually changed the scalar. Complex (Map/Seq) values
- *  always return `false` so they go through the normal replace path. */
-function isScalarEquivalent(node: unknown, value: unknown): boolean {
-  if (!isScalar(node as Node)) return false
-  const scalar = node as Scalar
-  // Primitive JS-side value only — objects/arrays are non-scalar by
-  // construction, and our config shape never stores them as a Scalar.
-  if (value === null || typeof value !== 'object') return scalar.value === value
+/** `true` when the yaml AST `node` is structurally equal to the plain-JS
+ *  `value`. Recursive: scalars compare by strict ===; maps/seqs descend
+ *  into children. Used to short-circuit the full-replace path in
+ *  `setProfileConfig` so unchanged sub-maps (`geox-url`, `profile`, …)
+ *  don't lose quote style / key order on every re-emit. */
+function isNodeEquivalent(node: unknown, value: unknown): boolean {
+  if (isScalar(node as Node)) {
+    if (value === null || typeof value !== 'object') {
+      return (node as Scalar).value === value
+    }
+    return false
+  }
+  if (isMap(node as Node)) {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+    const map = node as YAMLMap
+    const entries = value as Record<string, unknown>
+    const keys = Object.keys(entries)
+    if (map.items.length !== keys.length) return false
+    for (const key of keys) {
+      if (!map.has(key)) return false
+      const child = map.get(key, true) as unknown
+      if (!isNodeEquivalent(child, entries[key])) return false
+    }
+    return true
+  }
+  if (isSeq(node as Node)) {
+    if (!Array.isArray(value)) return false
+    const seq = node as YAMLSeq
+    if (seq.items.length !== value.length) return false
+    for (let i = 0; i < value.length; i += 1) {
+      if (!isNodeEquivalent(seq.items[i], value[i])) return false
+    }
+    return true
+  }
   return false
 }
 

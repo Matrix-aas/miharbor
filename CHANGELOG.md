@@ -4,6 +4,15 @@ All notable changes to Miharbor are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [semver](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.10] — 2026-04-19
+
+Extends v0.2.9's scalar-equivalence guard to nested maps and sequences
+— `geox-url`, `profile`, and `authentication` no longer get rebuilt
+on every profile toggle. Before, toggling `allow-lan` rewrote the
+`geox-url:` sub-map (alphabetised the child keys, dropped quote
+style); after, the sub-map only re-emits when the operator actually
+edited something inside it.
+
 ## [0.2.9] — 2026-04-19
 
 Rolls up the `setProfileConfig` quote-preservation fix on top of 0.2.8
