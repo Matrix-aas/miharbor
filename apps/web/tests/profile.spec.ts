@@ -573,6 +573,35 @@ describe('yaml-mutator.setProfileConfig', () => {
     const out = serializeDraft(doc)
     expect(out).not.toContain('geox-url:')
   })
+
+  it('preserves existing quote style on unchanged scalars (v0.2.8)', () => {
+    // Regression guard: before v0.2.8 `setProfileConfig` rebuilt EVERY
+    // managed key through `doc.createNode()`, which minted fresh PLAIN
+    // scalars — the operator's original quote style on unchanged values
+    // was lost. That produced spurious formatting diffs on
+    // `/api/config/draft/diff` every time the UI toggled any boolean.
+    const src = [
+      'mode: rule',
+      'log-level: info',
+      'external-ui-url: "https://example.com/dash.zip"', // QUOTE_DOUBLE
+      "bind-address: '0.0.0.0'", // QUOTE_SINGLE
+      '',
+    ].join('\n')
+    const doc = parseDraft(src)
+    // Toggle only `allow-lan` — every other managed scalar must round-trip
+    // byte-identically, including the explicit quote style.
+    setProfileConfig(doc, {
+      mode: 'rule',
+      'log-level': 'info',
+      'external-ui-url': 'https://example.com/dash.zip',
+      'bind-address': '0.0.0.0',
+      'allow-lan': true,
+    })
+    const out = serializeDraft(doc)
+    expect(out).toContain('external-ui-url: "https://example.com/dash.zip"')
+    expect(out).toContain("bind-address: '0.0.0.0'")
+    expect(out).toContain('allow-lan: true')
+  })
 })
 
 describe('profile-view.getProfileConfig (client mirror)', () => {

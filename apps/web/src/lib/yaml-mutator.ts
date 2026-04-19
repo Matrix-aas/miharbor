@@ -14,6 +14,7 @@ import {
   type Document,
   isCollection,
   isMap,
+  isScalar,
   isSeq,
   parseDocument,
   type Node,
@@ -681,16 +682,29 @@ export function setProfileConfig(doc: Document, config: ProfileConfig): void {
   }
 
   // 3. Update existing keys in place, and append newly-added ones at the end.
+  //    We skip the `rootMap.set` when the existing node already carries an
+  //    identical primitive value — `doc.createNode()` mints a fresh Scalar
+  //    with default (PLAIN) style, so blindly replacing loses the operator's
+  //    original quote style / inline comments. Re-emitting would produce a
+  //    diff on every toggle even when only ONE scalar actually changed.
   for (const [k, v] of managed) {
-    if (rootMap.has(k)) {
-      rootMap.set(k, doc.createNode(v))
-    } else {
-      // New key — append. The YAMLMap preserves insertion order, so we just
-      // add with .set(). (Canonical order is advisory when the original doc
-      // is brand-new; existing docs keep their layout.)
-      rootMap.set(k, doc.createNode(v))
-    }
+    const existing = rootMap.get(k, true) as unknown
+    if (isScalarEquivalent(existing, v)) continue
+    rootMap.set(k, doc.createNode(v))
   }
+}
+
+/** `true` when `node` is a yaml Scalar whose `.value` is strictly equal to
+ *  `value`. Covers the common idempotent-set case — updates where the
+ *  operator hasn't actually changed the scalar. Complex (Map/Seq) values
+ *  always return `false` so they go through the normal replace path. */
+function isScalarEquivalent(node: unknown, value: unknown): boolean {
+  if (!isScalar(node as Node)) return false
+  const scalar = node as Scalar
+  // Primitive JS-side value only — objects/arrays are non-scalar by
+  // construction, and our config shape never stores them as a Scalar.
+  if (value === null || typeof value !== 'object') return scalar.value === value
+  return false
 }
 
 // ----- rule-providers: section mutators ----------------------------------

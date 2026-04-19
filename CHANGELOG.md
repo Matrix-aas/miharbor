@@ -11,7 +11,9 @@ toggling a boolean and back) showed a large, alarming diff full of
 quote-style flips, folded URLs and map-key reordering. Operators
 rightly hesitated to press Apply, because it was impossible to tell
 whether a cosmetic re-format or a real change was queued up. The round
-trip is now canonical on both sides of `/api/config/draft/diff`.
+trip is now canonical on both sides of `/api/config/draft/diff`, AND
+unchanged scalars keep their original quote style so edits produce
+one-line diffs instead of whole-section rewrites.
 
 ### Fixed
 
@@ -39,6 +41,15 @@ trip is now canonical on both sides of `/api/config/draft/diff`.
   even when the two inputs match; the route now collapses the
   zero-change case so the PendingChangesDialog shows "No changes"
   instead of a phantom empty diff pane.
+- **`setProfileConfig` no longer re-mints every managed scalar on each
+  edit.** Before, a single `allow-lan` toggle ran every profile field
+  through `doc.createNode()`, dropping the operator's original quote
+  style (`external-ui-url: "..."` → `external-ui-url: ...`) on values
+  that hadn't actually changed. The mutator now skips
+  `rootMap.set(k, …)` when the existing scalar is value-equivalent to
+  the incoming value — only genuinely edited scalars get replaced.
+  Regression test in `apps/web/tests/profile.spec.ts` round-trips
+  single- and double-quoted neighbours of a toggled boolean.
 
 ### Rolled up from v0.2.7
 
