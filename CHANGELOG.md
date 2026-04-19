@@ -4,6 +4,74 @@ All notable changes to Miharbor are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [semver](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] — 2026-04-19
+
+Three UX fixes addressing user-reported paper-cuts on the Services and
+Proxies screens plus the Header's dirty-state indicator.
+
+### Added
+
+- **GEOSITE / GEOIP / SRC-GEOIP selector in the RuleEditor.** Replaces
+  the free-form `<Input>` with a type-ahead combobox backed by
+  `GET /api/catalog/geo`. The server parses mihomo's `.dat` files
+  (URLs resolved from `profile.geox-url.*` with MetaCubeX defaults)
+  via a dependency-free protobuf scanner, caches the parsed category
+  lists in-memory for 24h (stale-on-error on refresh), and serves the
+  list with per-side independent `error` fields so a broken GEOSITE
+  source doesn't block GEOIP. GEOIP entries are uppercased server-side.
+  Free-form input is still accepted for custom `.dat` files.
+- **Pending-changes viewer with full reset.** The Header's dirty-state
+  badge is now a clickable button opening a new `PendingChangesDialog`.
+  The modal renders a unified diff (produced by the reused
+  `deploy/diff.ts:unifiedDiff` helper) between the masked live config
+  and the user's draft via `diff2html`. A destructive "Reset all
+  changes" button wraps `config.clearDraft()` behind a `ConfirmDialog`.
+
+### Changed
+
+- **Header dirty badge label retired from a pluralised counter to a
+  flag-based "Pending changes".** The `dirtyCount` in the store has
+  always been binary (draft differs from live → 1, equal → 0), so the
+  old `{count} change | {count} changes` i18n key was misleading — it
+  always showed "1 change" regardless of how many lines changed. The
+  new label and the `+X / −Y` stats surfaced inside the dialog are
+  more honest.
+- **`public-key` on WireGuard proxies no longer masked in the vault.**
+  Public keys are publishable by definition; vaulting them only hid
+  them from the `WireGuardForm` input as `$MIHARBOR_VAULT:<uuid>`,
+  which the base64-regex validator rejected. `KNOWN_NON_SECRET_KEYS`
+  in `mask.ts` takes precedence over both the exact-match list and
+  the `-key` suffix match. `private-key` and `pre-shared-key` continue
+  to be masked.
+
+### Fixed
+
+- **Legacy WireGuard drafts transparently migrate on first read.**
+  `GET /api/config/draft` now runs any `public-key: $MIHARBOR_VAULT:<uuid>`
+  pairs through `migrateDraftPublicKeys()` (batch-resolved via the new
+  `Vault.resolveMany()` API), writes the plaintext back to the
+  `DraftStore`, and records a `migrate` audit event. Missing uuids are
+  preserved and warn-logged rather than thrown. Legacy snapshots
+  untouched on disk continue to unmask correctly via the uuid-driven
+  `vault.unmaskDoc` path — verified by a dedicated rollback regression
+  test.
+
+### Removed
+
+- `apps/web/src/components/layout/DiffViewer.vue` placeholder and its
+  orphan `diff.title` / `diff.placeholder` i18n keys. The new
+  `PendingChangesDialog` covers the viewer role.
+
+### Tests
+
+- 509 server tests (up from 487), 286 web tests (up from 267).
+- Coverage 90.58% line (`apps/server/src`), above the 89.5% target.
+- New test files: `catalog/pb-scan.test.ts`, `catalog/geo-cache.test.ts`,
+  `catalog/geo-source.test.ts`, `routes/catalog.test.ts`,
+  `vault/migrate-public-keys.test.ts`, `catalog-store.spec.ts`,
+  `catalog-combobox.spec.ts`, `pending-changes-dialog.spec.ts`,
+  `rule-editor-geo.spec.ts`, `header.spec.ts`.
+
 ## [0.2.4] — 2026-04-17
 
 Two new config fields on the structured Profile editor plus two deferred

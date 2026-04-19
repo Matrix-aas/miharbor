@@ -21,11 +21,17 @@ import { getServices } from '../config/views/services.ts'
 import { getProxies } from '../config/views/proxies.ts'
 import { getMeta } from '../config/views/meta.ts'
 import { getAuthUser } from '../auth/basic-auth.ts'
+import { migrateDraftPublicKeys } from '../vault/migrate-public-keys.ts'
+import { unifiedDiff } from '../deploy/diff.ts'
+import type { AuditLog } from '../observability/audit-log.ts'
+import type { Logger } from '../observability/logger.ts'
 
 export interface ConfigRoutesDeps {
   transport: Transport
   draftStore: DraftStore
   vault: Vault
+  logger: Logger
+  audit: AuditLog
 }
 
 export function configRoutes(deps: ConfigRoutesDeps) {
@@ -81,10 +87,32 @@ export function configRoutes(deps: ConfigRoutesDeps) {
       // secret line and shows a spurious "changes pending" badge from the
       // moment of login. The stored draft path is already masked-by-origin
       // (the UI seeded the draft from masked /raw or /draft), so it's
-      // returned as-is.
+      // returned as-is — except for the v0.2.5 on-read migration below,
+      // which unmasks legacy `public-key: $MIHARBOR_VAULT:<uuid>` pairs
+      // (public-key left the secret scope in v0.2.5 so the WG form sees
+      // the real value).
       const user = getAuthUser(request) ?? 'anonymous'
       const draft = deps.draftStore.get(user)
-      if (draft) return { source: 'draft' as const, text: draft.text, updated: draft.updated }
+      if (draft) {
+        const {
+          text: migrated,
+          touched,
+          count,
+        } = await migrateDraftPublicKeys(draft.text, deps.vault, deps.logger)
+        if (touched && migrated !== draft.text) {
+          const entry = deps.draftStore.put(user, migrated)
+          // Best-effort audit — never fail the GET on audit write issues.
+          void deps.audit
+            .record({
+              action: 'migrate',
+              user,
+              extra: { target: 'public-key', count },
+            })
+            .catch(() => undefined)
+          return { source: 'draft' as const, text: migrated, updated: entry.updated }
+        }
+        return { source: 'draft' as const, text: draft.text, updated: draft.updated }
+      }
       const text = await maskedLiveText()
       return { source: 'current' as const, text }
     })
@@ -101,5 +129,27 @@ export function configRoutes(deps: ConfigRoutesDeps) {
       const user = getAuthUser(request) ?? 'anonymous'
       deps.draftStore.clear(user)
       return { ok: true }
+    })
+    .get('/draft/diff', async ({ request }) => {
+      const user = getAuthUser(request) ?? 'anonymous'
+      const draftEntry = deps.draftStore.get(user)
+      if (!draftEntry) {
+        return { patch: '', added: 0, removed: 0, hasDraft: false as const }
+      }
+      // Apply legacy-sentinel migration for the diff view only — we don't
+      // persist the migrated text here (GET /draft is the writer of record).
+      // This avoids spurious diff noise when a pre-v0.2.5 draft hasn't yet
+      // been read through /draft (where the persistent migration happens).
+      const { text: draftForDiff } = await migrateDraftPublicKeys(
+        draftEntry.text,
+        deps.vault,
+        deps.logger,
+      )
+      const liveMasked = await maskedLiveText()
+      const { patch, added, removed } = unifiedDiff(liveMasked, draftForDiff, {
+        from: 'live',
+        to: 'draft',
+      })
+      return { patch, added, removed, hasDraft: true as const }
     })
 }

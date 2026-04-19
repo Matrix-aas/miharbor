@@ -157,6 +157,10 @@ export const endpoints = {
         body: { yaml },
       }),
     clearDraft: () => api<{ ok: true }>('/api/config/draft', { method: 'DELETE' }),
+    draftDiff: () =>
+      api<{ patch: string; added: number; removed: number; hasDraft: boolean }>(
+        '/api/config/draft/diff',
+      ),
   },
   snapshots: {
     list: () => api<SnapshotMeta[]>('/api/snapshots'),
@@ -202,5 +206,12 @@ export const endpoints = {
       api<{ ok: true; name: string }>(`/api/providers/${encodeURIComponent(name)}/refresh`, {
         method: 'POST',
       }),
+  },
+  catalog: {
+    geo: (refresh = false) =>
+      api<{
+        geosite: { entries: string[]; source: string; fetched: string | null; error: string | null }
+        geoip: { entries: string[]; source: string; fetched: string | null; error: string | null }
+      }>(`/api/catalog/geo${refresh ? '?refresh=1' : ''}`),
   },
 }

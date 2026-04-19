@@ -12,6 +12,7 @@ export type AuditAction =
   | 'canonicalization'
   | 'login'
   | 'logout'
+  | 'migrate'
 
 export interface AuditRecord {
   action: AuditAction

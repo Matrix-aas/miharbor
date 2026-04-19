@@ -260,3 +260,35 @@ test('maskDoc is idempotent — re-running does not double-mask', async () => {
   expect(secondMint.length).toBe(0)
   expect(doc.toString()).toBe(firstText)
 })
+
+test('resolveMany reads payload once and maps known uuids', async () => {
+  const v = await createVault({ dataDir, vaultKeyEnv: TEST_KEY })
+  const uuidA = await v.store('alpha')
+  const uuidB = await v.store('beta')
+  const UNKNOWN = '00000000-0000-0000-0000-000000000000'
+  const out = await v.resolveMany([uuidA, UNKNOWN, uuidB])
+  expect(out.get(uuidA)).toBe('alpha')
+  expect(out.get(uuidB)).toBe('beta')
+  expect(out.has(UNKNOWN)).toBe(false)
+  expect(out.size).toBe(2)
+})
+
+test('resolveMany with empty input returns empty map without reading vault', async () => {
+  const v = await createVault({ dataDir, vaultKeyEnv: TEST_KEY })
+  // Force-store something so the vault file exists, then delete it — if the
+  // implementation reads the payload regardless of input length, this call
+  // would throw. Empty input MUST short-circuit.
+  await v.store('tmp')
+  const fsp = await import('node:fs/promises')
+  await fsp.rm(join(dataDir, 'secrets-vault.enc'))
+  const out = await v.resolveMany([])
+  expect(out.size).toBe(0)
+})
+
+test('resolveMany raises VaultCorruptError when key is wrong', async () => {
+  const v1 = await createVault({ dataDir, vaultKeyEnv: TEST_KEY })
+  const uuid = await v1.store('x')
+  const otherKey = 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+  const v2 = await createVault({ dataDir, vaultKeyEnv: otherKey })
+  await expect(v2.resolveMany([uuid])).rejects.toBeInstanceOf(VaultCorruptError)
+})

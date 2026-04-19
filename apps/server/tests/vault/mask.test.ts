@@ -15,14 +15,12 @@ import {
 // under tests/fixtures/ so the pre-commit secret guard allows them.
 const WG_FIXTURE = readFileSync('apps/server/tests/fixtures/vault-wg.yaml', 'utf8')
 
-test('DEFAULT_SECRET_FIELDS contains the spec-required keys', () => {
-  // Covers spec §9 — if any of these regress, the vault leaks.
+test('DEFAULT_SECRET_FIELDS contains the spec-required keys (public-key EXCLUDED)', () => {
   const expected = [
     'secret',
     'private-key',
     'pre-shared-key',
     'password',
-    'public-key',
     'uuid',
     'api_key',
     'api-key',
@@ -31,6 +29,8 @@ test('DEFAULT_SECRET_FIELDS contains the spec-required keys', () => {
   for (const k of expected) {
     expect(DEFAULT_SECRET_FIELDS).toContain(k)
   }
+  // v0.2.5 change: public-key is NOT a secret; vaulting it breaks the WG form.
+  expect(DEFAULT_SECRET_FIELDS).not.toContain('public-key')
 })
 
 test('SECRET_SUFFIXES covers -key -password -token -secret', () => {
@@ -75,7 +75,7 @@ test('isSentinel is true only for $MIHARBOR_VAULT: prefix', () => {
   expect(isSentinel(undefined)).toBe(false)
 })
 
-test('walkSecrets replaces WireGuard private-key + public-key + pre-shared-key', () => {
+test('walkSecrets replaces WireGuard private-key + pre-shared-key, leaves public-key', () => {
   const doc = parseDocument(WG_FIXTURE)
   const fields = resolveSecretFields('')
   const replacements: string[] = []
@@ -83,15 +83,23 @@ test('walkSecrets replaces WireGuard private-key + public-key + pre-shared-key',
     replacements.push(v)
     return 'REPLACED'
   })
-  // All three secret fields from the fixture were captured.
-  expect(replacements).toHaveLength(3)
-  // Original values are not in the serialised output.
+  // Two secrets swapped; public-key intact.
+  expect(replacements).toHaveLength(2)
   const out = doc.toString()
   expect(out).not.toContain('kEYA0FWkeJj3fTGt0WlBCQhMErX/u/rt82v+8NLtCEo=')
-  expect(out).not.toContain('xAIRkwUYcExecs6eRsZUGsbEwqc2HBlEjYzMYNOeTwk=')
   expect(out).not.toContain('D+gv7oQa2vgmvCbGU68P+3ouuiHU4tPPPHr0rKMlRoo=')
-  // Replacement appears at least once.
+  // Public key (by shape) remains in the serialised output.
+  expect(out).toContain('xAIRkwUYcExecs6eRsZUGsbEwqc2HBlEjYzMYNOeTwk=')
   expect(out).toContain('REPLACED')
+})
+
+test('isSecretKey treats public-key as NOT a secret even though -key matches (v0.2.5)', () => {
+  const f = resolveSecretFields('')
+  expect(isSecretKey('public-key', f)).toBe(false)
+  // Neighbours still behave as before.
+  expect(isSecretKey('private-key', f)).toBe(true)
+  expect(isSecretKey('pre-shared-key', f)).toBe(true)
+  expect(isSecretKey('wg-key', f)).toBe(true) // unknown -key still secret
 })
 
 test('walkSecrets preserves comments and key order (golden-style)', () => {

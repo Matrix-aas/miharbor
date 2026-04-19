@@ -9,6 +9,7 @@ import { useConfigStore } from '@/stores/config'
 import { useDeployStore } from '@/stores/deploy'
 import { setLocale, currentLocale, type AppLocale } from '@/i18n'
 import HealthBadge, { type HealthStatus, type CanonicalizedEvent } from './HealthBadge.vue'
+import PendingChangesDialog from './PendingChangesDialog.vue'
 
 interface Props {
   collapsed?: boolean
@@ -24,6 +25,8 @@ const router = useRouter()
 
 const dirtyCount = computed(() => config.dirtyCount)
 const canApply = computed(() => dirtyCount.value > 0)
+
+const pendingOpen = ref(false)
 
 // Transport badge — reads meta.transport if the server reports it, falling
 // back to "Local" which is the MVP default.
@@ -126,9 +129,16 @@ function openSettings(): void {
           @canonicalized="onCanonicalized"
         />
 
-        <Badge v-if="canApply" variant="secondary" :title="t('header.apply_tooltip_ready')">
-          {{ t('header.changes_count', { count: dirtyCount }, dirtyCount) }}
-        </Badge>
+        <button
+          v-if="canApply"
+          type="button"
+          data-testid="header-pending-badge"
+          :title="t('header.pending_tooltip')"
+          class="rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          @click="pendingOpen = true"
+        >
+          <Badge variant="secondary">{{ t('header.pending_changes') }}</Badge>
+        </button>
         <Badge v-else variant="muted">{{ t('header.no_changes') }}</Badge>
 
         <Button
@@ -183,5 +193,7 @@ function openSettings(): void {
         <X class="h-4 w-4" />
       </Button>
     </div>
+
+    <PendingChangesDialog v-model:open="pendingOpen" />
   </div>
 </template>

@@ -123,6 +123,11 @@ export interface Vault {
   store(value: string): Promise<string>
   /** Resolve `uuid` to the original value, or null if unknown. */
   resolve(uuid: string): Promise<string | null>
+  /** Batch resolve: reads the vault payload ONCE and returns a Map of
+   *  uuid → value for every known uuid in `uuids`. Unknown uuids are
+   *  omitted from the returned map (no throw). Empty input → empty map,
+   *  skips the payload read entirely. */
+  resolveMany(uuids: Iterable<string>): Promise<Map<string, string>>
   /** In-place mask: every secret scalar is registered + replaced with a
    *  sentinel. Safe to run on a doc that's already (partially) masked —
    *  existing sentinels are preserved. Returns the set of uuids minted
@@ -222,6 +227,18 @@ export async function createVault(opts: VaultOptions): Promise<Vault> {
       const payload = await readPayload()
       const entry = payload.entries[uuid]
       return entry ? entry.value : null
+    },
+
+    async resolveMany(uuids) {
+      const list = Array.from(uuids)
+      const out = new Map<string, string>()
+      if (list.length === 0) return out
+      const payload = await readPayload()
+      for (const uuid of list) {
+        const entry = payload.entries[uuid]
+        if (entry) out.set(uuid, entry.value)
+      }
+      return out
     },
 
     async maskDoc(doc, snapshotId) {

@@ -30,7 +30,8 @@
     "apply": "Применить",
     "apply_tooltip_empty": "Нет несохранённых изменений",
     "apply_tooltip_ready": "Посмотреть и применить изменения",
-    "changes_count": "{count} изменение | {count} изменения | {count} изменений",
+    "pending_changes": "Ожидающие изменения",
+    "pending_tooltip": "Показать изменения",
     "no_changes": "Нет изменений",
     "settings": "Настройки",
     "language": "Язык",
@@ -82,10 +83,6 @@
       "skipped": "пропущено"
     },
     "skeleton_note": "Реальный стрим событий подключится позже."
-  },
-  "diff": {
-    "title": "Изменения",
-    "placeholder": "Monaco-diff появится позже."
   },
   "services": {
     "search_placeholder": "Поиск сервисов…",
@@ -363,6 +360,24 @@
     "reconnect": "Соединение потеряно — повторить",
     "health_canonicalized_banner": "Конфиг был переформатирован при запуске — смотреть историю",
     "dismiss": "Закрыть"
+  },
+  "pending_changes": {
+    "title": "Ожидающие изменения",
+    "stats": "+{added} / −{removed}",
+    "no_changes": "Изменений нет",
+    "loading": "Загрузка диффа…",
+    "retry": "Повторить",
+    "error_generic": "Не удалось загрузить дифф",
+    "reset_button": "Сбросить все изменения",
+    "reset_confirm_title": "Сбросить локальные правки?",
+    "reset_confirm_body": "Все изменения будут удалены. Draft снова будет собран из актуального mihomo-конфига. Действие необратимо.",
+    "reset_confirm_action": "Сбросить",
+    "close": "Закрыть"
+  },
+  "geo_catalog": {
+    "refresh": "Обновить каталог",
+    "offline": "Офлайн",
+    "offline_hint": "Каталог недоступен — приём свободного ввода"
   },
   "pages": {
     "services": {

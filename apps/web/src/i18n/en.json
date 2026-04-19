@@ -30,7 +30,8 @@
     "apply": "Apply",
     "apply_tooltip_empty": "No unsaved changes",
     "apply_tooltip_ready": "Review and deploy pending changes",
-    "changes_count": "{count} change | {count} changes",
+    "pending_changes": "Pending changes",
+    "pending_tooltip": "Show changes",
     "no_changes": "No changes",
     "settings": "Settings",
     "language": "Language",
@@ -82,10 +83,6 @@
       "skipped": "skipped"
     },
     "skeleton_note": "Live streaming wires up in a later task."
-  },
-  "diff": {
-    "title": "Pending changes",
-    "placeholder": "Monaco diff viewer arrives in a later task."
   },
   "services": {
     "search_placeholder": "Search services…",
@@ -363,6 +360,24 @@
     "reconnect": "Stream disconnected — retry",
     "health_canonicalized_banner": "Config was canonicalized on startup — see History",
     "dismiss": "Dismiss"
+  },
+  "pending_changes": {
+    "title": "Pending changes",
+    "stats": "+{added} / −{removed}",
+    "no_changes": "No changes",
+    "loading": "Loading diff…",
+    "retry": "Retry",
+    "error_generic": "Failed to load diff",
+    "reset_button": "Reset all changes",
+    "reset_confirm_title": "Reset local edits?",
+    "reset_confirm_body": "All changes will be discarded. The draft will be re-seeded from the current mihomo config. This cannot be undone.",
+    "reset_confirm_action": "Reset",
+    "close": "Close"
+  },
+  "geo_catalog": {
+    "refresh": "Refresh catalog",
+    "offline": "Offline",
+    "offline_hint": "Geo catalog unavailable — accepting free-form input"
   },
   "pages": {
     "services": {

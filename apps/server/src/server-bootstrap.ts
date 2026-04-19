@@ -46,6 +46,8 @@ import { providersRoutes } from './routes/providers.ts'
 import { settingsRoutes } from './routes/settings.ts'
 import { onboardingRoutes } from './routes/onboarding.ts'
 import { invariantsRoutes, loadUserInvariants } from './routes/invariants.ts'
+import { catalogRoutes } from './routes/catalog.ts'
+import { createGeoCache } from './catalog/geo-cache.ts'
 import type { UserInvariant } from 'miharbor-shared'
 import { join, normalize, resolve } from 'node:path'
 import type { AuditLog } from './observability/audit-log.ts'
@@ -235,6 +237,12 @@ export async function wireApp(
     emitImmediately: true,
   })
 
+  // ---------- geo catalog cache ----------
+  // 24h TTL matches the upstream mihomo geo data update cadence. The cache
+  // is a singleton so multiple combobox mounts across page reloads share
+  // the same in-memory state for this process lifetime.
+  const geoCache = createGeoCache({ ttlMs: 24 * 60 * 60 * 1000 })
+
   // ---------- deploy context factory ----------
   const lockFile = join(env.MIHARBOR_DATA_DIR, 'config.yaml.lock')
   // `deployCtx` is called once per deploy / rollback request; it wires the
@@ -324,7 +332,8 @@ export async function wireApp(
     )
     .get('/health', () => ({ status: 'ok' }))
     .use(lintRoutes({ userInvariants: () => userInvariantsState.current }))
-    .use(configRoutes({ transport, draftStore, vault }))
+    .use(configRoutes({ transport, draftStore, vault, logger, audit }))
+    .use(catalogRoutes({ transport, cache: geoCache }))
     .use(snapshotRoutes({ snapshots, deployCtx }))
     .use(deployRoutes({ draftStore, deployCtx }))
     .use(healthRoutes({ monitor }))
