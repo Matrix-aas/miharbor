@@ -37,8 +37,12 @@ const transportLabel = computed<string>(() => {
   return t('header.transport_local')
 })
 
-const configVersion = computed<string>(() => {
-  const version = config.meta?.version ?? config.meta?.revision ?? '—'
+// Hide the "Конфиг v—" badge entirely when neither `version` nor `revision`
+// is present on the top-level mihomo config — rendering a dangling dash is
+// noise (v0.2.6 item 4, option (a)).
+const configVersionLabel = computed<string | null>(() => {
+  const version = config.meta?.version ?? config.meta?.revision
+  if (version === undefined || version === null || String(version).trim() === '') return null
   return t('header.config_version', { version })
 })
 
@@ -116,9 +120,14 @@ function openSettings(): void {
         <Badge variant="muted">{{ transportLabel }}</Badge>
       </div>
 
-      <!-- Center: version -->
-      <div class="mx-auto hidden flex-1 items-center justify-center md:flex">
-        <Badge variant="outline">{{ configVersion }}</Badge>
+      <!-- Center: version (only when mihomo's top-level `version`/`revision`
+           is actually set — otherwise the badge is dropped entirely, v0.2.6). -->
+      <div
+        v-if="configVersionLabel"
+        class="mx-auto hidden flex-1 items-center justify-center md:flex"
+        data-testid="header-config-version"
+      >
+        <Badge variant="outline">{{ configVersionLabel }}</Badge>
       </div>
 
       <!-- Right cluster -->

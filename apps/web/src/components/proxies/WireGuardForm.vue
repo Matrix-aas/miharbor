@@ -14,7 +14,11 @@ import { computed, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AlertTriangle, ChevronDown, ChevronRight, Eye, EyeOff } from 'lucide-vue-next'
 import type { WireGuardNode } from 'miharbor-shared'
-import { WIREGUARD_PRE_SHARED_KEY_SENTINEL, WIREGUARD_PRIVATE_KEY_SENTINEL } from 'miharbor-shared'
+import {
+  isVaultSentinel,
+  WIREGUARD_PRE_SHARED_KEY_SENTINEL,
+  WIREGUARD_PRIVATE_KEY_SENTINEL,
+} from 'miharbor-shared'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { isValidWireGuardKey } from '@/lib/rule-validation'
@@ -47,17 +51,26 @@ const udp = ref<boolean>(props.initial?.udp ?? true)
 const showPrivate = ref(false)
 const showPsk = ref(false)
 
-/** `true` when the form's current `private-key` is still the server-side
- *  sentinel, i.e. the operator hasn't rotated the key since load. The UI
- *  disables the reveal-eye in that case — there is nothing to reveal —
- *  and the submit handler knows to round-trip the sentinel unchanged so
- *  the deploy pipeline substitutes the real on-disk value back. */
+/** `true` when the form's current `private-key` is still a server-side
+ *  masking sentinel — either the fixed view-scope sentinel
+ *  (`WIREGUARD_PRIVATE_KEY_SENTINEL` from `/api/config/proxies`) or a
+ *  per-value vault sentinel `$MIHARBOR_VAULT:<uuid>` (draft-derived path,
+ *  `/api/config/draft`). In both cases: operator hasn't rotated the key
+ *  since load, the UI disables the reveal-eye (nothing to reveal), skips
+ *  client-side base64 validation, and submit round-trips the sentinel
+ *  unchanged so the deploy pipeline resolves the real on-disk value. */
 const privateKeyIsSentinel = computed<boolean>(
-  () => privateKey.value === WIREGUARD_PRIVATE_KEY_SENTINEL,
+  () => privateKey.value === WIREGUARD_PRIVATE_KEY_SENTINEL || isVaultSentinel(privateKey.value),
 )
 const preSharedKeyIsSentinel = computed<boolean>(
-  () => preSharedKey.value === WIREGUARD_PRE_SHARED_KEY_SENTINEL,
+  () =>
+    preSharedKey.value === WIREGUARD_PRE_SHARED_KEY_SENTINEL || isVaultSentinel(preSharedKey.value),
 )
+/** Public keys are NOT vault-masked (v0.2.5 moved them out of vault scope
+ *  via `KNOWN_NON_SECRET_KEYS`), but we still short-circuit validation on
+ *  a vault prefix for defensive safety — handles legacy drafts that were
+ *  written before that fix. */
+const publicKeyIsSentinel = computed<boolean>(() => isVaultSentinel(publicKey.value))
 
 // Amnezia section — pre-fill from initial.
 const amneziaOpen = ref<boolean>(Boolean(props.initial?.['amnezia-wg-option']))
@@ -114,11 +127,13 @@ const nameError = computed<string | null>(() => {
 })
 
 const privateKeyError = computed<string | null>(() => {
+  if (privateKeyIsSentinel.value) return null
   if (privateKey.value.length === 0) return t('proxies.wireguard.name_required')
   return isValidWireGuardKey(privateKey.value) ? null : t('proxies.wireguard.key_invalid')
 })
 
 const publicKeyError = computed<string | null>(() => {
+  if (publicKeyIsSentinel.value) return null
   if (publicKey.value.length === 0) return t('proxies.wireguard.name_required')
   return isValidWireGuardKey(publicKey.value) ? null : t('proxies.wireguard.key_invalid')
 })
@@ -206,7 +221,12 @@ const ids = {
 </script>
 
 <template>
-  <form class="space-y-4" data-testid="wireguard-form" @submit.prevent="onSubmit">
+  <form
+    class="space-y-4"
+    data-testid="wireguard-form"
+    autocomplete="off"
+    @submit.prevent="onSubmit"
+  >
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
       <div>
         <label :for="ids.name" class="mb-1 block text-xs font-medium text-muted-foreground">
@@ -247,6 +267,8 @@ const ids = {
           v-model="privateKey"
           :type="showPrivate && !privateKeyIsSentinel ? 'text' : 'password'"
           class="h-9 font-mono"
+          autocomplete="new-password"
+          spellcheck="false"
           data-testid="wireguard-private-key"
         />
         <Button
@@ -299,6 +321,8 @@ const ids = {
           v-model="preSharedKey"
           :type="showPsk && !preSharedKeyIsSentinel ? 'text' : 'password'"
           class="h-9 font-mono"
+          autocomplete="new-password"
+          spellcheck="false"
           data-testid="wireguard-pre-shared-key"
         />
         <Button

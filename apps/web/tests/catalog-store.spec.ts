@@ -79,4 +79,41 @@ describe('useCatalogStore', () => {
     expect(store.geosite).toEqual([])
     expect(store.geoip).toEqual([])
   })
+
+  it('ensureRuleProvidersLoaded fetches once; subsequent calls are no-ops (v0.2.6)', async () => {
+    const spy = vi
+      .spyOn(apiClient.endpoints.catalog, 'ruleProviders')
+      .mockResolvedValue({
+        names: ['ad-block', 'youtube'],
+        source: 'profile.rule-providers',
+        error: null,
+      })
+    const store = useCatalogStore()
+    await store.ensureRuleProvidersLoaded()
+    await store.ensureRuleProvidersLoaded()
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(store.ruleProviders).toEqual(['ad-block', 'youtube'])
+    expect(store.error.ruleProviders).toBeNull()
+  })
+
+  it('refreshRuleProviders bypasses the dedup gate (v0.2.6)', async () => {
+    const spy = vi
+      .spyOn(apiClient.endpoints.catalog, 'ruleProviders')
+      .mockResolvedValue({ names: ['x'], source: 'profile.rule-providers', error: null })
+    const store = useCatalogStore()
+    await store.ensureRuleProvidersLoaded()
+    await store.refreshRuleProviders()
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
+  it('rule-providers fetch error surfaces as rule-providers-scoped error (v0.2.6)', async () => {
+    vi.spyOn(apiClient.endpoints.catalog, 'ruleProviders').mockRejectedValue(new Error('net'))
+    const store = useCatalogStore()
+    await store.ensureRuleProvidersLoaded()
+    expect(store.error.ruleProviders).toBe('net')
+    expect(store.ruleProviders).toEqual([])
+    // Geo-side errors must stay untouched — the two loaders are independent.
+    expect(store.error.geosite).toBeNull()
+    expect(store.error.geoip).toBeNull()
+  })
 })

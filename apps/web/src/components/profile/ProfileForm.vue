@@ -28,6 +28,7 @@ import type {
   ProfileNested,
 } from 'miharbor-shared'
 import {
+  isVaultSentinel,
   META_SECRET_SENTINEL,
   validateExternalController,
   validateGeoxUrlEntry,
@@ -59,15 +60,17 @@ const secretRevealed = ref(false)
 
 const secretDisplay = computed<string>(() => props.modelValue.secret ?? '')
 
-/** `true` when the current value of `secret` is the server-side meta
- *  sentinel (the draft was seeded from /api/config/meta, not /api/config/draft,
- *  or the operator never changed it after mount). In that case the eye
- *  toggle is disabled — revealing `__MIHARBOR_SECRET_SET_NOT_SHOWN__`
- *  tells the operator nothing useful, and typing into the field replaces
- *  the sentinel with their new value. The server's deploy pipeline
- *  substitutes the sentinel back to the current on-disk value if it
- *  survives into the draft YAML (see deploy/pipeline.ts). */
-const secretIsSentinel = computed<boolean>(() => props.modelValue.secret === META_SECRET_SENTINEL)
+/** `true` when the current value of `secret` is any server-side masking
+ *  sentinel — the fixed `META_SECRET_SENTINEL` from /api/config/meta OR
+ *  a per-value vault sentinel `$MIHARBOR_VAULT:<uuid>` when the form was
+ *  seeded from the draft endpoint. In both cases the eye toggle is
+ *  disabled (nothing real to reveal), and the deploy pipeline resolves
+ *  the placeholder back to the current on-disk value if it survives into
+ *  the draft YAML. */
+const secretIsSentinel = computed<boolean>(
+  () =>
+    props.modelValue.secret === META_SECRET_SENTINEL || isVaultSentinel(props.modelValue.secret),
+)
 
 function onSecretInput(event: Event): void {
   const v = (event.target as HTMLInputElement).value
@@ -206,7 +209,14 @@ const findProcessModeValue = computed<ProfileFindProcessMode | ''>(
 </script>
 
 <template>
-  <div class="space-y-6">
+  <!-- Root <form> wrapper exists for Chrome autofill semantics: the
+       `secret:` field is `type="password"` and Chrome logs a DOM warning
+       ("Password field is not contained in a form") whenever a password
+       input sits loose in the page. `autocomplete="off"` + `@submit.prevent`
+       keep the browser's autofill UI quiet without introducing a submit
+       action — the form itself is purely cosmetic; Profile.vue owns
+       persistence via emitted patches. -->
+  <form class="space-y-6" autocomplete="off" @submit.prevent>
     <!-- General: mode, log-level, mixed-port, allow-lan, bind-address -->
     <section class="space-y-4 rounded-md border border-border bg-card/30 p-4">
       <h2 class="text-lg font-semibold">{{ t('pages.profile.sections.general') }}</h2>
@@ -403,7 +413,7 @@ const findProcessModeValue = computed<ProfileFindProcessMode | ''>(
             :placeholder="t('pages.profile.fields.secret_placeholder')"
             class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 font-mono"
             :aria-label="t('pages.profile.fields.secret')"
-            autocomplete="off"
+            autocomplete="new-password"
             spellcheck="false"
             data-testid="profile-secret"
             @input="onSecretInput"
@@ -721,5 +731,5 @@ const findProcessModeValue = computed<ProfileFindProcessMode | ''>(
       />
       <AuthList :model-value="modelValue.authentication ?? []" @update:model-value="onAuthUpdate" />
     </section>
-  </div>
+  </form>
 </template>

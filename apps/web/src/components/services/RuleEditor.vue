@@ -26,6 +26,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { validateRuleValue } from '@/lib/rule-validation'
 import GeoCatalogCombobox from './GeoCatalogCombobox.vue'
+import RuleSetCombobox from './RuleSetCombobox.vue'
 
 interface Props {
   target: string
@@ -72,6 +73,7 @@ const isGeoType = computed(
 const comboType = computed<'GEOSITE' | 'GEOIP'>(() =>
   type.value === 'SRC-GEOIP' ? 'GEOIP' : (type.value as 'GEOSITE' | 'GEOIP'),
 )
+const isRuleSetType = computed(() => type.value === 'RULE-SET')
 
 // Placement suggestion — only show when adding (not editing).
 const isAddingMode = computed(() => !props.initial)
@@ -139,6 +141,7 @@ function onSave(): void {
           {{ t('rules.value_label') }}
         </label>
         <GeoCatalogCombobox v-if="isGeoType" v-model="value" :type="comboType" />
+        <RuleSetCombobox v-else-if="isRuleSetType" v-model="value" />
         <Input v-else v-model="value" class="h-9 font-mono" :placeholder="type" />
         <p
           v-if="!validation.ok && value.length > 0"

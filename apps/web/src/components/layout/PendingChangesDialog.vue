@@ -190,7 +190,19 @@ async function confirmReset(): Promise<void> {
   padding: 0 0.5rem;
 }
 .diff-drawer :deep(.d2h-code-line) {
+  /* See SnapshotDiffDrawer comment: `white-space: nowrap` suppresses the
+     literal `\n` between diff2html's prefix and content spans; `-ctn`
+     below restores `pre` for real code indentation. */
+  white-space: nowrap;
   padding: 0 0.5rem;
+}
+.diff-drawer :deep(.d2h-code-line-prefix) {
+  display: inline;
+  white-space: pre;
+}
+.diff-drawer :deep(.d2h-code-line-ctn) {
+  display: inline;
+  white-space: pre;
 }
 .diff-drawer :deep(.d2h-ins) {
   background: rgba(16, 185, 129, 0.15);
