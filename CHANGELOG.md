@@ -4,7 +4,7 @@ All notable changes to Miharbor are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [semver](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.6.1] — 2026-04-19
+## [0.2.7] — 2026-04-19
 
 Post-deploy fix-up for v0.2.6: the HTTP/2 header removal in the SSE
 helpers was necessary but not sufficient — Bun.serve's default 10-second
