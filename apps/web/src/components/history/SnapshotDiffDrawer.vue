@@ -188,8 +188,21 @@ function requestRollback(): void {
   user-select: none;
 }
 .diff-drawer .d2h-code-line {
-  white-space: pre;
+  /* `white-space: nowrap` on the line wrapper keeps the literal `\n` and
+     indentation between `<span class="d2h-code-line-prefix">` and
+     `<span class="d2h-code-line-ctn">` in diff2html's emitted HTML from
+     rendering as visual breaks. The `-ctn` span below re-enables `pre`
+     so code indentation inside the actual line content is preserved. */
+  white-space: nowrap;
   padding: 0 4px;
+}
+.diff-drawer .d2h-code-line-prefix {
+  display: inline;
+  white-space: pre;
+}
+.diff-drawer .d2h-code-line-ctn {
+  display: inline;
+  white-space: pre;
 }
 .diff-drawer .d2h-ins {
   background: rgba(16, 185, 129, 0.18);

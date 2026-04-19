@@ -107,6 +107,56 @@ describe('WireGuardForm', () => {
     )
   })
 
+  it('recognizes a per-value vault sentinel as private-key placeholder (v0.2.6)', () => {
+    // When the form is seeded from the draft endpoint, secrets arrive as
+    // `$MIHARBOR_VAULT:<uuid>` rather than the fixed 44-char placeholder.
+    // Form must treat them identically: hint visible, reveal-eye disabled,
+    // no "invalid base64" validation error (sentinel is not a real key).
+    const vaultSentinel = '$MIHARBOR_VAULT:09e0bb8a-acf0-4953-a75f-0e9fd2146a0d'
+    const wg: WireGuardNode = {
+      name: 'wg1',
+      type: 'wireguard',
+      server: '1.2.3.4',
+      port: 51820,
+      ip: '10.0.0.2/32',
+      'private-key': vaultSentinel,
+      'public-key': 'B'.repeat(44),
+      'pre-shared-key': '$MIHARBOR_VAULT:12c35938-0b7d-47d3-aacc-b73fe27f5707',
+    }
+    const wrapper = mount(WireGuardForm, {
+      props: { initial: wg, existingNames: ['wg1'] },
+      global: { plugins: [makeI18n()] },
+    })
+    expect(wrapper.find('[data-testid="wireguard-private-key-sentinel-hint"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="wireguard-pre-shared-key-sentinel-hint"]').exists()).toBe(
+      true,
+    )
+    // No validation error banner should render — sentinel short-circuits.
+    expect(wrapper.text()).not.toContain('Некорректный')
+    expect(wrapper.text()).not.toContain('Invalid')
+  })
+
+  it('round-trips a vault sentinel private-key unchanged on submit (v0.2.6)', async () => {
+    const vaultSentinel = '$MIHARBOR_VAULT:09e0bb8a-acf0-4953-a75f-0e9fd2146a0d'
+    const wg: WireGuardNode = {
+      name: 'wg1',
+      type: 'wireguard',
+      server: '1.2.3.4',
+      port: 51820,
+      ip: '10.0.0.2/32',
+      'private-key': vaultSentinel,
+      'public-key': 'B'.repeat(44),
+    }
+    const wrapper = mount(WireGuardForm, {
+      props: { initial: wg, existingNames: ['wg1'] },
+      global: { plugins: [makeI18n()] },
+    })
+    await wrapper.find('form').trigger('submit.prevent')
+    const emitted = wrapper.emitted('submit') as unknown as WireGuardNode[][] | undefined
+    expect(emitted).toBeTruthy()
+    expect(emitted?.[0]?.[0]?.['private-key']).toBe(vaultSentinel)
+  })
+
   it('accepts sentinels as valid WireGuard keys (isValidWireGuardKey, v0.2.4)', () => {
     // The sentinels MUST pass the existing validator so the form doesn't
     // show "not a valid WireGuard key" for every loaded WG node.

@@ -12,6 +12,15 @@ import {
 } from '../src/types/rule.ts'
 import { ServiceSchema, type Service } from '../src/types/service.ts'
 import { ProxyNodeSchema, type ProxyNode } from '../src/types/proxy-node.ts'
+import {
+  isAnyMiharborSentinel,
+  isMiharborViewSentinel,
+  isVaultSentinel,
+  META_SECRET_SENTINEL,
+  VAULT_SENTINEL_PREFIX,
+  WIREGUARD_PRE_SHARED_KEY_SENTINEL,
+  WIREGUARD_PRIVATE_KEY_SENTINEL,
+} from '../src/types/sentinels.ts'
 
 test('IssueSchema accepts valid issue', () => {
   const issue: Issue = { level: 'error', code: 'LINTER_X', path: ['rules', 5] }
@@ -286,4 +295,37 @@ test('ProxyNodeSchema rejects out-of-range port (I7)', () => {
 test('Rule union type is importable (I7/I8)', () => {
   const r: Rule = { kind: 'match', target: 'PROXY' }
   expect(r.kind).toBe('match')
+})
+
+// --- sentinels (v0.2.6) --------------------------------------------------
+
+test('isVaultSentinel accepts per-value vault-prefixed strings', () => {
+  expect(isVaultSentinel('$MIHARBOR_VAULT:09e0bb8a-acf0-4953-a75f-0e9fd2146a0d')).toBe(true)
+  expect(isVaultSentinel(`${VAULT_SENTINEL_PREFIX}abc`)).toBe(true)
+})
+
+test('isVaultSentinel rejects non-prefixed or non-string values', () => {
+  expect(isVaultSentinel('not-a-sentinel')).toBe(false)
+  expect(isVaultSentinel('MIHARBOR_VAULT:abc')).toBe(false) // missing leading $
+  expect(isVaultSentinel('')).toBe(false)
+  expect(isVaultSentinel(undefined)).toBe(false)
+  expect(isVaultSentinel(null)).toBe(false)
+  expect(isVaultSentinel(42)).toBe(false)
+})
+
+test('isMiharborViewSentinel and isVaultSentinel are disjoint', () => {
+  // Fixed view-scope sentinels don't start with the vault prefix, so the
+  // two predicates never overlap. Forms combine them via isAnyMiharborSentinel.
+  expect(isVaultSentinel(META_SECRET_SENTINEL)).toBe(false)
+  expect(isVaultSentinel(WIREGUARD_PRIVATE_KEY_SENTINEL)).toBe(false)
+  expect(isVaultSentinel(WIREGUARD_PRE_SHARED_KEY_SENTINEL)).toBe(false)
+  expect(isMiharborViewSentinel('$MIHARBOR_VAULT:abc')).toBe(false)
+})
+
+test('isAnyMiharborSentinel covers both fixed and per-value sentinels', () => {
+  expect(isAnyMiharborSentinel(META_SECRET_SENTINEL)).toBe(true)
+  expect(isAnyMiharborSentinel(WIREGUARD_PRIVATE_KEY_SENTINEL)).toBe(true)
+  expect(isAnyMiharborSentinel(WIREGUARD_PRE_SHARED_KEY_SENTINEL)).toBe(true)
+  expect(isAnyMiharborSentinel('$MIHARBOR_VAULT:abc')).toBe(true)
+  expect(isAnyMiharborSentinel('something else')).toBe(false)
 })

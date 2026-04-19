@@ -213,5 +213,7 @@ export const endpoints = {
         geosite: { entries: string[]; source: string; fetched: string | null; error: string | null }
         geoip: { entries: string[]; source: string; fetched: string | null; error: string | null }
       }>(`/api/catalog/geo${refresh ? '?refresh=1' : ''}`),
+    ruleProviders: () =>
+      api<{ names: string[]; source: string; error: string | null }>('/api/catalog/rule-providers'),
   },
 }

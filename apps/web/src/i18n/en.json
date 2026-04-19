@@ -379,6 +379,12 @@
     "offline": "Offline",
     "offline_hint": "Geo catalog unavailable — accepting free-form input"
   },
+  "rule_set_catalog": {
+    "placeholder": "e.g. youtube-domains",
+    "refresh": "Refresh rule-providers",
+    "offline": "Offline",
+    "offline_hint": "Rule-providers list unavailable — accepting free-form input"
+  },
   "pages": {
     "services": {
       "title": "Services",

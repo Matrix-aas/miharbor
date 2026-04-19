@@ -12,7 +12,8 @@ test('sseStreamFromEvents returns Response with SSE headers', () => {
   expect(response.status).toBe(200)
   expect(response.headers.get('content-type')).toContain('text/event-stream')
   expect(response.headers.get('cache-control')).toContain('no-cache')
-  expect(response.headers.get('connection')).toBe('keep-alive')
+  // `connection` must NOT be set — forbidden in HTTP/2 (RFC 7540 §8.1.2.2).
+  expect(response.headers.get('connection')).toBeNull()
   expect(response.headers.get('x-accel-buffering')).toBe('no')
 })
 
@@ -54,6 +55,7 @@ test('sseStreamFromSubscription returns Response with SSE headers', () => {
   const response = sseStreamFromSubscription(() => () => {})
   expect(response.status).toBe(200)
   expect(response.headers.get('content-type')).toContain('text/event-stream')
+  expect(response.headers.get('connection')).toBeNull()
 })
 
 test('sseStreamFromSubscription calls unsubscribe on cancel', () => {

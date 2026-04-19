@@ -54,3 +54,28 @@ export function isMiharborViewSentinel(value: unknown): boolean {
     value === WIREGUARD_PRE_SHARED_KEY_SENTINEL
   )
 }
+
+// --- Per-secret vault sentinels ------------------------------------------
+//
+// The draft pipeline replaces every secret scalar with a per-value vault
+// sentinel of the shape `$MIHARBOR_VAULT:<uuid>`, resolved back to the
+// real on-disk value at deploy time (`vault.unmaskDoc`). Forms that
+// derive their initial state from the draft (WireGuardForm, ProfileForm
+// secret field) therefore see this prefix and must treat it the same as
+// the fixed view-scope sentinels above: skip client-side validation,
+// disable the reveal-eye, round-trip unchanged.
+
+/** Prefix of a per-secret vault sentinel: `$MIHARBOR_VAULT:<uuid>`. */
+export const VAULT_SENTINEL_PREFIX = '$MIHARBOR_VAULT:'
+
+/** Predicate — is the given value a vault sentinel (`$MIHARBOR_VAULT:<uuid>`)? */
+export function isVaultSentinel(value: unknown): boolean {
+  return typeof value === 'string' && value.startsWith(VAULT_SENTINEL_PREFIX)
+}
+
+/** Predicate — is the given value ANY miharbor sentinel (fixed view-scope
+ *  OR per-secret vault)? Forms use this to short-circuit their validators
+ *  and reveal-eye toggles. */
+export function isAnyMiharborSentinel(value: unknown): boolean {
+  return isMiharborViewSentinel(value) || isVaultSentinel(value)
+}

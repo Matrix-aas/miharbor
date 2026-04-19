@@ -61,4 +61,18 @@ describe('RuleEditor geo integration', () => {
     await flushPromises()
     expect(wrapper.find('[data-testid="geo-refresh"]').exists()).toBe(false)
   })
+
+  it('renders the RULE-SET combobox for RULE-SET type (v0.2.6)', async () => {
+    const store = useCatalogStore()
+    vi.spyOn(store, 'ensureRuleProvidersLoaded').mockResolvedValue()
+    store.ruleProviders = ['ad-block', 'youtube-domains']
+    store.ruleProvidersLoaded = true
+    const wrapper = mountEditor()
+    await wrapper.get('select').setValue('RULE-SET')
+    await flushPromises()
+    // RULE-SET combobox uses its own refresh button with a distinct testid.
+    expect(wrapper.find('[data-testid="rule-set-refresh"]').exists()).toBe(true)
+    // And does NOT render the geo combobox.
+    expect(wrapper.find('[data-testid="geo-refresh"]').exists()).toBe(false)
+  })
 })

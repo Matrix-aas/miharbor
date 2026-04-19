@@ -4,6 +4,76 @@ All notable changes to Miharbor are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [semver](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] — 2026-04-19
+
+Hot-fixes for six paper-cuts surfaced during v0.2.5 acceptance testing,
+plus the RULE-SET selector follow-up to the v0.2.5 geo catalog work.
+
+### Added
+
+- **RULE-SET selector in the RuleEditor.** New
+  `GET /api/catalog/rule-providers` reads the live mihomo config and
+  returns the names declared under `profile.rule-providers`. The web
+  `RuleSetCombobox` surfaces them as a type-ahead when the rule type is
+  `RULE-SET`; free-form input is still accepted (fallback when the
+  catalog is unavailable or the operator references a provider that is
+  not yet declared). Rule-providers live under the document root in
+  mihomo's config, not under `profile:` — the response's `source` tag
+  reflects that (`source: "rule-providers"`). Store loader is
+  independent from the geo catalog so a RULE-SET-only edit doesn't
+  fire a geo fetch.
+- `isVaultSentinel` / `isAnyMiharborSentinel` predicates in
+  `miharbor-shared` — form-side unified recognition of both the fixed
+  view-scope sentinels (`META_SECRET_SENTINEL`,
+  `WIREGUARD_PRIVATE_KEY_SENTINEL`, `WIREGUARD_PRE_SHARED_KEY_SENTINEL`)
+  and the per-value vault sentinels (`$MIHARBOR_VAULT:<uuid>`).
+
+### Fixed
+
+- **Forms recognise per-value vault sentinels.** `WireGuardForm`
+  (`private-key`, `pre-shared-key`) and `ProfileForm` (`secret`) now
+  short-circuit validation, disable the reveal-eye, and round-trip
+  unchanged when the initial value is a `$MIHARBOR_VAULT:<uuid>`
+  placeholder — previously they saw the sentinel verbatim, tripped
+  "Invalid WireGuard key" for keys and let the operator type over the
+  sentinel with fear of destroying the real value on save. Affects any
+  form seeded from the draft endpoint (`parseDraft` path); the existing
+  view-scope sentinel path was already correct.
+- **`/api/health/stream` no longer kills itself with
+  `ERR_HTTP2_PROTOCOL_ERROR`.** Removed the `connection: 'keep-alive'`
+  header from both SSE response builders — HTTP/2 forbids
+  connection-specific headers (RFC 7540 §8.1.2.2), and the reverse
+  proxy in front of `miharbor.thematrix.su` was closing the stream the
+  moment it saw the forbidden header. Health-badge and deploy-pipeline
+  streams now hold their connections normally.
+- **Snapshot diff renders one line per line again.** The local
+  `.d2h-code-line` override set `white-space: pre`, which caused
+  diff2html's `<span class="d2h-code-line-prefix">+</span>` and
+  `<span class="d2h-code-line-ctn">…</span>` to wrap across three
+  visual rows apiece (the literal `\n` between the two spans in the
+  emitted HTML was preserved). Switched the wrapper to `nowrap` and
+  moved `pre` onto `.d2h-code-line-ctn` only (the content span), so
+  indentation inside a line is still preserved but the prefix sits on
+  the same row. Same fix applied to `PendingChangesDialog` so pending
+  diffs render cleanly too.
+- **Config-version badge hides instead of showing `Конфиг v—`.** When
+  neither `meta.version` nor `meta.revision` is populated (typical
+  mihomo configs declare neither on the top level), the Header omits
+  the badge entirely. When either is set, the badge renders with that
+  value.
+
+### Changed
+
+- **Autofill hygiene on forms with password fields.** `WireGuardForm`
+  gains `autocomplete="off"` on the `<form>` plus
+  `autocomplete="new-password"` on both `private-key` and
+  `pre-shared-key` inputs. `ProfileForm` is now wrapped in a dummy
+  `<form autocomplete="off" @submit.prevent>` and the `secret` input
+  uses `autocomplete="new-password"`. Silences Chrome's DOM warnings
+  about loose `type="password"` fields and multiple-forms heuristics;
+  no functional change (Profile.vue still owns persistence via emitted
+  patches, not form submission).
+
 ## [0.2.5] — 2026-04-19
 
 Three UX fixes addressing user-reported paper-cuts on the Services and

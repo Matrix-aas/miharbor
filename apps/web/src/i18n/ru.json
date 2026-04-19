@@ -379,6 +379,12 @@
     "offline": "Офлайн",
     "offline_hint": "Каталог недоступен — приём свободного ввода"
   },
+  "rule_set_catalog": {
+    "placeholder": "напр. youtube-domains",
+    "refresh": "Обновить rule-providers",
+    "offline": "Офлайн",
+    "offline_hint": "Список rule-providers недоступен — приём свободного ввода"
+  },
   "pages": {
     "services": {
       "title": "Сервисы",

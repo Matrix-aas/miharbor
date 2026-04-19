@@ -386,6 +386,20 @@ describe('ProfileForm', () => {
     >
     expect(emitted.at(-1)?.[0]).toEqual({ secret: 'new-secret-value' })
   })
+
+  it('treats a per-value vault sentinel as masked secret (v0.2.6)', () => {
+    // When the draft endpoint seeds the form, the secret arrives as
+    // `$MIHARBOR_VAULT:<uuid>` instead of META_SECRET_SENTINEL. The form
+    // must treat both identically: disable the reveal-eye, show the hint.
+    const vaultSentinel = '$MIHARBOR_VAULT:a45435ca-69a6-4665-a6e1-5de955e3789d'
+    const wrapper = mount(ProfileForm, {
+      props: { modelValue: { secret: vaultSentinel } },
+      global: { plugins: [makeI18n()] },
+    })
+    const toggle = wrapper.get('[data-testid="profile-secret-toggle"]')
+    expect((toggle.element as HTMLButtonElement).disabled).toBe(true)
+    expect(wrapper.find('[data-testid="profile-secret-sentinel-hint"]').exists()).toBe(true)
+  })
 })
 
 describe('AuthList', () => {

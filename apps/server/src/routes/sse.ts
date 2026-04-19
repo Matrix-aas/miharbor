@@ -69,7 +69,8 @@ export function sseStreamFromEvents(controllerFactory: () => SseQueueController)
     headers: {
       'content-type': 'text/event-stream; charset=utf-8',
       'cache-control': 'no-cache, no-transform',
-      connection: 'keep-alive',
+      // `connection` is a hop-by-hop header forbidden in HTTP/2 (RFC 7540 §8.1.2.2);
+      // setting it causes ERR_HTTP2_PROTOCOL_ERROR behind a reverse proxy.
       'x-accel-buffering': 'no', // nginx: do not buffer
     },
   })
@@ -101,7 +102,6 @@ export function sseStreamFromSubscription(
     headers: {
       'content-type': 'text/event-stream; charset=utf-8',
       'cache-control': 'no-cache, no-transform',
-      connection: 'keep-alive',
       'x-accel-buffering': 'no',
     },
   })

@@ -96,4 +96,36 @@ describe('Header dirty badge', () => {
     expect(wrapper.find('[data-testid="header-pending-badge"]').exists()).toBe(false)
     expect(wrapper.html()).toContain('No changes')
   })
+
+  it('hides the config-version badge when meta.version and meta.revision are absent (v0.2.6)', async () => {
+    const store = useConfigStore()
+    store.rawLive = 'mode: rule\n'
+    store.draftText = 'mode: rule\n'
+    store.meta = { transport: 'local' } // no version, no revision
+    const wrapper = track(mountHeader())
+    await flushPromises()
+    expect(wrapper.find('[data-testid="header-config-version"]').exists()).toBe(false)
+  })
+
+  it('renders the config-version badge when meta.version is set (v0.2.6)', async () => {
+    const store = useConfigStore()
+    store.rawLive = 'mode: rule\n'
+    store.draftText = 'mode: rule\n'
+    store.meta = { transport: 'local', version: '0.2.6' }
+    const wrapper = track(mountHeader())
+    await flushPromises()
+    const badge = wrapper.get('[data-testid="header-config-version"]')
+    expect(badge.text()).toContain('0.2.6')
+  })
+
+  it('falls back to meta.revision when version is missing (v0.2.6)', async () => {
+    const store = useConfigStore()
+    store.rawLive = 'mode: rule\n'
+    store.draftText = 'mode: rule\n'
+    store.meta = { transport: 'local', revision: 'abc1234' }
+    const wrapper = track(mountHeader())
+    await flushPromises()
+    const badge = wrapper.get('[data-testid="header-config-version"]')
+    expect(badge.text()).toContain('abc1234')
+  })
 })
