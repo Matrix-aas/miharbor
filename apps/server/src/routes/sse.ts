@@ -7,10 +7,20 @@
 //      where the pipeline emits onStep events).
 //   - `sseStreamFromSubscription(subscribe)` — subscribe to an emitter and
 //      forward events until the client disconnects (used by /api/health/stream).
+//
+// Heartbeat. Both helpers flush an SSE comment (`: ...\n\n`, discarded by
+// the browser's EventSource parser) every `HEARTBEAT_MS` so the connection
+// stays above Bun.serve's idleTimeout (10s by default — an SSE stream
+// whose producer has nothing to say goes silent, Bun kills the TCP socket,
+// and the browser surfaces `ERR_HTTP2_PROTOCOL_ERROR` behind a reverse
+// proxy on the subsequent reconnect). 8s leaves a 2s cushion before the
+// 10s server-side cutoff; also tunnels through typical nginx/Caddy
+// `proxy_read_timeout` defaults (60s) without trouble.
 
 import type { HealthEvent } from '../health-monitor.ts'
 
 const ENCODER = new TextEncoder()
+const HEARTBEAT_MS = 8_000
 
 export interface SseQueueController {
   queue: Array<{ type: string; data: unknown }>
@@ -34,15 +44,27 @@ export function sseStreamFromEvents(controllerFactory: () => SseQueueController)
       const ctl = controllerFactory()
       // Initial comment to flush headers through any intermediary.
       controller.enqueue(ENCODER.encode(`: miharbor-stream\n\n`))
+      // See the file-level heartbeat comment — keeps the socket above
+      // Bun.serve's idleTimeout while the pipeline is between steps.
+      let lastFlush = Date.now()
       // Drain loop.
       while (!ctl.done() || ctl.queue.length > 0) {
         if (ctl.queue.length === 0) {
+          if (Date.now() - lastFlush >= HEARTBEAT_MS) {
+            try {
+              controller.enqueue(ENCODER.encode(`: ping\n\n`))
+              lastFlush = Date.now()
+            } catch {
+              return
+            }
+          }
           await new Promise<void>((resolve) => setTimeout(resolve, 10))
           continue
         }
         const ev = ctl.queue.shift()!
         try {
           controller.enqueue(formatEvent(ev.type, ev.data))
+          lastFlush = Date.now()
         } catch {
           // Client disconnected — stop.
           return
@@ -82,19 +104,37 @@ export function sseStreamFromSubscription(
   subscribe: (push: (event: HealthEvent) => void) => () => void,
 ): Response {
   let unsubscribe: (() => void) | null = null
+  let heartbeat: ReturnType<typeof setInterval> | null = null
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       // Initial comment so proxies flush headers.
       controller.enqueue(ENCODER.encode(`: miharbor-health-stream\n\n`))
+      // Heartbeat — see file-level comment. Health events are rare
+      // (transport/mihomo state transitions), so without a periodic
+      // keep-alive the socket sits silent for minutes and gets
+      // reaped by Bun.serve's idleTimeout.
+      heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(ENCODER.encode(`: ping\n\n`))
+        } catch {
+          if (heartbeat) clearInterval(heartbeat)
+          heartbeat = null
+          unsubscribe?.()
+        }
+      }, HEARTBEAT_MS)
       unsubscribe = subscribe((event) => {
         try {
           controller.enqueue(formatEvent(event.type, event))
         } catch {
+          if (heartbeat) clearInterval(heartbeat)
+          heartbeat = null
           unsubscribe?.()
         }
       })
     },
     cancel() {
+      if (heartbeat) clearInterval(heartbeat)
+      heartbeat = null
       unsubscribe?.()
     },
   })

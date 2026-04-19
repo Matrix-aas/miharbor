@@ -4,6 +4,18 @@ All notable changes to Miharbor are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [semver](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6.1] — 2026-04-19
+
+Post-deploy fix-up for v0.2.6: the HTTP/2 header removal in the SSE
+helpers was necessary but not sufficient — Bun.serve's default 10-second
+`idleTimeout` was independently reaping both `/api/health/stream` and
+`/api/deploy/stream` between events, surfacing the same
+`ERR_HTTP2_PROTOCOL_ERROR` in the browser. Both helpers now emit an
+8-second heartbeat comment (discarded by the EventSource parser) so the
+socket stays active across quiescent periods; the subscription helper
+additionally clears its heartbeat interval on cancel so we don't leak a
+timer per client disconnect.
+
 ## [0.2.6] — 2026-04-19
 
 Hot-fixes for six paper-cuts surfaced during v0.2.5 acceptance testing,
@@ -40,12 +52,19 @@ plus the RULE-SET selector follow-up to the v0.2.5 geo catalog work.
   form seeded from the draft endpoint (`parseDraft` path); the existing
   view-scope sentinel path was already correct.
 - **`/api/health/stream` no longer kills itself with
-  `ERR_HTTP2_PROTOCOL_ERROR`.** Removed the `connection: 'keep-alive'`
-  header from both SSE response builders — HTTP/2 forbids
-  connection-specific headers (RFC 7540 §8.1.2.2), and the reverse
-  proxy in front of `miharbor.thematrix.su` was closing the stream the
-  moment it saw the forbidden header. Health-badge and deploy-pipeline
-  streams now hold their connections normally.
+  `ERR_HTTP2_PROTOCOL_ERROR`.** Two underlying bugs: (1) the SSE
+  response set `connection: 'keep-alive'`, which HTTP/2 forbids
+  (RFC 7540 §8.1.2.2) — the reverse proxy fronting the deployment was
+  closing the stream the moment it saw the forbidden header; (2) with
+  the header removed the stream survived connection establishment but
+  Bun.serve's 10-second idleTimeout still reaped it between health
+  events, producing the same browser-visible error on the subsequent
+  EventSource reconnect. Both helpers (`sseStreamFromEvents` and
+  `sseStreamFromSubscription`) now flush an SSE heartbeat comment
+  (`: ping\n\n`, discarded by EventSource) every 8s so the socket stays
+  above the idleTimeout window; `sseStreamFromSubscription` additionally
+  clears its heartbeat interval on cancel to avoid a per-disconnect
+  setInterval leak.
 - **Snapshot diff renders one line per line again.** The local
   `.d2h-code-line` override set `white-space: pre`, which caused
   diff2html's `<span class="d2h-code-line-prefix">+</span>` and

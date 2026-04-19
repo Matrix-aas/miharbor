@@ -65,3 +65,18 @@ test('sseStreamFromSubscription calls unsubscribe on cancel', () => {
   expect(response.body).toBeDefined()
   expect(response.status).toBe(200)
 })
+
+test('sseStreamFromSubscription clears heartbeat interval on cancel (v0.2.6)', async () => {
+  // Cancelling the stream must stop the heartbeat timer AND call the
+  // consumer's unsubscribe — otherwise we leak a setInterval per client
+  // disconnect and the per-subscription emitter keeps firing into a
+  // closed controller.
+  let unsubscribeCalled = false
+  const response = sseStreamFromSubscription(() => () => {
+    unsubscribeCalled = true
+  })
+  const reader = response.body!.getReader()
+  await reader.read() // drain initial comment so stream is live
+  await reader.cancel()
+  expect(unsubscribeCalled).toBe(true)
+})
