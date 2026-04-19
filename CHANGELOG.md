@@ -4,6 +4,15 @@ All notable changes to Miharbor are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [semver](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9] — 2026-04-19
+
+Rolls up the `setProfileConfig` quote-preservation fix on top of 0.2.8
+(so a single-field edit no longer reformats neighbouring string
+scalars). Image `ghcr.io/matrix-aas/miharbor:0.2.8` is usable in
+production, but `:0.2.9` is the recommended one — it's the first
+release where `/api/config/draft/diff` tells the whole truth after an
+arbitrary sequence of UI toggles.
+
 ## [0.2.8] — 2026-04-19
 
 Fixes the scariest problem in v0.2.6: saving an unchanged draft (or
