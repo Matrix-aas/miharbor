@@ -9,6 +9,7 @@
 // sentinel with a warn-log so the operator sees the blind spot.
 
 import { parseDocument, isPair, isScalar, visit, type Scalar } from 'yaml'
+import { DUMP_OPTS } from 'miharbor-shared'
 import { SENTINEL_PREFIX } from './mask.ts'
 import type { Vault } from './vault.ts'
 import type { Logger } from '../observability/logger.ts'
@@ -72,5 +73,6 @@ export async function migrateDraftPublicKeys(
   }
 
   if (count === 0) return { text, touched: false, count: 0 }
-  return { text: doc.toString(), touched: true, count }
+  // Canonical serializer — see routes/config.ts for the symmetry rationale.
+  return { text: doc.toString(DUMP_OPTS), touched: true, count }
 }

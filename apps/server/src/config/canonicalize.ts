@@ -13,18 +13,14 @@
 // into a trackable, idempotent format and then every subsequent mutation
 // shows a precise +N/-M line diff.
 
-import { parseDocument, type Document, type ToStringOptions } from 'yaml'
+import { parseDocument, type Document } from 'yaml'
+import { DUMP_OPTS } from 'miharbor-shared'
 
-// I use `satisfies` to keep TS on-side with yaml's overload signatures while
-// still letting the caller hand the opts straight to `doc.toString`.
-export const DUMP_OPTS = {
-  lineWidth: 0,
-  minContentWidth: 0,
-  flowCollectionPadding: false,
-  defaultStringType: 'PLAIN' as const,
-  defaultKeyType: 'PLAIN' as const,
-  doubleQuotedMinMultiLineLength: 999999,
-} satisfies ToStringOptions
+// Re-export the shared opts so existing imports of canonicalize.ts keep
+// working. `miharbor-shared` is the single source of truth — every YAML
+// write path (server mask/migrate/deploy AND web draft serialization)
+// uses the same options to keep `/api/config/draft/diff` meaningful.
+export { DUMP_OPTS }
 
 export interface CanonicalizeResult {
   /** The re-parsed Document (parsed from the canonical text). Safe to mutate

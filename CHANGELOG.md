@@ -4,6 +4,51 @@ All notable changes to Miharbor are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [semver](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] — 2026-04-19
+
+Fixes the scariest problem in v0.2.6: saving an unchanged draft (or
+toggling a boolean and back) showed a large, alarming diff full of
+quote-style flips, folded URLs and map-key reordering. Operators
+rightly hesitated to press Apply, because it was impossible to tell
+whether a cosmetic re-format or a real change was queued up. The round
+trip is now canonical on both sides of `/api/config/draft/diff`.
+
+### Fixed
+
+- **Canonicalization symmetry across server / web.** The `DUMP_OPTS`
+  yaml@2 serializer options — `lineWidth: 0`, `defaultStringType: 'PLAIN'`,
+  etc. — now live in `miharbor-shared`, imported from every YAML write
+  path: the server's `canonicalize` / masked-live / draft-migrate paths,
+  the deploy pipeline, AND the web's `serializeDraft`. Previously only
+  the server's canonicalize+pipeline used them; masked-live used
+  yaml@2 defaults (lineWidth 80, preserved quote styles) while the web
+  mutator also used defaults, so the two sides emitted the same
+  semantic YAML in different bytes. Result: unchanged round-trip is
+  now byte-identical, and `/api/config/draft/diff` returns `''` with
+  `added=0/removed=0` instead of a formatting delta.
+- **Vault sentinels no longer inherit quote style from the source
+  scalar.** `walkSecrets` now resets `valNode.type = Scalar.PLAIN`
+  when replacing a scalar with a `$MIHARBOR_VAULT:<uuid>` marker. A
+  config containing `secret: "plain value"` (double-quoted) used to
+  mask as `secret: "$MIHARBOR_VAULT:<uuid>"`, then re-serialize on the
+  web side as plain — producing spurious `/draft/diff` noise on every
+  secret-bearing field. Sentinels are stable plain literals now, and
+  the canonical serializer is free to emit them unquoted on both sides.
+- **`/api/config/draft/diff` returns `patch: ""` for identical
+  buffers.** `createTwoFilesPatch` always emits the `--- / +++` header
+  even when the two inputs match; the route now collapses the
+  zero-change case so the PendingChangesDialog shows "No changes"
+  instead of a phantom empty diff pane.
+
+### Rolled up from v0.2.7
+
+- **SSE heartbeat.** Both `/api/health/stream` and
+  `/api/deploy/stream` now flush an 8-second keep-alive comment so
+  Bun.serve's 10-second `idleTimeout` doesn't reap quiescent streams
+  and surface `ERR_HTTP2_PROTOCOL_ERROR` in the browser console. The
+  subscription helper additionally clears its interval on cancel to
+  avoid a per-disconnect setInterval leak.
+
 ## [0.2.7] — 2026-04-19
 
 Post-deploy fix-up for v0.2.6: the HTTP/2 header removal in the SSE

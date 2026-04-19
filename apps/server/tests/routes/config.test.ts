@@ -284,3 +284,38 @@ test('GET /api/config/draft/diff returns unified patch with line counters', asyn
   expect(body.added).toBe(1)
   expect(body.removed).toBe(1)
 })
+
+test('draft/diff is empty when the draft is a byte-identical copy of live (v0.2.8)', async () => {
+  // Canonicalization symmetry contract — if the UI just seeded the draft
+  // from /draft (or /raw), serialised it back without changing anything,
+  // and PUT it, /draft/diff MUST report an empty patch. Any diff here is
+  // a round-trip formatting bug that scares operators away from saving.
+  const { app, draftStore } = await buildApp()
+  const liveR = await app.handle(new Request('http://localhost/api/config/draft'))
+  const live = ((await liveR.json()) as { text: string }).text
+  draftStore.put('anonymous', live) // identical copy — no edit
+  const r = await app.handle(new Request('http://localhost/api/config/draft/diff'))
+  const body = (await r.json()) as { patch: string; added: number; removed: number }
+  expect(body.patch).toBe('')
+  expect(body.added).toBe(0)
+  expect(body.removed).toBe(0)
+})
+
+test('draft/diff stays empty after parse→serialize round-trip through the web mutator (v0.2.8)', async () => {
+  // Real user path: the SPA parses the live YAML into a yaml.Document,
+  // applies zero mutations, serialises it back and PUTs. With canonical
+  // DUMP_OPTS shared across server/web, the bytes must match.
+  const { app, draftStore } = await buildApp()
+  const { parseDocument } = await import('yaml')
+  const { DUMP_OPTS } = await import('miharbor-shared')
+  const liveR = await app.handle(new Request('http://localhost/api/config/draft'))
+  const live = ((await liveR.json()) as { text: string }).text
+  const roundTripped = parseDocument(live).toString(DUMP_OPTS)
+  expect(roundTripped).toBe(live) // canonical mask ⇔ canonical web serialize
+  draftStore.put('anonymous', roundTripped)
+  const r = await app.handle(new Request('http://localhost/api/config/draft/diff'))
+  const body = (await r.json()) as { patch: string; added: number; removed: number }
+  expect(body.patch).toBe('')
+  expect(body.added).toBe(0)
+  expect(body.removed).toBe(0)
+})

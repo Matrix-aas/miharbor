@@ -26,7 +26,7 @@
 //   — idempotent on re-mask.
 
 import type { Document } from 'yaml'
-import { isMap, isPair, isScalar, visit } from 'yaml'
+import { isMap, isPair, isScalar, Scalar, visit } from 'yaml'
 
 /** Hard-coded default secret keys. Must stay in sync with spec §9 and
  *  the `.gitignore` patterns in §10.5. */
@@ -113,6 +113,13 @@ export function walkSecrets(
       if (isScalar(valNode) && typeof valNode.value === 'string') {
         if (isSentinel(valNode.value)) return
         valNode.value = cb(valNode.value)
+        // Force plain style on the replaced node. The original scalar may
+        // have been QUOTE_DOUBLE (e.g. `secret: "plain value"`), and
+        // preserving that style would emit `secret: "$MIHARBOR_VAULT:<uuid>"`
+        // while the web draft re-serializer emits it plain — producing
+        // spurious `/draft/diff` noise. Sentinels have no characters that
+        // require quoting; plain is always safe and canonical.
+        valNode.type = Scalar.PLAIN
         replaced += 1
         return
       }
@@ -123,6 +130,7 @@ export function walkSecrets(
         const raw = String(valNode.value)
         if (isSentinel(raw)) return
         valNode.value = cb(raw)
+        valNode.type = Scalar.PLAIN
         replaced += 1
         return
       }

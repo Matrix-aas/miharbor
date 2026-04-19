@@ -14,6 +14,7 @@
 
 import { Elysia, t } from 'elysia'
 import { parseDocument } from 'yaml'
+import { DUMP_OPTS } from 'miharbor-shared'
 import type { Transport } from '../transport/transport.ts'
 import type { DraftStore } from '../draft-store.ts'
 import type { Vault } from '../vault/vault.ts'
@@ -45,7 +46,13 @@ export function configRoutes(deps: ConfigRoutesDeps) {
     if (maskedCache && maskedCache.hash === hash) return maskedCache.text
     const doc = parseDocument(content)
     await deps.vault.maskDoc(doc)
-    const text = doc.toString()
+    // Serialize with the canonical DUMP_OPTS — same options the deploy
+    // pipeline writes with. Without this, the live masked YAML uses yaml@2
+    // defaults (lineWidth=80, quoted scalars kept) while the draft round-
+    // trips through the web's serializer; `/api/config/draft/diff` then
+    // reports spurious structural noise (folded URLs, quote style flips,
+    // map-key reordering) that scares operators away from saving.
+    const text = doc.toString(DUMP_OPTS)
     maskedCache = { hash, text }
     return text
   }
@@ -150,6 +157,13 @@ export function configRoutes(deps: ConfigRoutesDeps) {
         from: 'live',
         to: 'draft',
       })
+      // `createTwoFilesPatch` always emits the `--- / +++` header even when
+      // the two buffers are byte-identical — that would render an empty
+      // diff pane in the PendingChangesDialog. Collapse the zero-change
+      // case to an empty patch so the UI shows "No changes" instead.
+      if (added === 0 && removed === 0) {
+        return { patch: '', added: 0, removed: 0, hasDraft: true as const }
+      }
       return { patch, added, removed, hasDraft: true as const }
     })
 }

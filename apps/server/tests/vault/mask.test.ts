@@ -180,3 +180,25 @@ test('walkSecrets does not crash on non-string scalar values', () => {
   })
   expect(seen).toEqual(['42'])
 })
+
+test('walkSecrets forces PLAIN style on replaced sentinels (v0.2.8)', () => {
+  // When the original scalar was QUOTE_DOUBLE (`secret: "plaintext"`),
+  // the in-place mutation must reset the style to plain — otherwise
+  // we'd emit `secret: "$MIHARBOR_VAULT:<uuid>"` while the web draft
+  // re-serializer emits it plain, producing ~half the spurious diff
+  // noise on `/api/config/draft/diff` reported by operators.
+  const doc = parseDocument(
+    ['mode: rule', 'secret: "plain value"', "password: 'other'", ''].join('\n'),
+  )
+  walkSecrets(doc, resolveSecretFields(''), () => 'MASKED_VALUE')
+  const out = doc.toString({
+    lineWidth: 0,
+    defaultStringType: 'PLAIN',
+    defaultKeyType: 'PLAIN',
+  })
+  // Neither double- nor single-quoted — MASKED_VALUE is plain.
+  expect(out).toMatch(/^secret:\s+MASKED_VALUE\s*$/m)
+  expect(out).toMatch(/^password:\s+MASKED_VALUE\s*$/m)
+  expect(out).not.toMatch(/"MASKED_VALUE"/)
+  expect(out).not.toMatch(/'MASKED_VALUE'/)
+})

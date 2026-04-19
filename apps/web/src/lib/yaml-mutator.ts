@@ -24,6 +24,7 @@ import {
 } from 'yaml'
 import {
   type DnsConfig,
+  DUMP_OPTS,
   type GeoxUrlConfig,
   type ProfileConfig,
   type ProfileNested,
@@ -53,10 +54,12 @@ export function parseDraft(yaml: string): Document {
   return doc
 }
 
-/** Serialize back to text. Preserves key order / comments where the yaml
- *  library can manage it. */
+/** Serialize back to text. Uses the same `DUMP_OPTS` as the server's
+ *  `canonicalize` / `maskedLiveText` / deploy pipeline — without this
+ *  symmetry `/api/config/draft/diff` reports formatting noise (folded
+ *  URLs, quote style flips, map-key reordering) that masks real edits. */
 export function serializeDraft(doc: Document): string {
-  return doc.toString()
+  return doc.toString(DUMP_OPTS)
 }
 
 // ----- rules mutators -----------------------------------------------------
